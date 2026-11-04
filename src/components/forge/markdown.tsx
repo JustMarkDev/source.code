@@ -12,6 +12,7 @@ import type { Components } from 'react-markdown'
 import type { ReactNode } from 'react'
 import type { Repo } from '~/mock/data'
 import { Button } from '~/components/ui/button'
+import { StateTabs } from '~/components/ui/tabs'
 import { Dropdown, MenuItem } from '~/components/ui/menu'
 
 const slug = (s: string) =>
@@ -132,7 +133,7 @@ const components: Components = {
     />
   ),
   blockquote: ({ children }) => (
-    <blockquote className="my-5 rounded-xl border-l-2 border-brand-ink/60 bg-muted/50 px-5 py-1 text-foreground/80">
+    <blockquote className="my-5 border-l-2 pl-4 text-muted-foreground">
       {children}
     </blockquote>
   ),
@@ -204,7 +205,7 @@ export function readmeFor(repo: Repo): string {
 
 ${repo.description}
 
-> ${n} is small on purpose. It does one thing, keeps its dependencies to a minimum, and behaves the same on every platform.
+${n} is small on purpose. It does one thing, keeps its dependencies to a minimum, and behaves the same on every platform.
 
 ## Why ${n}
 
@@ -238,39 +239,163 @@ ${n} reads a small file in the project root. Every option has a sensible default
 - [x] Signed releases
 - [ ] Plugin API
 - [ ] A hosted mirror
-
-## Contributing
-
-Bug reports and small fixes are welcome. For anything larger, open an issue first so we can agree on the shape of it.
 `
 }
 
-/** The README card: the rendered document with an outline for long ones. */
-export function ReadmeCard({ repo }: { repo: Repo }) {
-  const source = React.useMemo(() => readmeFor(repo), [repo])
+/** CONTRIBUTING.md for a project. It has its own tab, so the README stays about the product. */
+export function contributingFor(repo: Repo): string {
+  const n = repo.name
+  return `# Contributing to ${n}
+
+Bug reports and small fixes are welcome. For anything larger, open an issue first so we can agree on the shape of it.
+
+## Reporting a bug
+
+Include the version (\`${n} --version\`), your platform, and the smallest steps that reproduce it. A failing test is even better.
+
+## Sending a change
+
+1. Fork the repository and branch from \`main\`.
+2. Keep the change focused. One fix or feature per change.
+3. Add or update tests, and run the full suite before you push.
+4. Open a change and describe what it does and why.
+
+## Local setup
+
+\`\`\`bash
+git clone https://source.code/${repo.owner}/${n}.git
+cd ${n}
+${n} init
+${n} run --watch
+\`\`\`
+
+## Style
+
+Follow the formatter. If a rule gets in your way, say so in the change and we will talk about it.
+
+## Conduct
+
+Be kind. Assume good faith. Maintainers may close threads that are not constructive.
+`
+}
+
+const BSD_BODY = (
+  year: number,
+  owner: string,
+) => `Copyright (c) ${year}, ${owner}
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.`
+
+const PERMISSIVE_WARRANTY = `THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
+
+/** The LICENSE file. Permissive licenses are shown in full; the long ones show their notice. */
+export function licenseFor(repo: Repo): string {
+  const year = 2026
+  switch (repo.license) {
+    case 'MIT':
+      return `MIT License
+
+Copyright (c) ${year} ${repo.owner}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+${PERMISSIVE_WARRANTY}`
+    case 'ISC':
+      return `ISC License
+
+Copyright (c) ${year}, ${repo.owner}
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.`
+    case 'BSD-3-Clause':
+      return `BSD 3-Clause License\n\n${BSD_BODY(year, repo.owner)}`
+    default:
+      return `${repo.name}
+Copyright (c) ${year} ${repo.owner}
+
+Licensed under the ${repo.license} license. You may not use this software except in compliance with the license.
+
+The full license text is distributed with every release and can be read at
+https://spdx.org/licenses/${repo.license}.html
+
+Unless required by applicable law or agreed to in writing, the software is distributed on an "AS IS" basis, without warranties or conditions of any kind, either express or implied.`
+  }
+}
+
+export type RepoDoc = 'readme' | 'contributing' | 'license'
+
+/** The README card: README, Contributing and License swap in place, like tabs on one page. */
+export function ReadmeCard({
+  repo,
+  doc,
+  onDoc,
+}: {
+  repo: Repo
+  doc: RepoDoc
+  onDoc: (doc: RepoDoc) => void
+}) {
+  const source = React.useMemo(
+    () =>
+      doc === 'readme'
+        ? readmeFor(repo)
+        : doc === 'contributing'
+          ? contributingFor(repo)
+          : '',
+    [repo, doc],
+  )
   const outline = React.useMemo(() => headingsOf(source), [source])
   return (
-    <section className="surface relative rounded-2xl border bg-card px-6 py-7 sm:px-9">
-      <div className="absolute top-4 right-4">
-        <Dropdown
-          trigger={
-            <Button size="sm" variant="ghost">
-              <ListBulletIcon /> Outline
-            </Button>
-          }
-        >
-          {outline.map((h) => (
-            <MenuItem
-              key={h.id}
-              render={<a href={`#${h.id}`} />}
-              className={h.level === 3 ? 'pl-6' : undefined}
-            >
-              {h.text}
-            </MenuItem>
-          ))}
-        </Dropdown>
+    <section className="surface rounded-2xl border bg-card px-6 py-6 sm:px-9">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <StateTabs
+          label="Documents"
+          value={doc}
+          onChange={onDoc}
+          options={[
+            { id: 'readme', label: 'README' },
+            { id: 'contributing', label: 'Contributing' },
+            { id: 'license', label: 'License' },
+          ]}
+        />
+        {outline.length > 0 && (
+          <Dropdown
+            trigger={
+              <Button size="sm" variant="ghost">
+                <ListBulletIcon /> Outline
+              </Button>
+            }
+          >
+            {outline.map((h) => (
+              <MenuItem
+                key={h.id}
+                render={<a href={`#${h.id}`} />}
+                className={h.level === 3 ? 'pl-6' : undefined}
+              >
+                {h.text}
+              </MenuItem>
+            ))}
+          </Dropdown>
+        )}
       </div>
-      <MarkdownBody source={source} />
+      {doc === 'license' ? (
+        <pre className="max-w-[72ch] font-mono text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85">
+          {licenseFor(repo)}
+        </pre>
+      ) : (
+        <MarkdownBody source={source} />
+      )}
     </section>
   )
 }

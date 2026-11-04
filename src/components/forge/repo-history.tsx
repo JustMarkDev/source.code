@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
+import { cn } from 'cn'
 import { PatchDiff } from '@pierre/diffs/react'
 import {
   CheckCircleIcon,
@@ -8,7 +9,7 @@ import {
   MagnifyingGlassIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline'
-import { Tile } from './bits'
+import { Avatar } from './bits'
 import type { Committer } from '~/mock/commits'
 import type { Repo } from '~/mock/data'
 import { GitBranchIcon } from '~/components/icons'
@@ -19,11 +20,22 @@ import { commitsFor, committers, findCommit } from '~/mock/commits'
 import { refsPatch, refsTestPatch } from '~/mock/platform'
 import { useIsDark } from '~/lib/theme'
 
-function Who({ who }: { who: Committer }) {
+export function Who({
+  who,
+  className = 'size-7 text-[11px]',
+}: {
+  who: Committer
+  className?: string
+}) {
   return who.kind === 'human' ? (
-    <Tile name={who.name} round className="size-7 text-[11px]" />
+    <Avatar handle={who.name} className={className} />
   ) : (
-    <span className="flex size-7 items-center justify-center rounded-full bg-muted">
+    <span
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-full bg-muted',
+        className,
+      )}
+    >
       <CpuChipIcon className="size-4" />
     </span>
   )

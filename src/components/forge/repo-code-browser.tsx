@@ -12,14 +12,19 @@ import {
   DocumentTextIcon,
   FolderIcon,
   LockClosedIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import { AboutPanel } from './repo-about'
+import { Who } from './repo-history'
 import { ReadmeCard } from './markdown'
+import type { RepoDoc } from './markdown'
 import type { Repo } from '~/mock/data'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Modal } from '~/components/ui/dialog'
+import { commitsFor } from '~/mock/commits'
 import { useIsDark } from '~/lib/theme'
+import '~/lib/highlight'
 
 const rust = `pub struct Refs {
     disk: Disk,
@@ -57,6 +62,7 @@ function filesFor(repo: Repo): Record<string, string> {
   const ext = repo.language === 'Rust' ? 'rs' : 'ts'
   return {
     'README.md': `# ${repo.name}\n\n${repo.description}\n\n## Install\n\nDownload the build for your machine from the Releases tab.\n`,
+    'CONTRIBUTING.md': `# Contributing to ${repo.name}\n\nBug reports and small fixes are welcome. For anything larger, open an issue first.\n`,
     'CHANGELOG.md':
       '## 0.9.0\n\n- Faster ref lookups\n- Fix mount on empty directories\n',
     LICENSE: `${repo.license}\n`,
@@ -233,6 +239,7 @@ export function CodeBrowser({
   const ext = repo.language === 'Rust' ? 'rs' : 'ts'
   const paths = React.useMemo(() => Object.keys(files).sort(), [files])
   const [copied, setCopied] = React.useState(false)
+  const [doc, setDoc] = React.useState<RepoDoc>('readme')
 
   const isFile = path in files
   const isDir = !isFile && paths.some((p) => p.startsWith(`${path}/`))
@@ -241,6 +248,7 @@ export function CodeBrowser({
     : isFile
       ? path.split('/').slice(0, -1).join('/')
       : ''
+  const latest = React.useMemo(() => commitsFor(repo, 1)[0], [repo])
   const touched = [`src/refs.${ext}`, `tests/refs_test.${ext}`]
 
   return (
@@ -251,19 +259,30 @@ export function CodeBrowser({
         <>
           <div className="surface overflow-hidden rounded-2xl border bg-card">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-5 py-3 text-sm">
-              <b className="font-medium">dana</b>
+              <Who who={latest.author} className="size-6 text-[10px]" />
+              <b className="font-medium">{latest.author.name}</b>
               <Link
                 to="/$handle/$repo/commit/$sha"
-                params={{ handle: repo.owner, repo: repo.name, sha: 'a41c9e2' }}
+                params={{
+                  handle: repo.owner,
+                  repo: repo.name,
+                  sha: latest.sha,
+                }}
                 className="min-w-0 flex-1 truncate text-muted-foreground hover:text-foreground hover:underline"
               >
-                Cache negative ref lookups
+                {latest.message}
               </Link>
-              <span className="inline-flex items-center gap-1 text-success">
-                <CheckBadgeIcon className="size-4" /> checks passed
-              </span>
+              {latest.checks === 'pass' ? (
+                <span className="inline-flex items-center gap-1 text-success">
+                  <CheckBadgeIcon className="size-4" /> checks passed
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-danger">
+                  <XCircleIcon className="size-4" /> checks failed
+                </span>
+              )}
               <span className="font-mono text-xs text-muted-foreground">
-                a41c9e2
+                {latest.sha}
               </span>
               <Link
                 to="/$handle/$repo/$tab"
@@ -339,8 +358,8 @@ export function CodeBrowser({
 
           {!dir && (
             <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-              <ReadmeCard repo={repo} />
-              <AboutPanel repo={repo} />
+              <ReadmeCard repo={repo} doc={doc} onDoc={setDoc} />
+              <AboutPanel repo={repo} onOpenLicense={() => setDoc('license')} />
             </div>
           )}
         </>

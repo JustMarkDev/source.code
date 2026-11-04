@@ -38,18 +38,20 @@ function installsFor(repo: Repo): Array<[string, string]> {
  * detected: the license from the LICENSE file, languages from the code, the
  * release from the latest tag.
  */
-export function AboutPanel({ repo }: { repo: Repo }) {
+export function AboutPanel({
+  repo,
+  onOpenLicense,
+}: {
+  repo: Repo
+  /** Switch the README card to its License tab instead of leaving the page. */
+  onOpenLicense: () => void
+}) {
   const installs = installsFor(repo)
   const [which, setWhich] = React.useState(installs[0][0])
   const current = installs.find(([k]) => k === which) ?? installs[0]
   const release = latestStable(repo)
   return (
     <aside className="space-y-6 text-sm">
-      <section className="space-y-2">
-        <h2 className="font-medium">About</h2>
-        <p className="text-muted-foreground">{repo.description}</p>
-      </section>
-
       <section className="space-y-2">
         <h2 className="font-medium">Install</h2>
         <Segmented
@@ -64,10 +66,14 @@ export function AboutPanel({ repo }: { repo: Repo }) {
       <ul className="space-y-2.5 text-muted-foreground">
         <li className="flex items-center gap-2.5">
           <ScaleIcon className="size-4 shrink-0" />
-          <span>
+          <button
+            type="button"
+            onClick={onOpenLicense}
+            className="text-left hover:text-foreground"
+          >
             <span className="text-foreground">{repo.license} license</span>{' '}
             <span className="text-xs">from LICENSE</span>
-          </span>
+          </button>
         </li>
         {release && (
           <li className="flex items-center gap-2.5">

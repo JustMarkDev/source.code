@@ -9,7 +9,7 @@ import {
   StarIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
-import { Tile } from './bits'
+import { Avatar } from './bits'
 import type { Repo } from '~/mock/data'
 import { GitCommitIcon, GitForkIcon, GitMergeIcon } from '~/components/icons'
 import { LinkTabs } from '~/components/ui/tabs'
@@ -106,7 +106,7 @@ export function RepoHeader({
     <header className="mb-5 space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Tile name={repo.name} className="size-10 text-base" />
+          <Avatar handle={repo.owner} className="size-10 text-base" />
           <div className="min-w-0">
             <Link
               to="/$handle"

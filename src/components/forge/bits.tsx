@@ -5,7 +5,7 @@ import type { BadgeTone } from '~/components/ui/badge'
 import type { Source } from '~/mock/data'
 import { Badge } from '~/components/ui/badge'
 import { Segmented } from '~/components/ui/tabs'
-import { languageColors, sources } from '~/mock/data'
+import { developers, languageColors, sources } from '~/mock/data'
 
 /** The ONLY place a forge name may show: private screens (settings, owner-only). */
 export function SourceBadge({
@@ -75,6 +75,25 @@ export function Tile({
     >
       {name.charAt(0).toUpperCase()}
     </span>
+  )
+}
+
+/** A person's round profile picture, on the same colour as their profile page. */
+export function Avatar({
+  handle,
+  className,
+}: {
+  handle: string
+  className?: string
+}) {
+  const dev = developers.find((d) => d.handle === handle)
+  return (
+    <Tile
+      name={dev?.name ?? handle}
+      hue={dev?.hue}
+      round
+      className={className}
+    />
   )
 }
 

@@ -24,9 +24,6 @@ export function Logo({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="flex size-6 items-center justify-center rounded-md bg-brand text-[11px] font-bold text-brand-foreground">
-        {'{}'}
-      </span>
       <span>
         source<span className="text-brand-ink">.</span>code
       </span>
