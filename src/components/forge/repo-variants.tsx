@@ -2,10 +2,13 @@ import * as React from 'react'
 import { Popover } from '@base-ui/react/popover'
 import {
   ArrowDownTrayIcon,
+  BeakerIcon,
   ChevronDownIcon,
   CommandLineIcon,
   ComputerDesktopIcon,
+  ExclamationTriangleIcon,
   MagnifyingGlassIcon,
+  MoonIcon,
   ScaleIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
@@ -18,6 +21,7 @@ import { CopyField, RepoHeader } from './repo-shell'
 import type { Channel, Release, Repo } from '~/mock/data'
 import { GitBranchIcon } from '~/components/icons'
 import { Button } from '~/components/ui/button'
+import { Segmented } from '~/components/ui/tabs'
 import { Tip } from '~/components/ui/tooltip'
 import { compact, latestStable, totalDownloads } from '~/mock/data'
 import { availableOses, matchAsset, osLabel, useTarget } from '~/lib/platform'
@@ -153,21 +157,120 @@ export function ReleaseNotes({ release }: { release: Release }) {
 // ---------------------------------------------------------------------------
 // Releases: detect the machine, say which file is for it, make verifying easy.
 // ---------------------------------------------------------------------------
+const channelChip = {
+  stable: 'success',
+  beta: 'warning',
+  nightly: 'info',
+} as const
+
+const channelBlurb: Record<Channel, string> = {
+  stable: 'Tested and signed. The one to use.',
+  beta: 'Close to done, but still changing. Expect rough edges.',
+  nightly: 'Built automatically from main. Unsigned, and can break.',
+}
+
+/** What to know before installing this particular version, if anything. */
+function ReleaseNotice({
+  release,
+  latest,
+  onOpen,
+}: {
+  release: Release
+  latest: Release | undefined
+  onOpen: (version: string) => void
+}) {
+  const open = latest && latest !== release && (
+    <Button size="sm" onClick={() => onOpen(latest.version)}>
+      View {latest.version}
+    </Button>
+  )
+  const base =
+    'flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-6 py-3 text-sm'
+  if (release.withdrawn)
+    return (
+      <div className={cn(base, 'bg-danger/10')}>
+        <ExclamationTriangleIcon className="size-5 shrink-0 text-danger" />
+        <p className="min-w-0 flex-1">
+          <b className="font-medium">Withdrawn.</b> {release.withdrawn}
+        </p>
+        {open}
+      </div>
+    )
+  if (release.channel === 'nightly')
+    return (
+      <div className={cn(base, 'bg-info/10')}>
+        <MoonIcon className="size-5 shrink-0 text-info" />
+        <p className="min-w-0 flex-1">
+          <b className="font-medium">Nightly.</b> {channelBlurb.nightly}
+          {release.commit && (
+            <>
+              {' '}
+              Built from <span className="font-mono">{release.commit}</span>.
+            </>
+          )}
+        </p>
+        {open}
+      </div>
+    )
+  if (release.channel === 'beta')
+    return (
+      <div className={cn(base, 'bg-warning/10')}>
+        <BeakerIcon className="size-5 shrink-0 text-warning" />
+        <p className="min-w-0 flex-1">
+          <b className="font-medium">Beta.</b> {channelBlurb.beta}
+          {release.commit && (
+            <>
+              {' '}
+              Built from <span className="font-mono">{release.commit}</span>.
+            </>
+          )}
+        </p>
+        {open}
+      </div>
+    )
+  if (latest && latest !== release)
+    return (
+      <div className={cn(base, 'bg-muted/50')}>
+        <p className="min-w-0 flex-1 text-muted-foreground">
+          You are looking at an older version. The latest stable release is{' '}
+          <span className="font-mono text-foreground">{latest.version}</span>.
+        </p>
+        {open}
+      </div>
+    )
+  return null
+}
+
 export function ReleasesPage({ repo }: { repo: Repo }) {
   const { target } = useTarget()
-  const [channel, setChannel] = React.useState<Channel>('stable')
+  const [version, setVersion] = React.useState<string | null>(null)
+  const [filter, setFilter] = React.useState<'all' | Channel>('all')
   const [install, setInstall] = React.useState(0)
+  const latest = latestStable(repo)
   const release =
-    repo.releases.find((r) => r.channel === channel) ?? latestStable(repo)
+    repo.releases.find((r) => r.version === version) ??
+    latest ??
+    repo.releases.at(0)
+  const count = (c: Channel) =>
+    repo.releases.filter((r) => r.channel === c).length
 
+  // Anything but the newest stable gets commands pinned to that version.
+  const pinned = release !== undefined && release !== latest
+  const v = release?.version.replace(/^v/, '') ?? ''
   const installs = [
     [
       'curl',
-      `curl -fsSL https://source.code/${repo.owner}/${repo.name}/install | sh`,
+      `curl -fsSL https://source.code/${repo.owner}/${repo.name}/install | sh${pinned ? ` -s -- --version ${release.version}` : ''}`,
     ],
-    ['brew', `brew install ${repo.owner}/tap/${repo.name}`],
-    ['cargo', `cargo install ${repo.name}`],
-    ['docker', `docker run --rm ghcr.io/${repo.owner}/${repo.name}`],
+    [
+      'brew',
+      `brew install ${repo.owner}/tap/${repo.name}${pinned ? `@${v.split(/[.-]/).slice(0, 2).join('.')}` : ''}`,
+    ],
+    ['cargo', `cargo install ${repo.name}${pinned ? ` --version ${v}` : ''}`],
+    [
+      'docker',
+      `docker run --rm ghcr.io/${repo.owner}/${repo.name}${pinned ? `:${v}` : ''}`,
+    ],
   ] as const
 
   if (!release) {
@@ -223,22 +326,38 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
           <section id="download" className="scroll-mt-20">
             <Panel className="overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
-                <div className="well flex rounded-xl bg-muted/70 p-1 text-sm">
+                <div
+                  role="group"
+                  aria-label="Release channel"
+                  className="well flex rounded-xl bg-muted/70 p-1 text-sm"
+                >
                   {(['stable', 'beta', 'nightly'] as const).map((c) => {
-                    const exists = repo.releases.some((r) => r.channel === c)
+                    const n = count(c)
                     return (
                       <button
                         key={c}
                         type="button"
-                        disabled={!exists}
-                        onClick={() => setChannel(c)}
+                        disabled={n === 0}
+                        aria-pressed={release.channel === c}
+                        title={n === 0 ? `No ${c} builds yet` : channelBlurb[c]}
+                        onClick={() =>
+                          setVersion(
+                            repo.releases.find((r) => r.channel === c)
+                              ?.version ?? null,
+                          )
+                        }
                         className={cn(
-                          'rounded-lg px-3 py-1 text-muted-foreground capitalize disabled:opacity-40',
+                          'inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-muted-foreground capitalize transition-colors hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground',
                           release.channel === c &&
                             'raised bg-card font-medium text-foreground',
                         )}
                       >
                         {c}
+                        {n > 0 && (
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            {n}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -252,10 +371,19 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
                   <Chip tone="warning">Unsigned build</Chip>
                 )}
               </div>
+              <ReleaseNotice
+                release={release}
+                latest={latest}
+                onOpen={setVersion}
+              />
               <div className="flex flex-wrap items-center justify-between gap-6 px-6 py-8">
                 <div>
-                  <div className="font-mono text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-sm text-muted-foreground">
                     {release.date}
+                    <Chip tone={channelChip[release.channel]}>
+                      {release.channel}
+                    </Chip>
+                    {release === latest && <Chip tone="brand">Latest</Chip>}
                   </div>
                   <div className="mt-1 text-3xl font-semibold tracking-tighter">
                     {repo.name} {release.version}
@@ -288,6 +416,15 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
           </section>
           <section id="install" className="scroll-mt-20 space-y-3">
             <SectionLabel>Or use a package manager</SectionLabel>
+            {pinned && (
+              <p className="text-sm text-muted-foreground">
+                These commands install{' '}
+                <span className="font-mono text-foreground">
+                  {release.version}
+                </span>{' '}
+                exactly, not the latest.
+              </p>
+            )}
             <div className="flex gap-1">
               {installs.map(([label], i) => (
                 <button
@@ -381,30 +518,77 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
             </Panel>
           </section>
           <section id="history" className="scroll-mt-20 space-y-3">
-            <SectionLabel>Version history</SectionLabel>
-            <Panel className="divide-y">
-              {repo.releases.map((r) => (
-                <div
-                  key={r.version}
-                  className="flex items-center gap-4 px-4 py-3 text-sm"
-                >
-                  <span className="w-36 font-mono font-medium">
-                    {r.version}
-                  </span>
-                  <Chip tone={r.channel === 'stable' ? 'success' : 'warning'}>
-                    {r.channel}
-                  </Chip>
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    {r.title}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {r.date}
-                  </span>
-                  <span className="w-16 text-right text-xs tabular-nums">
-                    {compact(totalDownloads(r))}
-                  </span>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <SectionLabel>Version history</SectionLabel>
+              {repo.releases.length > 1 && (
+                <Segmented
+                  label="Show channel"
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    ['all', `All ${repo.releases.length}`],
+                    ...(['stable', 'beta', 'nightly'] as const)
+                      .filter((c) => count(c) > 0)
+                      .map((c): ['all' | Channel, string] => [
+                        c,
+                        `${c[0].toUpperCase()}${c.slice(1)} ${count(c)}`,
+                      ]),
+                  ]}
+                />
+              )}
+            </div>
+            <p className="max-w-[65ch] text-sm text-muted-foreground">
+              Every release, newest first. Pick one to see its downloads and
+              changelog, or to install an older version if the latest breaks
+              something for you.
+            </p>
+            <Panel className="divide-y overflow-hidden">
+              {repo.releases
+                .filter((r) => filter === 'all' || r.channel === filter)
+                .map((r) => (
+                  <button
+                    key={r.version}
+                    type="button"
+                    aria-current={r === release ? 'true' : undefined}
+                    onClick={() => {
+                      setVersion(r.version)
+                      document
+                        .getElementById('download')
+                        ?.scrollIntoView({ behavior: 'smooth' })
+                    }}
+                    className={cn(
+                      'flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/50',
+                      r === release && 'bg-brand/10',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-52 shrink-0 truncate font-mono font-medium',
+                        r.withdrawn && 'text-muted-foreground line-through',
+                      )}
+                    >
+                      {r.version}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <Chip tone={channelChip[r.channel]}>{r.channel}</Chip>
+                      {r === latest && <Chip tone="brand">Latest</Chip>}
+                      {r.withdrawn && <Chip tone="danger">Withdrawn</Chip>}
+                      {!r.signed && <Chip>Unsigned</Chip>}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                      {r.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {r.date}
+                    </span>
+                    <span className="w-16 text-right text-xs tabular-nums">
+                      {compact(totalDownloads(r))}
+                    </span>
+                    <span className="w-16 text-right text-xs text-muted-foreground">
+                      {r === release ? 'Viewing' : ''}
+                    </span>
+                  </button>
+                ))}
             </Panel>
           </section>
           <details

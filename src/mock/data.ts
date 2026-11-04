@@ -311,7 +311,7 @@ export const repos: Array<Repo> = [
         },
       }),
       lumenRelease('v2.3.1', 'stable', 'Aug 26, 2026', {
-        title: 'Withdrawn: moving notes between vaults',
+        title: 'Move notes between vaults',
         total: 12000,
         withdrawn:
           'Moving a note between vaults could overwrite a note with the same name. Use v2.3.2 or later.',
