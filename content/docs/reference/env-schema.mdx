@@ -1,0 +1,43 @@
+---
+icon: KeyIcon
+title: Env schema and secret files
+description: The files that describe and hold environment variables.
+---
+
+## `.env.schema`
+
+Describes variables. Public to anyone who can read the repository.
+
+```bash
+# @defaultSensitive=true @defaultRequired=infer
+# ---
+# @required @type=url
+DATABASE_URL=
+
+# @public @type=port
+API_PORT=8080
+```
+
+The format follows [Varlock](https://varlock.dev/getting-started/introduction/)'s schema decorators.
+
+| Decorator           | Meaning                                                                         |
+| ------------------- | ------------------------------------------------------------------------------- |
+| `@required`         | Must have a value. `@required=forEnv(production)` limits it to one environment. |
+| `@public`           | Not secret. The value may be written in the schema.                             |
+| `@type=...`         | A type such as `url`, `port` or `string(startsWith=sk_)`.                       |
+| `@defaultSensitive` | Treat variables as secret unless marked `@public`.                              |
+
+## `.source/secrets/ENV.env`
+
+Holds ciphertext, one value per line:
+
+```bash
+DATABASE_URL=enc:age:AGE-1q8xk...:Zmx1c2gtc2VjcmV0
+API_PORT=8080
+```
+
+A plaintext value in a secret key is rejected by the push guard. Write values with `sx env set`, never by hand.
+
+## Environments
+
+`development`, `preview` and `production`.

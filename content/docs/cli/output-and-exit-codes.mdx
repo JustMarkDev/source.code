@@ -1,0 +1,45 @@
+---
+icon: DocumentTextIcon
+title: Output and exit codes
+description: What sx prints, and the numbers it exits with.
+---
+
+## When output is JSON
+
+Output is JSON when `--json` is passed or stdout is not a terminal. Otherwise it is short plain text. The JSON shape of a command does not change between the two: the text is derived from it.
+
+## Errors
+
+On failure `sx` prints one object to stderr in JSON mode, or two lines in text mode.
+
+```json
+{
+  "error": {
+    "code": "repo_unknown",
+    "message": "Could not tell which repository you mean.",
+    "hint": "Run inside a clone, pass -R owner/name, or set SX_REPO."
+  }
+}
+```
+
+`code` is stable and safe to branch on. `message` is for people. `hint` is the next thing to try.
+
+## Exit codes
+
+| Code | Meaning              | Example                                         |
+| ---- | -------------------- | ----------------------------------------------- |
+| `0`  | Success              |                                                 |
+| `1`  | Something went wrong | An unexpected error                             |
+| `2`  | You used it wrong    | Missing argument, unknown repository context    |
+| `3`  | Not found            | `change_not_found`, `issue_not_found`           |
+| `4`  | Not signed in        | `sx auth status` without a token                |
+| `5`  | Policy blocked       | `sx change land`, `sx policy check`             |
+| `6`  | Needs a human        | Reserved for agent flows that must stop and ask |
+
+## Dry runs
+
+`--dry-run` reports what would happen and changes nothing. The JSON includes `"dryRun": true`.
+
+## Debugging
+
+Set `SX_DEBUG=1` to print a stack trace for an unexpected error.

@@ -1,0 +1,72 @@
+---
+icon: SparklesIcon
+title: Teach an agent to use sx
+description: No model has seen sx. Give it a skill, a one-call context, a machine-readable command list and the docs as text.
+---
+
+Models are not trained on `sx`, so an agent that guesses will get it wrong. `sx` gives an agent four ways to learn it, from the tool itself.
+
+## 1. Install the skill
+
+```bash
+sx skill install                    # .claude/skills/sx/SKILL.md
+sx skill install --target agents    # a marked block in AGENTS.md
+```
+
+The skill is short on purpose, so it always loads. It tells the agent to run `sx context` first, never wait for input, parse JSON errors by `code`, use `--dry-run` before changes, treat exit code `5` as a stop, and never touch secret values. Running install twice changes nothing. `sx skill` prints the same text if you want to paste it elsewhere.
+
+## 2. Ask the CLI what it can do
+
+```bash
+sx commands
+```
+
+One JSON document listing every command with its arguments, an example, whether it changes anything, whether it is safe to repeat, and which exit codes it can return. An agent calls this once instead of reading help text for each command.
+
+```json
+{
+  "command": "change land",
+  "summary": "Land a change if policy allows. Exits 5 and lists what is missing otherwise.",
+  "mutates": true,
+  "idempotent": false,
+  "exits": [3, 5],
+  "example": "sx change land ch_7f3a"
+}
+```
+
+## 3. Start from context
+
+```bash
+sx context
+```
+
+The repository, open changes and what blocks each, open issues, policy and the env schema, with no secret values. It is the first call in the skill.
+
+## 4. Errors that teach
+
+Every error is JSON with a stable `code` and a `hint`. A mistyped command suggests the nearest one:
+
+```json
+{
+  "error": {
+    "code": "unknown_command",
+    "message": "chnge is not a command.",
+    "hint": "Did you mean: sx change? sx commands lists everything as JSON."
+  }
+}
+```
+
+## The docs, as text
+
+Agents that browse can read these files instead of the rendered site:
+
+- `/llms.txt`: an index with one line per page.
+- `/llms-full.txt`: every docs page as one plain-text file.
+
+## Handing off work
+
+`sx agent start` builds the prompt for an issue or change and tells the agent to read `sx skill` first if it has not used `sx`. See [Agents and the CLI](/docs/cli/agents).
+
+## MCP
+
+Agents that prefer MCP to a command line can connect to the [MCP server](/docs/mcp). It runs the same commands, so the answers match.

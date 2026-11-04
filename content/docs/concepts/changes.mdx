@@ -1,0 +1,46 @@
+---
+icon: GitMergeIcon
+title: Changes, not pull requests
+description: What a change is, how it differs from a pull request, and when to use which.
+---
+
+A **change** is the unit of review. It plays the role a pull request plays elsewhere, with one difference that matters: it keeps its identity when you rewrite it.
+
+## The idea
+
+A pull request is a branch with a conversation attached. Rebase or force-push the branch and the conversation loses its footing. Gerrit solved this years ago with a stable `Change-Id`, and Jujutsu keeps a change ID that survives rewrites. A source.code change works the same way.
+
+|                         | Pull request                | Change                                 |
+| ----------------------- | --------------------------- | -------------------------------------- |
+| Identity                | The branch                  | A stable id such as `ch_7f3a`          |
+| You push again          | New commits on the branch   | A new **patch set** on the same change |
+| You rebase              | Reviews can go stale        | Reviews follow the change              |
+| Reviewing an update     | Read the diff again         | Read the difference between patch sets |
+| Several related changes | Separate branches to juggle | A **stack** that lands in order        |
+| What may land           | Branch rules                | **Policies** you write as code         |
+
+## Patch sets
+
+Every update is a numbered patch set. The review page can show the whole change, one patch set, or only what changed between two of them. A reviewer who already read patch set 2 reads the difference, not everything again.
+
+## Stacks
+
+A stack is a chain of changes where each builds on the last. They land in order. When a parent lands, its children are rebased onto the result and keep their approvals because their own diffs did not change.
+
+## Is this better than a pull request?
+
+For most work, yes, and it costs almost nothing to adopt: pushing a branch and running `sx change create` is the whole workflow, and you only meet patch sets on your second push.
+
+It is not free everywhere:
+
+- It is one more idea to learn for people who know only pull requests.
+- When a repository is mirrored two-way, a change maps to a pull request on the other host, and a patch set maps to a push. Review comments carry across, but the richer history stays here.
+- Forks and drive-by contributions still work as a branch from a fork. The maintainer sees a change.
+
+## Findings from reviewers
+
+AI reviewers such as CodeRabbit and Greptile leave **findings** on lines of a patch set. A finding has a severity and an owner. You can resolve it, dismiss it with a reason, or send it to an agent. Whether a high-severity finding blocks landing is up to your [policy](/docs/concepts/policies).
+
+## Issues first
+
+Work starts from an issue and ends at a landed change. A change links to its issue, and the issue moves forward as the change does. You do not update both by hand.

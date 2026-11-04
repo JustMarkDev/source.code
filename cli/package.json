@@ -1,0 +1,11 @@
+{
+  "name": "@source-code/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "sx: the source.code command line. It never asks questions and every command speaks JSON.",
+  "type": "module",
+  "bin": {
+    "sx": "./src/main.ts"
+  },
+  "license": "BUSL-1.1"
+}

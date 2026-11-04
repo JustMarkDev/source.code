@@ -1,0 +1,70 @@
+---
+icon: ShieldCheckIcon
+title: Policies
+description: Rules, kept as code, that decide what can land.
+---
+
+A policy says when it applies and what it requires. Policies live in `.source/policy/` and are reviewed like code.
+
+```yaml title=".source/policy/main.yml"
+rules:
+  - id: core-paths
+    when:
+      paths: ['src/**', '!src/**/tests/**']
+    require:
+      - approval: { min: 1, class: human, from: team:maintainers }
+      - evidence: { check: ci/test, bound_to: tree }
+
+  - id: agent-authored
+    when: { author_class: agent }
+    require:
+      - approval: { min: 1, class: human }
+      - not_same_identity_as_author: true
+
+exceptions:
+  - rule: core-paths
+    for: ines
+    reason: Release week, covering for hollis
+    expires: 2026-11-12
+```
+
+<Callout type="warn" title="Design">
+  The syntax above is the proposal source.code is built around. It is not the
+  format of any existing tool.
+</Callout>
+
+## Parts of a rule
+
+| Key       | Meaning                                                             |
+| --------- | ------------------------------------------------------------------- |
+| `id`      | A name, shown wherever the rule blocks something                    |
+| `when`    | What the rule applies to: `paths`, `author_class`, `size`, `labels` |
+| `require` | What must be true before a change lands                             |
+| `mode`    | `enforce` (default), `dry-run` or `off`                             |
+
+## Approver classes
+
+Approvals come from a class: `human`, `agent` or `bot`. A rule can demand a human, accept an agent, or both. An agent never satisfies a requirement for a human.
+
+## Evidence
+
+`evidence` ties a check to the tree that will actually land. A green check on an older patch set does not count.
+
+## Exceptions
+
+An exception is named, owned and ends on a date. There is no list of people who bypass everything forever.
+
+## Dry run
+
+Set `mode: dry-run` to see what a rule would block without blocking anything. The Policies page shows the results.
+
+## Policies protect themselves
+
+A change to `.source/policy/` needs a human from the policy owners. An agent cannot approve a change to the rules that govern it.
+
+## From the CLI
+
+```bash
+sx policy check ch_7f3a      # exit 5 when blocked
+sx policy explain ch_7f3a    # list each requirement
+```

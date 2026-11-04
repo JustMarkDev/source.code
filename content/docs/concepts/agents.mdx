@@ -1,0 +1,46 @@
+---
+icon: CpuChipIcon
+title: Agents
+description: Agents are users with limits, a record, and a place to work.
+---
+
+An agent in source.code has an identity, explicit scopes, a record of what it did, and a place to work.
+
+## Bots and scopes
+
+A bot is a named identity with scopes such as `changes:write` or `secrets:schema`, installed on specific repositories.
+
+- While a bot is installed, its scopes can be reduced but not expanded. To add one, remove the install and reinstall where someone approves it.
+- A run gets a token limited to one repository and one run. There is no long-lived token in the loop.
+- `secrets:decrypt` is separate from `secrets:schema`. Reading names and types never implies reading values.
+
+Manage bots in **Settings, Agents and tokens**.
+
+## Automations
+
+An automation is an event, a bot, a place to run, and instructions. Set them up in a repository under **Settings, Automations**.
+
+Events: `issue.created`, `change.opened`, `change.updated`, `finding.raised`, `ci.failed`, `bot.mentioned`, `repository.pushed`, and a schedule.
+
+## Where an agent works
+
+You choose, per task, from the environments you have connected:
+
+- **T3 Code**: a thread on your own computer, with your own agent logins.
+- **boat.dev, E2B, Daytona, Modal** and similar: a clean cloud machine or sandbox.
+
+source.code does not host machines for agents or runners. See [Integrations](/docs/integrations).
+
+## Work with an agent
+
+On an issue or change, **Work with an agent** builds a prompt from the text, the policies that apply, open findings and the env schema, and gives you the command to start it:
+
+```bash
+sx agent start ch_7f3a -R dana/gitfs --target t3
+```
+
+Secret values are never part of the prompt. See [Agents and the CLI](/docs/cli/agents).
+
+## Same rules as people
+
+An agent's change goes through the same [policies](/docs/concepts/policies) as anyone's. It cannot approve its own work.

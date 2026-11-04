@@ -1,0 +1,48 @@
+---
+icon: CommandLineIcon
+title: The sx CLI
+description: A command line that never asks a question and speaks JSON.
+---
+
+`sx` is the command line for source.code. It is built around two ideas: a script or an agent should never get stuck waiting for an answer, and everything it prints should be easy to read by machine.
+
+<Callout type="warn" title="Preview">
+  `sx` runs against built-in sample data until the hosted API is live. Every
+  command, flag, output shape and exit code on these pages is real and tested.
+</Callout>
+
+## What makes it different
+
+| Principle                 | In `sx`                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **No questions**          | There are no prompts. If something is missing, `sx` exits with a message that says which flag to pass.               |
+| **Works out the obvious** | The repository comes from your git remote, the change from your branch, the title from your last commit.             |
+| **JSON when piped**       | Output is JSON when stdout is not a terminal, or with `--json`. No flag hunt.                                        |
+| **Errors you can act on** | Every error has a stable `code` and a `hint` with the next command to run.                                           |
+| **Safe to repeat**        | `repo create`, `change create`, `issue create` and `mirror add` return the existing thing instead of duplicating it. |
+| **Say before doing**      | `--dry-run` shows what would happen on any command that changes something.                                           |
+| **Made for agents**       | `sx context` returns everything an agent needs in one call, without secret values.                                   |
+
+## A tour
+
+```bash
+sx change create            # a change from this branch
+sx change view              # what blocks it
+sx policy explain ch_7f3a   # which rule asked for that
+sx change land              # land it if policy allows
+```
+
+Piped, the same commands return data:
+
+```bash
+sx change list | jq '.[] | select(.ci == "fail") | .id'
+```
+
+## Next
+
+<Cards>
+  <Card title="Install" href="/docs/cli/install" />
+  <Card title="Command reference" href="/docs/cli/commands" />
+  <Card title="Output and exit codes" href="/docs/cli/output-and-exit-codes" />
+  <Card title="Settings" href="/docs/cli/config" />
+</Cards>
