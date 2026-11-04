@@ -122,7 +122,7 @@ export function DownloadButton({
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner align="end" sideOffset={6} className="z-50">
-            <Menu.Popup className="w-80 rounded-xl border bg-popover p-1 text-sm shadow-xl outline-none">
+            <Menu.Popup className="overlay-popup w-80 rounded-xl border bg-popover p-1 text-sm shadow-xl outline-none">
               <div className="px-2 pt-2 pb-1.5 text-xs text-muted-foreground">
                 {target ? (
                   <>

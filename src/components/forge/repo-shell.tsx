@@ -9,9 +9,11 @@ import {
   StarIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
+import * as m from 'motion/react-m'
 import { Avatar } from './bits'
 import type { Repo } from '~/mock/data'
 import { GitCommitIcon, GitForkIcon, GitMergeIcon } from '~/components/icons'
+import { PageTransition } from '~/components/motion'
 import { LinkTabs } from '~/components/ui/tabs'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -84,6 +86,53 @@ export function CopyField({
   )
 }
 
+type CountsApi = { setCounts: (c: Partial<Record<RepoPage, number>>) => void }
+const FrameContext = React.createContext<CountsApi | null>(null)
+
+/**
+ * The repository chrome: header, tabs and page-level actions. It lives above
+ * the tab pages so switching tabs only swaps the content below it. Nothing in
+ * the header remounts, which keeps its state (Star) and lets the tab pill glide.
+ */
+export function RepoFrame({
+  repo,
+  active,
+  counts,
+  actions,
+  children,
+}: {
+  repo: Repo
+  active: RepoPage
+  counts?: Partial<Record<RepoPage, number>>
+  actions?: React.ReactNode
+  children: React.ReactNode
+}) {
+  const [live, setCounts] = React.useState<Partial<Record<RepoPage, number>>>(
+    {},
+  )
+  const api = React.useMemo(() => ({ setCounts }), [])
+  return (
+    <FrameContext value={api}>
+      <RepoHeader
+        repo={repo}
+        active={active}
+        counts={{ ...counts, ...live }}
+        actions={actions}
+      />
+      <PageTransition trigger={active}>{children}</PageTransition>
+    </FrameContext>
+  )
+}
+
+/** Let a page report a live count (open issues) to the tabs above it. */
+export function useRepoCounts(counts: Partial<Record<RepoPage, number>>) {
+  const api = React.use(FrameContext)
+  const key = JSON.stringify(counts)
+  React.useEffect(() => {
+    api?.setCounts(JSON.parse(key) as Partial<Record<RepoPage, number>>)
+  }, [api, key])
+}
+
 export function RepoHeader({
   repo,
   active,
@@ -133,7 +182,17 @@ export function RepoHeader({
             aria-pressed={starred}
             onClick={() => setStarred((s) => !s)}
           >
-            <StarIcon className={cn(starred && 'fill-brand text-brand-ink')} />
+            <m.span
+              key={String(starred)}
+              initial={starred ? { scale: 0.5, rotate: -30 } : false}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 600, damping: 14 }}
+              className="inline-flex"
+            >
+              <StarIcon
+                className={cn(starred && 'fill-brand text-brand-ink')}
+              />
+            </m.span>
             {starred ? 'Starred' : 'Star'}
             <span className="text-muted-foreground tabular-nums">
               {compact(repo.stars + (starred ? 1 : 0))}

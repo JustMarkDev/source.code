@@ -17,7 +17,10 @@ export function getRouter() {
       queries: {
         queryKeyHashFn: convexQueryClient.hashFn(),
         queryFn: convexQueryClient.queryFn(),
-        gcTime: 5000,
+        // Convex keeps a query live while it is on screen. Holding the last
+        // result for a few minutes makes going back to a page instant; the
+        // live subscription then replaces it with fresh data.
+        gcTime: 5 * 60 * 1000,
       },
     },
   })

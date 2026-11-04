@@ -250,7 +250,7 @@ function Import() {
                     <span className="flex w-40 items-center gap-2 text-xs text-muted-foreground">
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                         <span
-                          className="block h-full bg-brand-ink transition-all"
+                          className="block h-full bg-brand-ink transition-[width] duration-300 ease-out"
                           style={{ width: `${p}%` }}
                         />
                       </span>

@@ -21,7 +21,7 @@ function Dropdown({
         <Menu.Positioner align={align} sideOffset={6} className="z-50">
           <Menu.Popup
             className={cn(
-              'min-w-44 rounded-xl border bg-popover p-1 text-sm shadow-lg outline-none',
+              'overlay-popup min-w-44 rounded-xl border bg-popover p-1 text-sm shadow-lg outline-none',
               className,
             )}
           >

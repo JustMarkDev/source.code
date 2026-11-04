@@ -412,7 +412,7 @@ function Accounts() {
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-brand-ink transition-all"
+                      className="h-full rounded-full bg-brand-ink transition-[width] duration-300 ease-out"
                       style={{ width: `${c.progress}%` }}
                     />
                   </div>
@@ -598,8 +598,8 @@ function Accounts() {
         onOpenChange={(o) => !o && (setDialog(null), setInstance(''))}
       >
         <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm" />
-          <Dialog.Popup className="fixed top-[18vh] left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 space-y-4 rounded-xl border bg-popover p-6 shadow-2xl outline-none">
+          <Dialog.Backdrop className="overlay-backdrop fixed inset-0 z-50 bg-background/80" />
+          <Dialog.Popup className="overlay-popup fixed top-[18vh] left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 space-y-4 rounded-xl border bg-popover p-6 shadow-2xl outline-none">
             {dialog && (
               <>
                 <Dialog.Title className="text-lg font-semibold tracking-tight">

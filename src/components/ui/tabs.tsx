@@ -2,12 +2,13 @@ import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import { cn } from 'cn'
 import type { LinkProps } from '@tanstack/react-router'
+import { Pill } from '~/components/motion'
 
 const trough =
   'well inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-muted/70 p-1'
 const base =
-  'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground'
-const on = 'raised bg-card font-medium text-foreground hover:text-foreground'
+  'relative inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground'
+const on = 'font-medium text-foreground hover:text-foreground'
 
 /** Navigation tabs: every tab is a real link, so the URL says where you are. */
 function LinkTabs({
@@ -24,6 +25,7 @@ function LinkTabs({
   label: string
   className?: string
 }) {
+  const pill = React.useId()
   return (
     <nav aria-label={label} className={cn(trough, className)}>
       {tabs.map((t) => (
@@ -33,9 +35,10 @@ function LinkTabs({
           aria-current={t.active ? 'page' : undefined}
           className={cn(base, t.active && on)}
         >
-          {t.label}
+          {t.active && <Pill id={pill} />}
+          <span className="relative">{t.label}</span>
           {t.count !== undefined && (
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="relative text-xs text-muted-foreground tabular-nums">
               {t.count}
             </span>
           )}
@@ -59,6 +62,7 @@ function StateTabs<T extends string>({
   label: string
   className?: string
 }) {
+  const pill = React.useId()
   return (
     <div role="tablist" aria-label={label} className={cn(trough, className)}>
       {options.map((o) => (
@@ -70,9 +74,10 @@ function StateTabs<T extends string>({
           onClick={() => onChange(o.id)}
           className={cn(base, value === o.id && on)}
         >
-          {o.label}
+          {value === o.id && <Pill id={pill} />}
+          <span className="relative">{o.label}</span>
           {o.count !== undefined && (
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="relative text-xs text-muted-foreground tabular-nums">
               {o.count}
             </span>
           )}
@@ -94,6 +99,7 @@ function Segmented<T extends string>({
   options: Array<[T, React.ReactNode]>
   label?: string
 }) {
+  const pill = React.useId()
   return (
     <div
       role="group"
@@ -107,11 +113,12 @@ function Segmented<T extends string>({
           aria-pressed={value === id}
           onClick={() => onChange(id)}
           className={cn(
-            'rounded-lg px-3 py-1 text-muted-foreground transition-colors hover:text-foreground',
-            value === id && 'raised bg-card font-medium text-foreground',
+            'relative rounded-lg px-3 py-1 text-muted-foreground transition-colors hover:text-foreground',
+            value === id && 'font-medium text-foreground',
           )}
         >
-          {text}
+          {value === id && <Pill id={pill} />}
+          <span className="relative">{text}</span>
         </button>
       ))}
     </div>

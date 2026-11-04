@@ -224,6 +224,40 @@
     var(--lift);
 }
 
+/*
+ * Overlays. Base UI sets data-starting-style while a popup opens and
+ * data-ending-style while it closes, so this is plain CSS: compositor-only,
+ * no JavaScript. Backdrops fade, popups fade and settle from 96%. The scale
+ * uses the `scale` property so it composes with Tailwind's `translate`.
+ */
+@utility overlay-backdrop {
+  transition: opacity 160ms ease-out;
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+  }
+}
+@utility overlay-popup {
+  transform-origin: var(--transform-origin, 50% 0);
+  transition:
+    opacity 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    scale 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    scale: 0.96;
+  }
+  &[data-ending-style] {
+    transition-duration: 100ms;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay-backdrop,
+  .overlay-popup {
+    transition: none;
+  }
+}
+
 /* Quiet hover for things you can open: the border darkens, nothing moves. */
 @utility pop {
   transition:

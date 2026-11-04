@@ -7,10 +7,12 @@ import {
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { LinkProps } from '@tanstack/react-router'
-import type { ProfileTab } from '~/components/forge/profile-view'
+import type { ProfileTab } from '~/components/forge/profile-tabs'
 import { LangDot, Tile } from '~/components/forge/bits'
-import { ProfileView, profileTabs } from '~/components/forge/profile-view'
+import { profileTabs } from '~/components/forge/profile-tabs'
+import { ProfileView } from '~/components/forge/profile-view'
 import { TrendChart } from '~/components/charts'
+import { Stagger } from '~/components/motion'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Segmented } from '~/components/ui/tabs'
@@ -123,7 +125,7 @@ function DashboardView() {
             <h2 id="needs" className="mb-3 text-sm font-medium">
               Needs you
             </h2>
-            <ul className="divide-y rounded-xl border bg-card">
+            <Stagger as="ul" className="divide-y rounded-xl border bg-card">
               {queue.map((q) => (
                 <li
                   key={q.title}
@@ -150,7 +152,7 @@ function DashboardView() {
                   </Link>
                 </li>
               ))}
-            </ul>
+            </Stagger>
           </section>
 
           <section aria-labelledby="recent">

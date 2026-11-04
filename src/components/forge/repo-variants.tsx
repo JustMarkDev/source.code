@@ -17,7 +17,7 @@ import { Chip, LangDot, Panel, SectionLabel } from './bits'
 import { CodeBrowser } from './repo-code-browser'
 import { HistoryView } from './repo-history'
 import { DownloadButton, TargetPicker } from './download-button'
-import { CopyField, RepoHeader } from './repo-shell'
+import { CopyField } from './repo-shell'
 import type { Channel, Release, Repo } from '~/mock/data'
 import { GitBranchIcon } from '~/components/icons'
 import { Button } from '~/components/ui/button'
@@ -35,55 +35,54 @@ const platformIcon = {
 // ---------------------------------------------------------------------------
 // Code: the file table, with the download button where the clone button lives.
 // ---------------------------------------------------------------------------
+/** Buttons that sit on the right of the repository tabs while on the Code tab. */
+export function CodeActions({
+  repo,
+  onFind,
+}: {
+  repo: Repo
+  onFind: () => void
+}) {
+  const release = latestStable(repo)
+  return (
+    <>
+      <span className="mr-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+        <GitBranchIcon className="size-4" />
+        main
+      </span>
+      <Tip label="Go to file">
+        <Button size="icon" aria-label="Go to file" onClick={onFind}>
+          <MagnifyingGlassIcon />
+        </Button>
+      </Tip>
+      <ClonePopover repo={repo} />
+      {release && <DownloadButton release={release} />}
+    </>
+  )
+}
+
 export function CodePage({
   repo,
   path,
   view,
+  finding,
+  onFinding,
 }: {
   repo: Repo
   path?: string
   view?: 'history'
+  finding: boolean
+  onFinding: (open: boolean) => void
 }) {
-  const release = latestStable(repo)
-  const [finding, setFinding] = React.useState(false)
-  return (
-    <>
-      <RepoHeader
-        repo={repo}
-        active="code"
-        actions={
-          view === 'history' ? undefined : (
-            <>
-              <span className="mr-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <GitBranchIcon className="size-4" />
-                main
-              </span>
-              <Tip label="Go to file">
-                <Button
-                  size="icon"
-                  aria-label="Go to file"
-                  onClick={() => setFinding(true)}
-                >
-                  <MagnifyingGlassIcon />
-                </Button>
-              </Tip>
-              <ClonePopover repo={repo} />
-              {release && <DownloadButton release={release} />}
-            </>
-          )
-        }
-      />
-      {view === 'history' ? (
-        <HistoryView repo={repo} />
-      ) : (
-        <CodeBrowser
-          repo={repo}
-          path={path}
-          finding={finding}
-          onFinding={setFinding}
-        />
-      )}
-    </>
+  return view === 'history' ? (
+    <HistoryView repo={repo} />
+  ) : (
+    <CodeBrowser
+      repo={repo}
+      path={path}
+      finding={finding}
+      onFinding={onFinding}
+    />
   )
 }
 
@@ -98,7 +97,7 @@ function ClonePopover({ repo }: { repo: Repo }) {
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner align="end" sideOffset={6} className="z-50">
-          <Popover.Popup className="w-96 space-y-3 rounded-xl border bg-popover p-3 shadow-xl outline-none">
+          <Popover.Popup className="overlay-popup w-96 space-y-3 rounded-xl border bg-popover p-3 shadow-xl outline-none">
             {(
               [
                 ['HTTPS', `https://source.code/${path}.git`],
@@ -276,7 +275,6 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
   if (!release) {
     return (
       <>
-        <RepoHeader repo={repo} active="release" />
         <Panel className="p-10 text-center">
           <p className="font-medium">{repo.name} has no releases yet.</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -292,7 +290,6 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
 
   return (
     <>
-      <RepoHeader repo={repo} active="release" />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[180px_minmax(0,1fr)]">
         <nav
           aria-label="Sections"

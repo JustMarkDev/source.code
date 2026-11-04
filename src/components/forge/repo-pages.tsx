@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import { Chip, EmptyState, Panel, SectionLabel, Seg, Tile } from './bits'
-import { RepoHeader, slugOf } from './repo-shell'
+import { slugOf, useRepoCounts } from './repo-shell'
 import { WorkWithAgent } from './work-with-agent'
 import type { Repo } from '~/mock/data'
 import type { Issue, Run } from '~/mock/extra'
@@ -49,6 +49,10 @@ function Labels({ labels }: { labels: Array<string> }) {
 // ---------------------------------------------------------------------------
 // Issues
 // ---------------------------------------------------------------------------
+/** Open issues at first render, so the tab count is right before the page reports back. */
+export const openIssueCount = (repo: Repo) =>
+  issuesFor(repo).filter((i) => i.state === 'open').length
+
 export function IssuesPage({ repo, n }: { repo: Repo; n?: number }) {
   const [issues, setIssues] = React.useState<Array<Issue>>(() =>
     issuesFor(repo),
@@ -59,12 +63,12 @@ export function IssuesPage({ repo, n }: { repo: Repo; n?: number }) {
   const [draft, setDraft] = React.useState({ title: '', body: '' })
 
   const open = issues.filter((i) => i.state === 'open').length
+  useRepoCounts({ issues: open })
   const detail = n === undefined ? undefined : issues.find((i) => i.n === n)
 
   if (detail) {
     return (
       <>
-        <RepoHeader repo={repo} active="issues" counts={{ issues: open }} />
         <IssueDetail
           repo={repo}
           issue={detail}
@@ -93,7 +97,6 @@ export function IssuesPage({ repo, n }: { repo: Repo; n?: number }) {
 
   return (
     <>
-      <RepoHeader repo={repo} active="issues" counts={{ issues: open }} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="flex h-9 min-w-64 flex-1 items-center gap-2 rounded-lg border bg-card px-3 text-sm focus-within:border-foreground/40">
           <MagnifyingGlassIcon className="size-4 text-muted-foreground" />
@@ -374,7 +377,7 @@ function CheckIcon({
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
-export function ActionsPage({ repo }: { repo: Repo }) {
+export function ActionsPage() {
   const [list, setList] = React.useState(runs)
   const [filter, setFilter] = React.useState<'all' | 'failure' | 'running'>(
     'all',
@@ -388,7 +391,6 @@ export function ActionsPage({ repo }: { repo: Repo }) {
   )
   return (
     <>
-      <RepoHeader repo={repo} active="actions" />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Seg
           value={filter}
@@ -500,7 +502,6 @@ export function InsightsPage({ repo }: { repo: Repo }) {
   }))
   return (
     <>
-      <RepoHeader repo={repo} active="insights" />
       <div className="space-y-10">
         <dl className="grid grid-cols-2 gap-6 lg:grid-cols-4">
           {[

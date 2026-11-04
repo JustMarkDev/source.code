@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { Notification } from '~/mock/extra'
+import { Stagger } from '~/components/motion'
 import { GitMergeIcon } from '~/components/icons'
 import { EmptyState } from '~/components/forge/bits'
 import { Segmented } from '~/components/ui/tabs'
@@ -75,7 +76,10 @@ function Inbox() {
           Nothing here right now.
         </EmptyState>
       ) : (
-        <ul className="surface divide-y overflow-hidden rounded-2xl border bg-card">
+        <Stagger
+          as="ul"
+          className="surface divide-y overflow-hidden rounded-2xl border bg-card"
+        >
           {shown.map((n) => {
             const Icon = icons[n.kind]
             return (
@@ -111,7 +115,7 @@ function Inbox() {
               </li>
             )
           })}
-        </ul>
+        </Stagger>
       )}
     </div>
   )

@@ -9,6 +9,8 @@ import {
   resample,
 } from './dither-paint'
 import { rgb } from './palette'
+import { createFrameLoop, runWhenVisible } from './run-when-visible'
+import type { FrameLoop } from './run-when-visible'
 
 type Star = { key: string; xi: number; depth: number; phase: number }
 type Surface = { top: number[]; floor: number[] }
@@ -38,7 +40,7 @@ function startCartesianLoop({
   state,
   targets,
   stars,
-}: LoopArgs): (() => void) | undefined {
+}: LoopArgs): FrameLoop | undefined {
   const c = canvas.getContext('2d')
   if (!c || cols <= 0 || rows <= 0) return undefined
   canvas.width = cols
@@ -100,7 +102,6 @@ function startCartesianLoop({
     })
   }
 
-  let raf = 0
   let tick = 0
   let last = 0
   let animStart = 0
@@ -112,19 +113,9 @@ function startCartesianLoop({
   let lastPaintSig = ''
   let lastSelected: string | null | undefined = Symbol() as never
 
-  const draw = (now: number) => {
-    raf = requestAnimationFrame(draw)
+  const draw = (now: number): boolean | number => {
     const s = state.current
-    if (!s.ready) return
-    // Keep the bloom layer in sync with the crisp canvas while it's active.
-    if (bloomCtx) {
-      const on =
-        s.bloom !== 'off' && (!s.bloomOnHover || s.isMouseInChart || s.hovered)
-      if (on) {
-        bloomCtx.clearRect(0, 0, cols, rows)
-        bloomCtx.drawImage(canvas, 0, 0)
-      }
-    }
+    if (!s.ready) return false
     const tgt = targets.current
     if (s.revision !== lastRevision) {
       lastRevision = s.revision
@@ -188,7 +179,10 @@ function startCartesianLoop({
     // Live hover wins; the controlled markerIndex (e.g. a committed point)
     // is the fallback shown when nothing is hovered.
     const marker = s.hoverIndex != null ? s.hoverIndex : s.markerIndex
-    const winkDue = !reduce && now - last >= 100
+    // Idle charts twinkle slowly; the glow filter re-rasterises on every
+    // canvas change, so each frame saved here is GPU work saved.
+    const winkEvery = s.isMouseInChart || s.hovered ? 100 : 320
+    const winkDue = !reduce && now - last >= winkEvery
     // Repaint when a tweak-driven paint input changes (variant, stacking) so
     // the panel updates the fill live — without resetting the entrance reveal.
     const paintSig = `${s.stackType}|${s.configKeys
@@ -207,7 +201,8 @@ function startCartesianLoop({
       progChanged ||
       sigChanged
     ))
-      return
+      // Nothing to paint: sleep until the next twinkle (or until woken).
+      return reduce ? false : Math.max(16, winkEvery - (now - last))
     if (progChanged) {
       lastProg = prog
       needsFill = true
@@ -276,10 +271,22 @@ function startCartesianLoop({
         c.fillRect(sx, sy + 1, 1, 1)
       }
     }
+    // Mirror the finished frame into the bloom layer, only when one was drawn.
+    if (bloomCtx) {
+      const on =
+        s.bloom !== 'off' && (!s.bloomOnHover || s.isMouseInChart || s.hovered)
+      if (on) {
+        bloomCtx.clearRect(0, 0, cols, rows)
+        bloomCtx.drawImage(canvas, 0, 0)
+      }
+    }
+    // Keep frames coming while something is moving; otherwise sleep until the
+    // next twinkle (or until the chart state changes and wakes the loop).
+    if (moving || settling || marker != null || prog < 1) return true
+    return reduce ? false : winkEvery
   }
 
-  raf = requestAnimationFrame(draw)
-  return () => cancelAnimationFrame(raf)
+  return createFrameLoop(draw)
 }
 
 /**
@@ -345,6 +352,7 @@ export function CartesianCanvas() {
   // without re-subscribing. Refs are written in an effect (never during
   // render) — mutating a ref mid-render is a React anti-pattern that tears
   // under Strict Mode / concurrent rendering.
+  const wakeRef = useRef<(() => void) | null>(null)
   const stateRef = useRef(ctx)
   const targetsRef = useRef(targets)
   const starsRef = useRef(stars)
@@ -352,20 +360,27 @@ export function CartesianCanvas() {
     stateRef.current = ctx
     targetsRef.current = targets
     starsRef.current = stars
+    wakeRef.current?.()
   })
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    return startCartesianLoop({
+    return runWhenVisible(
       canvas,
-      bloomCanvas: bloomRef.current,
-      cols,
-      rows,
-      state: stateRef,
-      targets: targetsRef,
-      stars: starsRef,
-    })
+      stateRef,
+      () =>
+        startCartesianLoop({
+          canvas,
+          bloomCanvas: bloomRef.current,
+          cols,
+          rows,
+          state: stateRef,
+          targets: targetsRef,
+          stars: starsRef,
+        }),
+      wakeRef,
+    )
   }, [cols, rows])
 
   const bloomActive = ctx.bloomOnHover

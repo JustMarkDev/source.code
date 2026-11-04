@@ -9,6 +9,11 @@ import { RootProvider } from 'fumadocs-ui/provider/tanstack'
 import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { SiteFooter, SiteHeader } from '~/components/forge/chrome'
+import {
+  MotionProvider,
+  PageTransition,
+  RouteProgress,
+} from '~/components/motion'
 import { themeInitScript } from '~/lib/theme'
 import appCss from '~/styles/app.css?url'
 
@@ -68,6 +73,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const docs = useRouterState({
     select: (s) => s.location.pathname.startsWith('/docs'),
   })
+  // The leaf route, not the URL: moving between tabs of one route keeps the
+  // page mounted, and the page animates its own tab content.
+  const routeId = useRouterState({ select: (s) => s.matches.at(-1)?.routeId })
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -75,18 +83,26 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="flex min-h-dvh flex-col">
-        <RootProvider theme={{ defaultTheme: 'system', enableSystem: true }}>
-          {docs ? (
-            children
-          ) : (
-            <>
-              <SiteHeader />
-              <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-                {children}
-              </main>
-              <SiteFooter />
-            </>
-          )}
+        <RootProvider
+          theme={{ defaultTheme: 'system', enableSystem: true }}
+          // The app has its own palette on ⌘K. Fumadocs' search would open a
+          // second dialog on top of it, so it only runs inside the docs.
+          search={{ enabled: docs }}
+        >
+          <MotionProvider>
+            <RouteProgress />
+            {docs ? (
+              children
+            ) : (
+              <>
+                <SiteHeader />
+                <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+                  <PageTransition trigger={routeId}>{children}</PageTransition>
+                </main>
+                <SiteFooter />
+              </>
+            )}
+          </MotionProvider>
         </RootProvider>
         <Scripts />
       </body>

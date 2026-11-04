@@ -1,6 +1,7 @@
 'use client'
 
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence } from 'motion/react'
+import * as m from 'motion/react-m'
 import { useState } from 'react'
 import { useCommonChart } from './common-context'
 import { cn } from './lib'
@@ -44,22 +45,13 @@ export function Tooltip({
   return (
     <AnimatePresence>
       {show && items.length > 0 && (
-        <motion.div
+        <m.div
           key="dither-tooltip"
-          initial={{
-            opacity: 0,
-            x: '-50%',
-            y: '-115%',
-            top: chart.tooltipTop,
-            left: chart.tooltipLeft,
-          }}
-          animate={{
-            opacity: 1,
-            x: '-50%',
-            y: '-115%',
-            top: chart.tooltipTop,
-            left: chart.tooltipLeft,
-          }}
+          // Anchored at the plot origin and moved with a transform, so gliding
+          // between points never triggers layout. `translate` centres it over
+          // the point and lifts it above.
+          initial={{ opacity: 0, x: chart.tooltipLeft, y: chart.tooltipTop }}
+          animate={{ opacity: 1, x: chart.tooltipLeft, y: chart.tooltipTop }}
           exit={{ opacity: 0 }}
           transition={{
             type: 'spring',
@@ -67,6 +59,7 @@ export function Tooltip({
             damping: 38,
             mass: 0.6,
           }}
+          style={{ top: 0, left: 0, translate: '-50% -115%' }}
           className={cn(
             'pointer-events-none absolute z-10 rounded-md border px-2 py-1 shadow-sm',
             VARIANT[variant],
@@ -97,7 +90,7 @@ export function Tooltip({
               </div>
             ))}
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   )

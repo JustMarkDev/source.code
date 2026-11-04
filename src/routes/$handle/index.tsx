@@ -1,8 +1,10 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../../convex/_generated/api'
-import type { ProfileTab } from '~/components/forge/profile-view'
-import { ProfileView, profileTabs } from '~/components/forge/profile-view'
+import type { ProfileTab } from '~/components/forge/profile-tabs'
+import { profileTabs } from '~/components/forge/profile-tabs'
+import { ProfileView } from '~/components/forge/profile-view'
+import { settleWithin } from '~/lib/effect'
 import { developers } from '~/mock/data'
 
 export const Route = createFileRoute('/$handle/')({
@@ -22,10 +24,7 @@ export const Route = createFileRoute('/$handle/')({
       return
     }
     // An offline Convex client never settles, so cap the wait.
-    const data = await Promise.race([
-      query.catch(() => null),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-    ])
+    const data = await settleWithin(() => query, '4 seconds')
     if (data === null) throw notFound()
   },
   component: Profile,

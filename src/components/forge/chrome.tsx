@@ -7,9 +7,17 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline'
-import { siBluesky, siDiscord, siGithub, siX, siYoutube } from 'simple-icons'
 import { cn } from 'cn'
 import { Kbd, Tile } from './bits'
+import type { LinkProps } from '@tanstack/react-router'
+import {
+  siBluesky,
+  siDiscord,
+  siGithub,
+  siX,
+  siYoutube,
+} from '~/components/social-icons'
+import { Pill } from '~/components/motion'
 import { Dropdown, MenuItem, MenuSeparator } from '~/components/ui/menu'
 import { socials } from '~/lib/site'
 import { developers, repos } from '~/mock/data'
@@ -231,10 +239,10 @@ function CommandPalette({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-[2px]" />
+        <Dialog.Backdrop className="overlay-backdrop fixed inset-0 z-50 bg-foreground/25" />
         <Dialog.Popup
           aria-label="Search"
-          className="fixed top-[16vh] left-1/2 z-50 w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border bg-popover shadow-2xl outline-none"
+          className="overlay-popup fixed top-[16vh] left-1/2 z-50 w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border bg-popover shadow-2xl outline-none"
         >
           <div className="flex items-center gap-3 border-b px-4">
             <MagnifyingGlassIcon className="size-4 text-muted-foreground" />
@@ -314,12 +322,32 @@ const navLinks = [
 ] as const
 
 const navItem =
-  'inline-flex items-center rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground'
-const navActive = 'raised bg-card font-medium text-foreground'
+  'relative inline-flex items-center rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground'
+const navActive = 'font-medium text-foreground'
+
+/** One entry of the main nav. The active one carries the sliding pill. */
+function NavItem({
+  pill,
+  label,
+  ...link
+}: LinkProps & { pill: string; label: string }) {
+  return (
+    <Link {...link} className={navItem} activeProps={{ className: navActive }}>
+      {({ isActive }) => (
+        <>
+          {isActive && <Pill id={pill} />}
+          <span className="relative">{label}</span>
+        </>
+      )}
+    </Link>
+  )
+}
 
 export function SiteHeader() {
   const [open, setOpen] = React.useState(false)
   const navigate = useNavigate()
+  const desktopPill = React.useId()
+  const mobilePill = React.useId()
   React.useEffect(() => {
     let pending = false
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -370,23 +398,14 @@ export function SiteHeader() {
           className="well absolute left-1/2 hidden -translate-x-1/2 gap-0.5 rounded-xl bg-muted/70 p-1 md:flex"
         >
           {navLinks.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className={navItem}
-              activeProps={{ className: navActive }}
-            >
-              {l.label}
-            </Link>
+            <NavItem key={l.to} pill={desktopPill} to={l.to} label={l.label} />
           ))}
-          <Link
+          <NavItem
+            pill={desktopPill}
             to="/docs/$"
             params={{ _splat: '' }}
-            className={navItem}
-            activeProps={{ className: navActive }}
-          >
-            Docs
-          </Link>
+            label="Docs"
+          />
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
           <Link
@@ -416,23 +435,14 @@ export function SiteHeader() {
         className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6 pb-2 md:hidden"
       >
         {navLinks.map((l) => (
-          <Link
-            key={l.to}
-            to={l.to}
-            className={navItem}
-            activeProps={{ className: navActive }}
-          >
-            {l.label}
-          </Link>
+          <NavItem key={l.to} pill={mobilePill} to={l.to} label={l.label} />
         ))}
-        <Link
+        <NavItem
+          pill={mobilePill}
           to="/docs/$"
           params={{ _splat: '' }}
-          className={navItem}
-          activeProps={{ className: navActive }}
-        >
-          Docs
-        </Link>
+          label="Docs"
+        />
       </nav>
       <CommandPalette open={open} onOpenChange={setOpen} />
     </header>
@@ -446,6 +456,43 @@ const socialIcons = {
   youtube: siYoutube,
   github: siGithub,
 } as const
+
+type FooterLink = { label: string; link: LinkProps | null }
+
+/** Internal destinations are router links so a click never reloads the page. `null` is a plain file. */
+const footerColumns: Array<[string, Array<FooterLink>]> = [
+  [
+    'Product',
+    [
+      { label: 'Discover', link: { to: '/discover' } },
+      { label: 'Pricing', link: { to: '/pricing' } },
+      { label: 'Dashboard', link: { to: '/dashboard' } },
+    ],
+  ],
+  [
+    'Build with it',
+    [
+      { label: 'Docs', link: { to: '/docs/$', params: { _splat: '' } } },
+      { label: 'CLI', link: { to: '/docs/$', params: { _splat: 'cli' } } },
+      {
+        label: 'MCP server',
+        link: { to: '/docs/$', params: { _splat: 'mcp' } },
+      },
+      { label: 'llms.txt', link: null },
+    ],
+  ],
+  [
+    'Company',
+    [
+      { label: 'Status', link: { to: '/status' } },
+      { label: 'Design system', link: { to: '/design' } },
+      {
+        label: 'Privacy',
+        link: { to: '/settings/$section', params: { section: 'privacy' } },
+      },
+    ],
+  ],
+]
 
 export function SiteFooter() {
   return (
@@ -482,43 +529,21 @@ export function SiteFooter() {
             })}
           </ul>
         </div>
-        {(
-          [
-            [
-              'Product',
-              [
-                ['Discover', '/discover'],
-                ['Pricing', '/pricing'],
-                ['Dashboard', '/dashboard'],
-              ],
-            ],
-            [
-              'Build with it',
-              [
-                ['Docs', '/docs'],
-                ['CLI', '/docs/cli'],
-                ['MCP server', '/docs/mcp'],
-                ['llms.txt', '/llms.txt'],
-              ],
-            ],
-            [
-              'Company',
-              [
-                ['Status', '/status'],
-                ['Design system', '/design'],
-                ['Privacy', '/settings/privacy'],
-              ],
-            ],
-          ] as const
-        ).map(([title, links]) => (
+        {footerColumns.map(([title, links]) => (
           <div key={title} className="space-y-3">
             <h3 className="font-medium">{title}</h3>
             <ul className="space-y-2 text-muted-foreground">
-              {links.map(([label, href]) => (
-                <li key={href}>
-                  <a href={href} className="hover:text-foreground">
-                    {label}
-                  </a>
+              {links.map(({ label, link }) => (
+                <li key={label}>
+                  {link ? (
+                    <Link {...link} className="hover:text-foreground">
+                      {label}
+                    </Link>
+                  ) : (
+                    <a href="/llms.txt" className="hover:text-foreground">
+                      {label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

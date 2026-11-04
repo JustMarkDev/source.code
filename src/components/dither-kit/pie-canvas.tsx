@@ -12,6 +12,7 @@ import {
 import { rgb } from './palette'
 import { sliceAtAngle } from './polar'
 import { usePolarChart } from './polar-context'
+import { createFrameLoop, runWhenVisible } from './run-when-visible'
 
 const TOP = -Math.PI / 2
 const TAU = Math.PI * 2
@@ -36,8 +37,10 @@ export function PieCanvas() {
   // (never during render) — mutating a ref mid-render tears under Strict Mode /
   // concurrent rendering.
   const state = useRef(ctx)
+  const wakeRef = useRef<(() => void) | null>(null)
   useEffect(() => {
     state.current = ctx
+    wakeRef.current?.()
   })
 
   useEffect(() => {
@@ -54,141 +57,145 @@ export function PieCanvas() {
       bloomCanvas.height = rows
     }
 
-    const reduce = prefersReducedMotion()
-    const animate = state.current.animate && !reduce
-    const duration = state.current.animationDuration
-    let raf = 0
-    let animStart = 0
-    let lastProg = -1
-    let lastRevision = state.current.revision
-    let intensity = 0
-    let popEase = 0 // eases the hovered slice's outward bulge
-    let needsFill = true
-    let lastPaintSig = ''
-    let lastSelected: string | null | undefined = Symbol() as never
-    let lastHover: number | null | undefined = Symbol() as never
+    const begin = () => {
+      const reduce = prefersReducedMotion()
+      const animate = state.current.animate && !reduce
+      const duration = state.current.animationDuration
+      let animStart = 0
+      let lastProg = -1
+      let lastRevision = state.current.revision
+      let intensity = 0
+      let popEase = 0 // eases the hovered slice's outward bulge
+      let needsFill = true
+      let lastPaintSig = ''
+      let lastSelected: string | null | undefined = Symbol() as never
+      let lastHover: number | null | undefined = Symbol() as never
 
-    const paint = (prog: number) => {
-      const s = state.current
-      const slices = s.pie
-      if (!slices) return
-      c.clearRect(0, 0, cols, rows)
-      const cx = s.center.x
-      const cy = s.center.y
-      const outerR = s.outerRadius
-      const innerR = s.innerRadius
-      const revealAngle = TOP + easeInOutCubic(prog) * TAU
+      const paint = (prog: number) => {
+        const s = state.current
+        const slices = s.pie
+        if (!slices) return
+        c.clearRect(0, 0, cols, rows)
+        const cx = s.center.x
+        const cy = s.center.y
+        const outerR = s.outerRadius
+        const innerR = s.innerRadius
+        const revealAngle = TOP + easeInOutCubic(prog) * TAU
 
-      for (let y = 0; y < rows; y++) {
-        const py = ((y + 0.5) * height) / rows
-        for (let x = 0; x < cols; x++) {
-          const px = ((x + 0.5) * width) / cols
-          const dx = px - cx
-          const dy = py - cy
-          const r = Math.hypot(dx, dy)
-          if (r < innerR) continue
-          const angle = Math.atan2(dy, dx)
-          let na = angle
-          while (na < TOP) na += TAU
-          while (na >= TOP + TAU) na -= TAU
-          if (na > revealAngle) continue // clockwise sweep-in
-          const si = sliceAtAngle(slices, angle)
-          if (si < 0) continue
-          const slice = slices[si]
-          const active = s.hoverIndex === si
-          const localOuter = active ? outerR + POP * popEase : outerR
-          if (r > localOuter) continue
+        for (let y = 0; y < rows; y++) {
+          const py = ((y + 0.5) * height) / rows
+          for (let x = 0; x < cols; x++) {
+            const px = ((x + 0.5) * width) / cols
+            const dx = px - cx
+            const dy = py - cy
+            const r = Math.hypot(dx, dy)
+            if (r < innerR) continue
+            const angle = Math.atan2(dy, dx)
+            let na = angle
+            while (na < TOP) na += TAU
+            while (na >= TOP + TAU) na -= TAU
+            if (na > revealAngle) continue // clockwise sweep-in
+            const si = sliceAtAngle(slices, angle)
+            if (si < 0) continue
+            const slice = slices[si]
+            const active = s.hoverIndex === si
+            const localOuter = active ? outerR + POP * popEase : outerR
+            if (r > localOuter) continue
 
-          const seed = s.seedOf(slice.name)
-          const variant = s.variantOf(slice.name)
-          const emphasis = s.selectedDataKey ?? s.focusDataKey
-          const selDim = emphasis !== null && emphasis !== slice.name ? 0.3 : 1
-          const it = intensity + (active ? 0.4 * popEase : 0)
+            const seed = s.seedOf(slice.name)
+            const variant = s.variantOf(slice.name)
+            const emphasis = s.selectedDataKey ?? s.focusDataKey
+            const selDim =
+              emphasis !== null && emphasis !== slice.name ? 0.3 : 1
+            const it = intensity + (active ? 0.4 * popEase : 0)
 
-          // Bright rim on the outer edge — thicker on the hovered slice.
-          if (localOuter - r < (active ? 1.4 + popEase : 1.4)) {
-            c.fillStyle = rgb(seed.fill, 1, selDim)
+            // Bright rim on the outer edge — thicker on the hovered slice.
+            if (localOuter - r < (active ? 1.4 + popEase : 1.4)) {
+              c.fillStyle = rgb(seed.fill, 1, selDim)
+              c.fillRect(x, y, 1, 1)
+              continue
+            }
+            const density = (r - innerR) / Math.max(localOuter - innerR, 1)
+            const bias = variant === 'dotted' ? 0.12 : 0
+            if (variant === 'hatched' && ((x + y) & 3) >= 2) continue
+            const lit =
+              variant === 'solid' ||
+              density > BAYER[y & 3][x & 3] - 0.1 * it - bias
+            if (variant === 'dotted' && !lit) continue
+            // Density → opacity (see the colour-vs-opacity note in dither-paint);
+            // off cells drop to a faint tier, never a hole to the background.
+            const k = (0.35 + density * 0.65) * (1 + 0.22 * it)
+            const alpha = Math.min(1, (lit ? k : k * OFF_TIER) * selDim)
+            c.fillStyle = rgb(seed.fill, 1, alpha)
             c.fillRect(x, y, 1, 1)
-            continue
           }
-          const density = (r - innerR) / Math.max(localOuter - innerR, 1)
-          const bias = variant === 'dotted' ? 0.12 : 0
-          if (variant === 'hatched' && ((x + y) & 3) >= 2) continue
-          const lit =
-            variant === 'solid' ||
-            density > BAYER[y & 3][x & 3] - 0.1 * it - bias
-          if (variant === 'dotted' && !lit) continue
-          // Density → opacity (see the colour-vs-opacity note in dither-paint);
-          // off cells drop to a faint tier, never a hole to the background.
-          const k = (0.35 + density * 0.65) * (1 + 0.22 * it)
-          const alpha = Math.min(1, (lit ? k : k * OFF_TIER) * selDim)
-          c.fillStyle = rgb(seed.fill, 1, alpha)
-          c.fillRect(x, y, 1, 1)
         }
       }
-    }
 
-    const draw = (now: number) => {
-      raf = requestAnimationFrame(draw)
-      const s = state.current
-      if (!s.ready || !s.pie) return
-      if (bloomCtx) {
-        const on = s.bloom !== 'off' && (!s.bloomOnHover || s.isMouseInChart)
-        if (on) {
-          bloomCtx.clearRect(0, 0, cols, rows)
-          bloomCtx.drawImage(canvas, 0, 0)
+      const draw = (now: number): boolean => {
+        const s = state.current
+        if (!s.ready || !s.pie) return false
+        if (s.revision !== lastRevision) {
+          lastRevision = s.revision
+          animStart = 0
+          lastProg = -1
         }
-      }
-      if (s.revision !== lastRevision) {
-        lastRevision = s.revision
-        animStart = 0
-        lastProg = -1
-      }
-      if (!animStart) animStart = now
-      const prog = animate ? Math.min(1, (now - animStart) / duration) : 1
+        if (!animStart) animStart = now
+        const prog = animate ? Math.min(1, (now - animStart) / duration) : 1
 
-      const emphasisNow = s.selectedDataKey ?? s.focusDataKey
-      if (emphasisNow !== lastSelected) {
-        lastSelected = emphasisNow
-        needsFill = true
-      }
-      if (s.hoverIndex !== lastHover) {
-        lastHover = s.hoverIndex
-        popEase = 0 // a freshly-hovered slice bulges out from rest
-        needsFill = true
-      }
-      const itTarget = s.isMouseInChart ? 1 : 0
-      if (Math.abs(intensity - itTarget) > 0.001) {
-        intensity += (itTarget - intensity) * (reduce ? 1 : 0.16)
-        needsFill = true
-      } else intensity = itTarget
-      // Ease the hovered slice's bulge in (and back out when nothing's hovered).
-      const popTarget = s.hoverIndex != null ? 1 : 0
-      if (Math.abs(popEase - popTarget) > 0.001) {
-        popEase += (popTarget - popEase) * (reduce ? 1 : 0.22)
-        needsFill = true
-      } else popEase = popTarget
-      if (prog !== lastProg) {
-        lastProg = prog
-        needsFill = true
+        const emphasisNow = s.selectedDataKey ?? s.focusDataKey
+        if (emphasisNow !== lastSelected) {
+          lastSelected = emphasisNow
+          needsFill = true
+        }
+        if (s.hoverIndex !== lastHover) {
+          lastHover = s.hoverIndex
+          popEase = 0 // a freshly-hovered slice bulges out from rest
+          needsFill = true
+        }
+        const itTarget = s.isMouseInChart ? 1 : 0
+        if (Math.abs(intensity - itTarget) > 0.001) {
+          intensity += (itTarget - intensity) * (reduce ? 1 : 0.16)
+          needsFill = true
+        } else intensity = itTarget
+        // Ease the hovered slice's bulge in (and back out when nothing's hovered).
+        const popTarget = s.hoverIndex != null ? 1 : 0
+        if (Math.abs(popEase - popTarget) > 0.001) {
+          popEase += (popTarget - popEase) * (reduce ? 1 : 0.22)
+          needsFill = true
+        } else popEase = popTarget
+        if (prog !== lastProg) {
+          lastProg = prog
+          needsFill = true
+        }
+
+        // Live tweak repaint (variant, donut inner radius) without re-sweeping.
+        const paintSig = `${s.innerRadius}|${s.pie
+          .map((sl) => s.variantOf(sl.name))
+          .join(',')}`
+        if (paintSig !== lastPaintSig) {
+          lastPaintSig = paintSig
+          needsFill = true
+        }
+
+        const keepGoing =
+          prog < 1 || intensity !== itTarget || popEase !== popTarget
+        if (!needsFill) return keepGoing
+        paint(prog)
+        needsFill = false
+        if (bloomCtx) {
+          const on = s.bloom !== 'off' && (!s.bloomOnHover || s.isMouseInChart)
+          if (on) {
+            bloomCtx.clearRect(0, 0, cols, rows)
+            bloomCtx.drawImage(canvas, 0, 0)
+          }
+        }
+        return keepGoing
       }
 
-      // Live tweak repaint (variant, donut inner radius) without re-sweeping.
-      const paintSig = `${s.innerRadius}|${s.pie
-        .map((sl) => s.variantOf(sl.name))
-        .join(',')}`
-      if (paintSig !== lastPaintSig) {
-        lastPaintSig = paintSig
-        needsFill = true
-      }
-
-      if (!needsFill) return
-      paint(prog)
-      needsFill = false
+      return createFrameLoop(draw)
     }
-
-    raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
+    return runWhenVisible(canvas, state, begin, wakeRef)
   }, [cols, rows, width, height])
 
   const bloom = bloomLayerStyle(

@@ -12,7 +12,7 @@ import { Automations } from './agents-panels'
 import { IntegrationsPanel } from './integrations-panel'
 import { PoliciesPage } from './repo-policies'
 import { SecretsPage } from './repo-secrets'
-import { RepoHeader, slugOf } from './repo-shell'
+import { slugOf } from './repo-shell'
 import type { Host, Mirror } from '~/mock/hub'
 import type { Repo } from '~/mock/data'
 import { BrandLogo } from '~/components/brand'
@@ -405,7 +405,6 @@ export function RepoSettings({
   const slug = slugOf(repo)
   return (
     <>
-      <RepoHeader repo={repo} active="settings" />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[200px_minmax(0,1fr)]">
         <nav
           aria-label="Repository settings"

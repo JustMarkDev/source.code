@@ -22,10 +22,10 @@ function Modal({
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-[2px]" />
+        <Dialog.Backdrop className="overlay-backdrop fixed inset-0 z-50 bg-foreground/25" />
         <Dialog.Popup
           className={cn(
-            'fixed top-[10vh] left-1/2 z-50 max-h-[80vh] -translate-x-1/2 space-y-4 overflow-y-auto rounded-2xl border bg-popover p-6 shadow-2xl outline-none',
+            'overlay-popup fixed top-[10vh] left-1/2 z-50 max-h-[80vh] -translate-x-1/2 space-y-4 overflow-y-auto rounded-2xl border bg-popover p-6 shadow-2xl outline-none',
             wide
               ? 'w-[min(40rem,calc(100vw-2rem))]'
               : 'w-[min(28rem,calc(100vw-2rem))]',

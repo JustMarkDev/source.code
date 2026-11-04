@@ -12,9 +12,11 @@ import { api } from '../../../convex/_generated/api'
 import { EmptyState, LangDot, Tile } from './bits'
 import { RepoCard, RepoRow } from './repo-card'
 import { ContributionGraph } from './repo-shell'
+import { profileTabs } from './profile-tabs'
 import type { LinkProps } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import type { Repo } from '~/mock/data'
+import type { ProfileTab } from './profile-tabs'
 import { GitCommitIcon, GitMergeIcon } from '~/components/icons'
 import {
   GroupedBars,
@@ -33,14 +35,10 @@ import {
   seeded,
   totalDownloads,
 } from '~/mock/data'
+import { Stagger } from '~/components/motion'
 import { workShape } from '~/mock/platform'
 
-export type ProfileTab = 'overview' | 'repositories' | 'activity'
-export const profileTabs: Array<[ProfileTab, string]> = [
-  ['overview', 'Overview'],
-  ['repositories', 'Repositories'],
-  ['activity', 'Activity'],
-]
+export type { ProfileTab }
 
 type FeedItem = {
   kind: 'release' | 'push' | 'review' | 'agent'
@@ -364,11 +362,11 @@ export function ProfileView({
 
             {projects.length > 0 && (
               <Block title="Popular projects">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <Stagger className="grid gap-4 sm:grid-cols-2">
                   {projects.slice(0, 4).map((r) => (
                     <RepoCard key={r.name} repo={r} />
                   ))}
-                </div>
+                </Stagger>
               </Block>
             )}
           </div>

@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { Category } from '~/mock/data'
+import { Stagger } from '~/components/motion'
 import { DeveloperRow, RepoRow } from '~/components/forge/repo-card'
 import { LangDot } from '~/components/forge/bits'
 import { Input, Select } from '~/components/ui/input'
@@ -193,7 +194,7 @@ function Discover() {
             </div>
           )}
 
-          <div className="divide-y overflow-hidden rounded-xl border bg-card">
+          <Stagger className="divide-y overflow-hidden rounded-xl border bg-card">
             {view === 'projects' &&
               projects.map((r) => (
                 <RepoRow
@@ -210,7 +211,7 @@ function Discover() {
                 Nothing matches. Try fewer words or clear the filters.
               </p>
             )}
-          </div>
+          </Stagger>
         </section>
       </div>
     </div>

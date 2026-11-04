@@ -4,6 +4,7 @@
  * mode). Where it does not, we show the vendor's own icon file from
  * `public/logos/`, taken from the vendor's website.
  */
+import { cn } from 'cn'
 import {
   si1password,
   siBitbucket,
@@ -25,11 +26,10 @@ import {
   siSentry,
   siVault,
   siVercel,
-} from 'simple-icons'
-import { cn } from 'cn'
-import type { SimpleIcon } from 'simple-icons'
+} from './brand-icons'
+import type { BrandIcon } from './brand-icons'
 
-type Brand = { name: string; icon: SimpleIcon } | { name: string; file: string }
+type Brand = { name: string; icon: BrandIcon } | { name: string; file: string }
 
 export const brands = {
   // Hosts. These only ever show on private screens.

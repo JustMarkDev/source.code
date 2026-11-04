@@ -1,10 +1,10 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import type { BrandId } from '~/components/brand'
-import type { StatusItem } from '~/components/forge/repo-changes'
+import type { StatusItem } from '~/components/forge/status-card'
 import { brandName } from '~/components/brand'
 import { Sparkline } from '~/components/dither-kit'
 import { CopyField } from '~/components/forge/repo-shell'
-import { StatusCard } from '~/components/forge/repo-changes'
+import { StatusCard } from '~/components/forge/status-card'
 import { Button } from '~/components/ui/button'
 
 export const Route = createFileRoute('/')({
