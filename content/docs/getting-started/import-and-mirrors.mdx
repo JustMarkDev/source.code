@@ -1,0 +1,49 @@
+---
+icon: ArrowPathIcon
+title: Keep your history
+description: Import from another host, mirror back to it, and leave it whenever you like.
+---
+
+source.code is designed so that no other host is a dependency. This page explains how history gets here, how copies stay elsewhere, and what happens when a host goes away.
+
+## Bring history in
+
+Open **Settings, Linked accounts** and connect the host you use today. source.code reads your repositories, issues, review threads and releases and stores them here. Your profile then counts that past work.
+
+<Callout title="Public pages never name the origin">
+  A repository imported from another host looks like any other project to
+  visitors. Where it came from is shown only to you, in your settings.
+</Callout>
+
+## Mirror out
+
+Open a repository, then **Settings, Mirrors and sync**. A mirror is a copy on another host.
+
+| Direction | What happens                                                                   |
+| --------- | ------------------------------------------------------------------------------ |
+| Push      | Everything here is sent to the host. Pushes made there are not brought back.   |
+| Two-way   | Git history syncs both ways. Issues and pull requests are also carried across. |
+| Pull      | Only changes made on the host are brought here.                                |
+
+What travels depends on the mirror: Git history always does. Issues, pull requests and releases are chosen per mirror.
+
+## When a host fails
+
+Each mirror shows its own state: _In sync_, _Syncing_, _Behind_, or _Needs attention_. If a mirror stops, for example because an access token expired:
+
+- Nothing is lost. Commits wait in a queue here.
+- Nothing else changes. Your work, reviews and releases carry on.
+- **Reconnect** replays the queue.
+
+The same is true if a host disappears entirely. Remove its mirror and carry on.
+
+## Leaving a host
+
+Turn on **Only accept pushes here** in Mirrors and sync. Pushes to the mirror are rejected with a link back to the repository. Mirrors keep receiving a copy until you remove them.
+
+```bash
+sx mirror list
+sx mirror remove m2
+```
+
+Removing a mirror stops syncing. It never deletes anything on source.code.

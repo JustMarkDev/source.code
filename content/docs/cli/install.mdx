@@ -1,0 +1,30 @@
+---
+icon: ArrowDownTrayIcon
+title: Install
+description: Get sx on your machine.
+---
+
+`sx` is a single TypeScript program that runs on [Bun](https://bun.sh).
+
+```bash
+bun add -g @source-code/cli
+sx --version
+```
+
+From a checkout of the source.code repository you can run it directly:
+
+```bash
+bun cli/src/main.ts --help
+```
+
+## Shell completion
+
+```bash
+sx completion zsh  > "${fpath[1]}/_sx"
+sx completion bash > /etc/bash_completion.d/sx
+sx completion fish > ~/.config/fish/completions/sx.fish
+```
+
+## Updating
+
+Update it the way you installed it, for example `bun update -g @source-code/cli`. Settings in `~/.config/sx/config.json` are kept.

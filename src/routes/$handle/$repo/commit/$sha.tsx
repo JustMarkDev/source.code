@@ -1,15 +1,35 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { PatchDiff } from '@pierre/diffs/react'
+import { CommitView } from '~/components/forge/repo-history'
+import { RepoHeader } from '~/components/forge/repo-shell'
+import { findRepo } from '~/mock/data'
 import { getCommitView } from '~/git/server'
+import { useIsDark } from '~/lib/theme'
 
 export const Route = createFileRoute('/$handle/$repo/commit/$sha')({
-  loader: ({ params }) => getCommitView({ data: params }),
+  // Sample projects show a sample commit and never touch the backend.
+  loader: ({ params }) =>
+    findRepo(params.handle, params.repo)
+      ? null
+      : getCommitView({ data: params }),
   component: CommitPage,
 })
 
 function CommitPage() {
+  const dark = useIsDark()
   const { handle, repo } = Route.useParams()
-  const { commit, diff } = Route.useLoaderData()
+  const data = Route.useLoaderData()
+  const { sha } = Route.useParams()
+  const sample = findRepo(handle, repo)
+  if (sample)
+    return (
+      <>
+        <RepoHeader repo={sample} active="code" />
+        <CommitView repo={sample} sha={sha} />
+      </>
+    )
+  if (!data) return null
+  const { commit, diff } = data
 
   return (
     <div className="space-y-6">
@@ -33,7 +53,10 @@ function CommitPage() {
         <div key={f.path} className="overflow-hidden rounded-lg border">
           <PatchDiff
             patch={f.raw}
-            options={{ theme: 'pierre-dark', diffStyle: 'unified' }}
+            options={{
+              theme: dark ? 'pierre-dark' : 'pierre-light',
+              diffStyle: 'unified',
+            }}
           />
         </div>
       ))}

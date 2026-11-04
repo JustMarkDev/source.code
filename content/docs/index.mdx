@@ -1,0 +1,50 @@
+---
+icon: BookOpenIcon
+title: Welcome
+description: source.code is a home for your repositories that keeps your history, whatever happens to the other places you use.
+---
+
+source.code hosts your repositories, reviews changes, and runs the checks you choose. It is built for people who work with agents as much as with other people.
+
+<Callout type="warn" title="Preview">
+  The product screens and the `sx` command line run on sample data. Nothing in
+  these docs is connected to a live service yet. Pages say so wherever it
+  matters.
+</Callout>
+
+## Where to start
+
+<Cards>
+  <Card title="Quickstart" href="/docs/getting-started/quickstart">
+    Create a repository, push, and open your first change.
+  </Card>
+  <Card
+    title="Keep your history"
+    href="/docs/getting-started/import-and-mirrors"
+  >
+    Bring everything from another host and keep copies there.
+  </Card>
+  <Card title="The sx CLI" href="/docs/cli">
+    A command line that never asks a question and speaks JSON.
+  </Card>
+  <Card title="Changes, not pull requests" href="/docs/concepts/changes">
+    Review that survives rebases, with policy deciding what lands.
+  </Card>
+</Cards>
+
+## How the pieces fit
+
+| You want to                                     | Where it lives                                             |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| Find projects and people                        | **Discover**                                               |
+| See what needs you today                        | **Home**                                                   |
+| Connect a reviewer, runner or agent environment | **Settings, Integrations**, then turn it on per repository |
+| Keep a copy on another host                     | **Repository settings, Mirrors and sync**                  |
+| Commit environment variables safely             | **Repository settings, Secrets**                           |
+| Decide what can land                            | **Repository settings, Policies**                          |
+
+## Principles
+
+- **Everything lives here.** Commits, issues, changes with their reviews, and releases are stored on source.code. Other hosts are copies.
+- **One obvious next step.** Each screen has one primary action.
+- **No surprises for agents.** They get the same rules as people, and never see secret values unless you grant it for a limited time.

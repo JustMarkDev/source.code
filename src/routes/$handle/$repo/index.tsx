@@ -1,9 +1,24 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  Link,
+  createFileRoute,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 import { File } from '@pierre/diffs/react'
 import { getRepoTree } from '~/git/server'
+import { useIsDark } from '~/lib/theme'
+import { findRepo } from '~/mock/data'
 
 export const Route = createFileRoute('/$handle/$repo/')({
+  // Sample projects live on the design screens and do not need the backend.
+  beforeLoad: ({ params }) => {
+    if (findRepo(params.handle, params.repo))
+      throw redirect({
+        to: '/$handle/$repo/$tab',
+        params: { ...params, tab: 'code' },
+      })
+  },
   validateSearch: (s: Record<string, unknown>): { path?: string } =>
     typeof s.path === 'string' ? { path: s.path } : {},
   loaderDeps: ({ search }) => search,
@@ -16,6 +31,7 @@ function RepoPage() {
   const { handle, repo } = Route.useParams()
   const { paths, commits, file } = Route.useLoaderData()
   const navigate = useNavigate({ from: Route.fullPath })
+  const dark = useIsDark()
   const { model } = useFileTree({
     paths,
     initialExpansion: 'open',
@@ -41,7 +57,10 @@ function RepoPage() {
         <FileTree model={model} className="block h-96 rounded-lg border" />
         <div className="min-w-0 overflow-hidden rounded-lg border">
           {file ? (
-            <File file={file} options={{ theme: 'pierre-dark' }} />
+            <File
+              file={file}
+              options={{ theme: dark ? 'pierre-dark' : 'pierre-light' }}
+            />
           ) : (
             <p className="p-4">Empty repository</p>
           )}

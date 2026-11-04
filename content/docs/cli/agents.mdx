@@ -1,0 +1,45 @@
+---
+icon: CpuChipIcon
+title: Agents and the CLI
+description: Hand work to an agent and give it what it needs, safely.
+---
+
+## Start an agent
+
+```bash
+sx agent start #4 --target t3
+```
+
+`sx agent start` takes an issue or a change, builds a prompt from it, and prints the command that starts the agent where you chose. The prompt names the repository, the subject and its title, asks for a draft change, and points the agent at `sx context`.
+
+| Target        | What you get                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `t3`          | The `t3 thread start . "<prompt>" --worktree main` command, which opens a thread in a new worktree on your own computer |
+| `boat`, `e2b` | The prompt, to start in that service from its dashboard or API                                                          |
+
+<Callout title="What is documented">
+  Only parts the services document are used. T3 Code documents an MCP server and
+  the `t3` command. It has no deep link that opens a thread, so source.code
+  gives you the command rather than a one-click link.
+</Callout>
+
+## Give an agent context
+
+```bash
+sx context -R dana/gitfs
+```
+
+Returns the default branch, open changes with their blockers, open issues, a policy summary and the env schema, as JSON. It is the first thing an agent should call.
+
+## What an agent never gets
+
+- Secret values. `sx context` and `sx env list` show names and kinds only. Decrypting is a separate grant for one environment, with an expiry.
+- Scopes it was not given. A token belongs to a bot, and a bot's scopes can only shrink while it is installed.
+
+## Same rules as people
+
+An agent's change goes through the same policy. `sx change land` exits `5` for an agent exactly as it does for you, and an agent cannot approve its own work.
+
+## Teaching an agent sx
+
+No model has seen `sx`. `sx skill install` writes a short skill into the repository, and `sx commands` lists every command as JSON. See [Teach an agent to use sx](/docs/cli/agent-guide), or connect over [MCP](/docs/mcp).

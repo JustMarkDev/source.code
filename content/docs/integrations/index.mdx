@@ -1,0 +1,44 @@
+---
+icon: PuzzlePieceIcon
+title: Integrations
+description: Connect reviewers, runners, agent environments and secrets tools. Once in your account, then per repository.
+---
+
+source.code does not host runners or agent machines. You bring the ones you like.
+
+## Two places, no repeats
+
+| Where                                 | What you do                                                      |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| **Settings, Integrations**            | Connect or disconnect a service. This is where you authorize it. |
+| **Repository settings, Integrations** | Turn a connected service on for that repository, and tune it.    |
+
+To add a service from a repository, use **Add an integration**. It opens the same dialog.
+
+## What you can connect
+
+| Kind                    | Services                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Code review             | CodeRabbit, Greptile, Macroscope, Qodo, Cursor Bugbot, Claude Code Review, Sourcery, Ellipsis  |
+| Runners                 | Blacksmith, Namespace, Depot, WarpBuild, RunsOn, Ubicloud, or your own machines                |
+| Agent environments      | T3 Code, boat.dev, E2B, Daytona, Modal, Vercel Sandbox, Cloudflare Sandbox, Fly Sprites        |
+| Secrets and config      | Varlock, 1Password, Infisical, Doppler, HashiCorp Vault, Bitwarden Secrets Manager, Pulumi ESC |
+| Planning and monitoring | Linear, Sentry                                                                                 |
+
+<Callout type="warn" title="What is verified">
+  The list is of services that publish a way to use them from another host or
+  from an agent. How each one reports results back is not documented for every
+  vendor, so source.code treats results as comments and checks on a change.
+  Connecting is a screen on sample data in this preview.
+</Callout>
+
+## Access
+
+Each service asks for named access up front, shown before you connect. A service can be disconnected at any time. Disconnecting also turns it off in every repository.
+
+## Settings per kind
+
+- **Code review**: whether a high-severity finding blocks landing, and which changes are reviewed.
+- **Runners**: the label that sends a job to the runner, and how many jobs run at once.
+- **Agent environments**: the access an agent gets, and a spending limit per task.
+- **Secrets and config**: which schema file to read and when to check it.
