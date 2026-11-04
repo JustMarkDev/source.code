@@ -58,6 +58,10 @@ export type Release = {
   title: string
   notes: { added: Array<string>; changed: Array<string>; fixed: Array<string> }
   assets: Array<Asset>
+  /** The commit a beta or nightly was built from. */
+  commit?: string
+  /** Set when a release was pulled. The reason is shown on its page. */
+  withdrawn?: string
 }
 
 export type Repo = {
@@ -98,6 +102,41 @@ function assets(name: string, v: string, total: number): Array<Asset> {
     downloads: Math.round(total * (share as number)),
     sha: sha(i),
   }))
+}
+
+/** A release with the usual five builds. Nightlies skip Windows and arm64. */
+function lumenRelease(
+  version: string,
+  channel: Channel,
+  date: string,
+  o: {
+    title: string
+    total: number
+    notes: Release['notes']
+    commit?: string
+    signed?: boolean
+    withdrawn?: string
+  },
+): Release {
+  const all = assets('lumen', version, o.total)
+  return {
+    version,
+    channel,
+    date,
+    signed: o.signed ?? true,
+    title: o.title,
+    notes: o.notes,
+    commit: o.commit,
+    withdrawn: o.withdrawn,
+    assets:
+      channel === 'nightly'
+        ? all.filter(
+            (a) =>
+              (a.platform !== 'windows' && a.arch === 'x64') ||
+              (a.platform === 'macos' && a.arch === 'arm64'),
+          )
+        : all,
+  }
 }
 
 const gitfsNotes = {
@@ -207,12 +246,20 @@ export const repos: Array<Repo> = [
     upstream: 'codeberg.org/hollis/lumen',
     install: 'brew install lumen',
     releases: [
-      {
-        version: 'v2.4.1',
-        channel: 'stable',
-        date: 'Nov 2, 2026',
-        signed: true,
+      lumenRelease('v2.5.0-nightly.20261104', 'nightly', 'Nov 4, 2026', {
+        title: 'Built from main',
+        total: 1900,
+        commit: 'e91b3c4',
+        signed: false,
+        notes: {
+          added: ['Encrypt a vault at rest (first cut, off by default).'],
+          changed: ['Sync runs on a background thread.'],
+          fixed: [],
+        },
+      }),
+      lumenRelease('v2.4.1', 'stable', 'Nov 2, 2026', {
         title: 'Sync conflicts, finally readable',
+        total: 212000,
         notes: {
           added: [
             'Side-by-side conflict view.',
@@ -221,8 +268,77 @@ export const repos: Array<Repo> = [
           changed: ['Search index is 3x smaller.'],
           fixed: ['Cursor jump when pasting images.'],
         },
-        assets: assets('lumen', 'v2.4.1', 212000),
-      },
+      }),
+      lumenRelease('v2.5.0-beta.2', 'beta', 'Oct 28, 2026', {
+        title: 'Vault encryption, second look',
+        total: 8400,
+        commit: '4ad07f2',
+        notes: {
+          added: ['Passphrase prompt on first open of an encrypted vault.'],
+          changed: ['Encrypted vaults skip the search index until unlocked.'],
+          fixed: ['Beta 1: crash when unlocking with an empty passphrase.'],
+        },
+      }),
+      lumenRelease('v2.5.0-beta.1', 'beta', 'Oct 14, 2026', {
+        title: 'Vault encryption, first look',
+        total: 5100,
+        commit: 'b7c215e',
+        notes: {
+          added: ['Encrypt a vault with a passphrase.'],
+          changed: ['Settings are now stored per vault.'],
+          fixed: [],
+        },
+      }),
+      lumenRelease('v2.4.0', 'stable', 'Oct 6, 2026', {
+        title: 'Plugins can add commands',
+        total: 188000,
+        notes: {
+          added: [
+            'Plugins can register commands in the palette.',
+            'Pin notes.',
+          ],
+          changed: ['Faster cold start on Windows.'],
+          fixed: ['Wrong word count for notes with front matter.'],
+        },
+      }),
+      lumenRelease('v2.3.2', 'stable', 'Sep 11, 2026', {
+        title: 'Patch: sync stalls',
+        total: 94000,
+        notes: {
+          added: [],
+          changed: ['Retry sync with backoff instead of failing.'],
+          fixed: ['Sync stalled after the laptop woke from sleep.'],
+        },
+      }),
+      lumenRelease('v2.3.1', 'stable', 'Aug 26, 2026', {
+        title: 'Withdrawn: moving notes between vaults',
+        total: 12000,
+        withdrawn:
+          'Moving a note between vaults could overwrite a note with the same name. Use v2.3.2 or later.',
+        notes: {
+          added: ['Move notes between vaults.'],
+          changed: [],
+          fixed: ['Tag autocomplete lagged on large vaults.'],
+        },
+      }),
+      lumenRelease('v2.3.0', 'stable', 'Aug 19, 2026', {
+        title: 'Canvas view',
+        total: 141000,
+        notes: {
+          added: ['Canvas view for laying notes out freely.'],
+          changed: ['The graph view starts zoomed out.'],
+          fixed: ['Backlinks missed links inside tables.'],
+        },
+      }),
+      lumenRelease('v2.0.0', 'stable', 'Mar 12, 2026', {
+        title: 'A new editor',
+        total: 402000,
+        notes: {
+          added: ['A new editor with live preview.', 'Vaults on any folder.'],
+          changed: ['The file format is unchanged: still plain markdown.'],
+          fixed: [],
+        },
+      }),
     ],
   },
   {
