@@ -1,0 +1,32 @@
+---
+icon: LockClosedIcon
+title: Authentication
+description: Signing in for people, tokens for scripts and agents.
+---
+
+## Tokens
+
+Scripts, CI and agents sign in with a token in the environment:
+
+```bash
+export SX_TOKEN=sxt_...
+sx auth status
+```
+
+Create tokens in **Settings, Agents and tokens**. A token belongs to a bot with explicit scopes. It can lose scopes while installed but never gain them. A run started by an automation receives a token limited to one repository and one run.
+
+## Check where you stand
+
+```bash
+sx auth status
+```
+
+```json
+{ "host": "https://source.code", "authenticated": true, "via": "SX_TOKEN" }
+```
+
+Exit code `4` means you are not signed in.
+
+## Signing in as a person
+
+`sx auth login` will open a browser. It needs the hosted service and is not available in the preview, so it exits with a message that says to use `SX_TOKEN`.

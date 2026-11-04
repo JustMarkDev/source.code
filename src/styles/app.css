@@ -1,12 +1,15 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 @layer base {
@@ -15,12 +18,29 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
   }
   html {
     @apply font-sans;
+    font-size: 105%;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  ::selection {
+    background: var(--brand);
+    color: var(--brand-foreground);
   }
 }
 
+/*
+ * Shape rule used everywhere: panels 12px, controls 8px, badges 6px.
+ * One accent (brand, an acid lime) used sparingly: the primary action, the
+ * current item and the charts. Everything else is ink on paper.
+ * Semantic colours (success, warning, info, danger, merged) flip per theme so
+ * components never need dark: variants.
+ */
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
@@ -55,6 +75,14 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-ink: var(--brand-ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-danger: var(--danger);
+  --color-merged: var(--merged);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -65,70 +93,296 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: oklch(0.982 0.003 250);
+  --foreground: oklch(0.17 0.015 265);
+  --card: oklch(0.995 0.002 250);
+  --card-foreground: oklch(0.17 0.015 265);
+  --popover: oklch(0.995 0.002 250);
+  --popover-foreground: oklch(0.17 0.015 265);
+  --primary: oklch(0.2 0.015 265);
+  --primary-foreground: oklch(0.98 0.003 250);
+  --secondary: oklch(0.955 0.005 255);
+  --secondary-foreground: oklch(0.2 0.015 265);
+  --muted: oklch(0.955 0.005 255);
+  --muted-foreground: oklch(0.47 0.02 265);
+  --accent: oklch(0.945 0.008 255);
+  --accent-foreground: oklch(0.2 0.015 265);
+  --destructive: oklch(0.55 0.2 25);
+  --border: oklch(0.9 0.006 255);
+  --input: oklch(0.88 0.008 255);
+  --ring: oklch(0.6 0.15 130);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.7rem;
+  --sidebar: oklch(0.985 0.002 250);
+  --sidebar-foreground: oklch(0.17 0.015 265);
+  --sidebar-primary: oklch(0.2 0.015 265);
+  --sidebar-primary-foreground: oklch(0.98 0.003 250);
+  --sidebar-accent: oklch(0.955 0.005 255);
+  --sidebar-accent-foreground: oklch(0.2 0.015 265);
+  --sidebar-border: oklch(0.9 0.006 255);
+  --sidebar-ring: oklch(0.6 0.15 130);
+
+  --brand: oklch(0.9 0.21 125);
+  --brand-foreground: oklch(0.22 0.04 130);
+  --brand-ink: oklch(0.45 0.14 135);
+  --success: oklch(0.5 0.14 150);
+  --warning: oklch(0.53 0.13 65);
+  --info: oklch(0.5 0.16 250);
+  --danger: oklch(0.52 0.2 25);
+  --merged: oklch(0.5 0.18 295);
+  --pop: var(--foreground);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.14 0.008 265);
+  --foreground: oklch(0.96 0.004 250);
+  --card: oklch(0.18 0.01 265);
+  --card-foreground: oklch(0.96 0.004 250);
+  --popover: oklch(0.21 0.011 265);
+  --popover-foreground: oklch(0.96 0.004 250);
+  --primary: oklch(0.96 0.004 250);
+  --primary-foreground: oklch(0.2 0.015 265);
+  --secondary: oklch(0.255 0.013 265);
+  --secondary-foreground: oklch(0.96 0.004 250);
+  --muted: oklch(0.245 0.013 265);
+  --muted-foreground: oklch(0.72 0.02 265);
+  --accent: oklch(0.27 0.014 265);
+  --accent-foreground: oklch(0.96 0.004 250);
+  --destructive: oklch(0.72 0.19 25);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.8 0.17 125);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.195 0.013 265);
+  --sidebar-foreground: oklch(0.96 0.004 250);
+  --sidebar-primary: oklch(0.9 0.21 125);
+  --sidebar-primary-foreground: oklch(0.22 0.04 130);
+  --sidebar-accent: oklch(0.27 0.014 265);
+  --sidebar-accent-foreground: oklch(0.96 0.004 250);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.8 0.17 125);
+
+  --brand: oklch(0.9 0.21 125);
+  --brand-foreground: oklch(0.22 0.04 130);
+  --brand-ink: oklch(0.9 0.2 125);
+  --success: oklch(0.78 0.17 152);
+  --warning: oklch(0.82 0.15 80);
+  --info: oklch(0.78 0.12 245);
+  --danger: oklch(0.72 0.19 25);
+  --merged: oklch(0.76 0.15 295);
+  --pop: var(--brand);
+}
+
+/*
+ * Tactile surfaces. Controls look raised, wells look pressed in, and a raised
+ * control gives a little when you press it. The highlight is a 1px inner edge on
+ * top and a soft shadow underneath, so it reads in both themes.
+ */
+:root {
+  --edge: oklch(1 0 0 / 80%);
+  --lift:
+    0 1px 2px oklch(0.2 0.02 265 / 10%), 0 0 0 1px oklch(0.2 0.02 265 / 6%);
+  --well: inset 0 1px 2px oklch(0.2 0.02 265 / 10%);
+}
+.dark {
+  --edge: oklch(1 0 0 / 7%);
+  --lift: 0 1px 2px oklch(0 0 0 / 45%), 0 0 0 1px oklch(1 0 0 / 6%);
+  --well: inset 0 1px 3px oklch(0 0 0 / 50%);
+}
+
+@utility raised {
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
+  transition:
+    box-shadow 120ms,
+    transform 120ms,
+    background-color 120ms;
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 1px 0 transparent,
+      0 0 0 1px oklch(0.2 0.02 265 / 8%);
+  }
+}
+
+@utility well {
+  box-shadow: var(--well);
+}
+
+@utility surface {
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
+}
+
+/* Quiet hover for things you can open: the border darkens, nothing moves. */
+@utility pop {
+  transition:
+    border-color 150ms,
+    background-color 150ms;
+  &:hover {
+    border-color: color-mix(in oklch, var(--foreground) 28%, transparent);
+  }
+}
+
+/*
+ * Pierre's file tree and diff viewer take their colours from CSS variables.
+ * Point them at ours so they read as part of the page and not as a widget.
+ */
+.pierre {
+  --trees-bg-override: transparent;
+  --trees-fg-override: var(--foreground);
+  --trees-fg-muted-override: var(--muted-foreground);
+  --trees-bg-muted-override: var(--muted);
+  --trees-border-color-override: var(--border);
+  --trees-border-radius-override: 8px;
+  --trees-accent-override: var(--foreground);
+  --diffs-font-family: var(--font-mono);
+  --diffs-font-size: 12.5px;
+  --diffs-line-height: 1.65;
+  --diffs-bg-context-override: transparent;
+  --diffs-bg-context-gutter-override: transparent;
+  --diffs-bg-buffer-override: var(--muted);
+  --diffs-bg-separator-override: var(--muted);
+  --diffs-bg-hover-override: color-mix(
+    in oklch,
+    var(--foreground) 5%,
+    transparent
+  );
+  --diffs-fg-number-override: var(--muted-foreground);
+  --diffs-bg-addition-override: color-mix(
+    in oklch,
+    var(--success) 11%,
+    transparent
+  );
+  --diffs-bg-addition-number-override: color-mix(
+    in oklch,
+    var(--success) 16%,
+    transparent
+  );
+  --diffs-bg-addition-emphasis-override: color-mix(
+    in oklch,
+    var(--success) 24%,
+    transparent
+  );
+  --diffs-bg-deletion-override: color-mix(
+    in oklch,
+    var(--danger) 10%,
+    transparent
+  );
+  --diffs-bg-deletion-number-override: color-mix(
+    in oklch,
+    var(--danger) 15%,
+    transparent
+  );
+  --diffs-bg-deletion-emphasis-override: color-mix(
+    in oklch,
+    var(--danger) 22%,
+    transparent
+  );
+  --diffs-addition-color-override: var(--success);
+  --diffs-deletion-color-override: var(--danger);
+}
+
+/* Vertical commit rail used by timelines and activity feeds. */
+@utility rail {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Docs use Fumadocs. Point its tokens at ours so both follow the same theme. */
+@theme inline {
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--popover);
+  --color-fd-popover-foreground: var(--popover-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+}
+
+/* Docs, in the product's tactile look. Fumadocs markup, our surfaces. */
+#nd-sidebar {
+  background: var(--background);
+}
+#nd-sidebar button[data-search-full] {
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: var(--background);
+  box-shadow: var(--well);
+}
+#nd-sidebar a[data-active='true'] {
+  background: var(--card);
+  color: var(--foreground);
+  font-weight: 500;
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
+}
+#nd-sidebar a,
+#nd-sidebar button {
+  border-radius: 0.75rem;
+}
+.nd-page h1 {
+  letter-spacing: -0.02em;
+}
+.nd-page div:has(> table) {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
+}
+.nd-page div:has(> table) table {
+  border: 0;
+}
+.nd-page figure {
+  border-radius: 1rem;
+  background: var(--card);
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
+}
+.nd-page main a[href^='/docs'][class*='bg-fd-card'],
+.nd-page a[class*='bg-fd-card'] {
+  border-radius: 1rem;
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    var(--lift);
 }

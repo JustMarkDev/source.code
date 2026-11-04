@@ -1,0 +1,5 @@
+{
+  "title": "Reference",
+  "pages": ["policy-file", "env-schema", "environment-variables"],
+  "icon": "DocumentTextIcon"
+}

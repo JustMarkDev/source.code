@@ -1,0 +1,14 @@
+{
+  "title": "CLI",
+  "pages": [
+    "index",
+    "install",
+    "authentication",
+    "commands",
+    "output-and-exit-codes",
+    "config",
+    "agents",
+    "agent-guide"
+  ],
+  "icon": "CommandLineIcon"
+}

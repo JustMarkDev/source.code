@@ -1,0 +1,112 @@
+---
+icon: ListBulletIcon
+title: Command reference
+description: Every command, with its flags and what it prints.
+---
+
+Flags that work on every command:
+
+| Flag                    | Meaning                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `-R, --repo owner/name` | Which repository. Default: your git remote, then `SX_REPO`. |
+| `-j, --json`            | JSON output. This is the default when output is piped.      |
+| `-n, --dry-run`         | Say what would happen and change nothing.                   |
+| `--no-color`            | Plain output. `NO_COLOR` works too.                         |
+| `-h, --help`            | Help for the command.                                       |
+
+## repo
+
+```bash
+sx repo list
+sx repo view
+sx repo create dana/notes --private --description "Scratch notes"
+sx repo clone dana/gitfs
+```
+
+`repo clone` prints the command and honours `clone.protocol` (`ssh` or `https`). `repo create` returns `created: false` when the repository already exists.
+
+## change
+
+```bash
+sx change list [--all]
+sx change view [id]
+sx change create [--draft] [--branch b] [--title t] [--base main]
+sx change land [id]
+sx change checkout <id>
+```
+
+`change create` needs nothing from you. Title defaults to your last commit and base to `change.base`. Running it again for the same branch returns `action: "patch_set_added"` and the same id.
+
+`change land` exits `5` when policy blocks it:
+
+```json
+{
+  "error": {
+    "code": "policy_blocked",
+    "message": "ch_7f3a cannot land: ci/test is running; 1 high finding unresolved.",
+    "hint": "sx change view shows each requirement. sx policy explain says which rule asked for it."
+  }
+}
+```
+
+## issue
+
+```bash
+sx issue list [--state open|closed|all]
+sx issue view 4
+sx issue create "Crash on empty repo" --label bug,docs
+sx issue close 4
+```
+
+Creating an issue with the same title as an open one returns the open one.
+
+## env
+
+```bash
+sx env list --env production
+echo "$VALUE" | sx env set STRIPE_KEY - --env production
+sx env pull --env development
+sx env rotate --env production
+sx env recipients
+```
+
+`env list` shows names, kinds and whether each environment has a value. It never prints a value. See [Secrets in git](/docs/concepts/secrets).
+
+## policy
+
+```bash
+sx policy check ch_7f3a
+sx policy explain ch_7f3a
+```
+
+Both exit `5` when blocked. `explain` lists each requirement.
+
+## mirror
+
+```bash
+sx mirror list
+sx mirror add codeberg dana/gitfs --direction push
+sx mirror sync m2
+sx mirror remove m2
+```
+
+## agent
+
+```bash
+sx agent start #4 --target t3 --runtime claude
+sx agent start ch_7f3a --target boat
+```
+
+See [Agents and the CLI](/docs/cli/agents).
+
+## context
+
+```bash
+sx context
+```
+
+One JSON document for an agent: the repository, open changes with what blocks them, open issues, policy summary and the env schema. No secret values.
+
+## config, auth, completion
+
+See [Settings](/docs/cli/config), [Authentication](/docs/cli/authentication) and [Install](/docs/cli/install).

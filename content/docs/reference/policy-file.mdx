@@ -1,0 +1,58 @@
+---
+icon: ShieldCheckIcon
+title: Policy file
+description: The format of .source/policy/*.yml.
+---
+
+<Callout type="warn" title="Design">
+  This is the proposed format. The Policies screen demonstrates it on sample
+  data.
+</Callout>
+
+Files live in `.source/policy/`. All files are read together.
+
+## Top level
+
+| Key          | Type | Meaning              |
+| ------------ | ---- | -------------------- |
+| `rules`      | list | The rules            |
+| `exceptions` | list | Temporary exceptions |
+
+## Rule
+
+| Key       | Type                            | Meaning                       |
+| --------- | ------------------------------- | ----------------------------- |
+| `id`      | string                          | Unique name                   |
+| `mode`    | `enforce` \| `dry-run` \| `off` | Default `enforce`             |
+| `when`    | object                          | What the rule applies to      |
+| `require` | list                            | What must hold before landing |
+
+## when
+
+| Key            | Example                          | Meaning                    |
+| -------------- | -------------------------------- | -------------------------- |
+| `paths`        | `["src/**", "!src/**/tests/**"]` | Globs, with `!` to exclude |
+| `author_class` | `agent`                          | `human`, `agent` or `bot`  |
+| `size`         | `{ over: 400 }`                  | Changed lines              |
+| `labels`       | `["security"]`                   | Labels on the change       |
+
+## require
+
+| Item                          | Example                                            | Meaning                                         |
+| ----------------------------- | -------------------------------------------------- | ----------------------------------------------- |
+| `approval`                    | `{ min: 1, class: human, from: team:maintainers }` | Approvals from a class, optionally from a group |
+| `evidence`                    | `{ check: ci/test, bound_to: tree }`               | A check on the tree that will land              |
+| `not_same_identity_as_author` | `true`                                             | The author cannot approve                       |
+
+## Exception
+
+| Key       | Meaning             |
+| --------- | ------------------- |
+| `rule`    | The rule it relaxes |
+| `for`     | Who it applies to   |
+| `reason`  | Required            |
+| `expires` | Required date       |
+
+## Protecting the rules
+
+A change under `.source/policy/` always needs a human from the policy owners.

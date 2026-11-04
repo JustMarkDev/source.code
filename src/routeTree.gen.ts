@@ -10,8 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DesignRouteImport } from './routes/design'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as NewRouteImport } from './routes/new'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as HandleIndexRouteImport } from './routes/$handle/index'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as SettingsSectionRouteImport } from './routes/settings/$section'
 import { Route as HandleRepoIndexRouteImport } from './routes/$handle/$repo/index'
+import { Route as HandleRepoTabRouteImport } from './routes/$handle/$repo/$tab'
 import { Route as HandleRepoCommitShaRouteImport } from './routes/$handle/$repo/commit/$sha'
 
 const IndexRoute = IndexRouteImport.update({
@@ -19,14 +33,84 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignRoute = DesignRouteImport.update({
+  id: '/design',
+  path: '/design',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewRoute = NewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HandleIndexRoute = HandleIndexRouteImport.update({
   id: '/$handle/',
   path: '/$handle/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/docs/$',
+  path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsSectionRoute = SettingsSectionRouteImport.update({
+  id: '/settings/$section',
+  path: '/settings/$section',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HandleRepoIndexRoute = HandleRepoIndexRouteImport.update({
   id: '/$handle/$repo/',
   path: '/$handle/$repo/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HandleRepoTabRoute = HandleRepoTabRouteImport.update({
+  id: '/$handle/$repo/$tab',
+  path: '/$handle/$repo/$tab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HandleRepoCommitShaRoute = HandleRepoCommitShaRouteImport.update({
@@ -37,40 +121,145 @@ const HandleRepoCommitShaRoute = HandleRepoCommitShaRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/design': typeof DesignRoute
+  '/discover': typeof DiscoverRoute
+  '/inbox': typeof InboxRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
+  '/new': typeof NewRoute
+  '/pricing': typeof PricingRoute
+  '/status': typeof StatusRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
+  '/$handle/$repo/$tab': typeof HandleRepoTabRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/design': typeof DesignRoute
+  '/discover': typeof DiscoverRoute
+  '/inbox': typeof InboxRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
+  '/new': typeof NewRoute
+  '/pricing': typeof PricingRoute
+  '/status': typeof StatusRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/settings/$section': typeof SettingsSectionRoute
   '/$handle': typeof HandleIndexRoute
+  '/$handle/$repo/$tab': typeof HandleRepoTabRoute
   '/$handle/$repo': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/design': typeof DesignRoute
+  '/discover': typeof DiscoverRoute
+  '/inbox': typeof InboxRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
+  '/new': typeof NewRoute
+  '/pricing': typeof PricingRoute
+  '/status': typeof StatusRoute
+  '/api/search': typeof ApiSearchRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
+  '/$handle/$repo/$tab': typeof HandleRepoTabRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/$handle/' | '/$handle/$repo/' | '/$handle/$repo/commit/$sha'
+    | '/'
+    | '/dashboard'
+    | '/design'
+    | '/discover'
+    | '/inbox'
+    | '/llms-full.txt'
+    | '/llms.txt'
+    | '/mcp'
+    | '/new'
+    | '/pricing'
+    | '/status'
+    | '/api/search'
+    | '/docs/$'
+    | '/settings/$section'
+    | '/$handle/'
+    | '/$handle/$repo/$tab'
+    | '/$handle/$repo/'
+    | '/$handle/$repo/commit/$sha'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$handle' | '/$handle/$repo' | '/$handle/$repo/commit/$sha'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/design'
+    | '/discover'
+    | '/inbox'
+    | '/llms-full.txt'
+    | '/llms.txt'
+    | '/mcp'
+    | '/new'
+    | '/pricing'
+    | '/status'
+    | '/api/search'
+    | '/docs/$'
+    | '/settings/$section'
+    | '/$handle'
+    | '/$handle/$repo/$tab'
+    | '/$handle/$repo'
+    | '/$handle/$repo/commit/$sha'
   id:
     | '__root__'
     | '/'
+    | '/dashboard'
+    | '/design'
+    | '/discover'
+    | '/inbox'
+    | '/llms-full.txt'
+    | '/llms.txt'
+    | '/mcp'
+    | '/new'
+    | '/pricing'
+    | '/status'
+    | '/api/search'
+    | '/docs/$'
+    | '/settings/$section'
     | '/$handle/'
+    | '/$handle/$repo/$tab'
     | '/$handle/$repo/'
     | '/$handle/$repo/commit/$sha'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
+  DesignRoute: typeof DesignRoute
+  DiscoverRoute: typeof DiscoverRoute
+  InboxRoute: typeof InboxRoute
+  LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
+  McpRoute: typeof McpRoute
+  NewRoute: typeof NewRoute
+  PricingRoute: typeof PricingRoute
+  StatusRoute: typeof StatusRoute
+  ApiSearchRoute: typeof ApiSearchRoute
+  DocsSplatRoute: typeof DocsSplatRoute
+  SettingsSectionRoute: typeof SettingsSectionRoute
   HandleIndexRoute: typeof HandleIndexRoute
+  HandleRepoTabRoute: typeof HandleRepoTabRoute
   HandleRepoIndexRoute: typeof HandleRepoIndexRoute
   HandleRepoCommitShaRoute: typeof HandleRepoCommitShaRoute
 }
@@ -84,6 +273,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design': {
+      id: '/design'
+      path: '/design'
+      fullPath: '/design'
+      preLoaderRoute: typeof DesignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$handle/': {
       id: '/$handle/'
       path: '/$handle'
@@ -91,11 +350,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/docs/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/$section': {
+      id: '/settings/$section'
+      path: '/settings/$section'
+      fullPath: '/settings/$section'
+      preLoaderRoute: typeof SettingsSectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$handle/$repo/': {
       id: '/$handle/$repo/'
       path: '/$handle/$repo'
       fullPath: '/$handle/$repo/'
       preLoaderRoute: typeof HandleRepoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$handle/$repo/$tab': {
+      id: '/$handle/$repo/$tab'
+      path: '/$handle/$repo/$tab'
+      fullPath: '/$handle/$repo/$tab'
+      preLoaderRoute: typeof HandleRepoTabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$handle/$repo/commit/$sha': {
@@ -110,7 +397,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
+  DesignRoute: DesignRoute,
+  DiscoverRoute: DiscoverRoute,
+  InboxRoute: InboxRoute,
+  LlmsFullDottxtRoute: LlmsFullDottxtRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
+  McpRoute: McpRoute,
+  NewRoute: NewRoute,
+  PricingRoute: PricingRoute,
+  StatusRoute: StatusRoute,
+  ApiSearchRoute: ApiSearchRoute,
+  DocsSplatRoute: DocsSplatRoute,
+  SettingsSectionRoute: SettingsSectionRoute,
   HandleIndexRoute: HandleIndexRoute,
+  HandleRepoTabRoute: HandleRepoTabRoute,
   HandleRepoIndexRoute: HandleRepoIndexRoute,
   HandleRepoCommitShaRoute: HandleRepoCommitShaRoute,
 }
