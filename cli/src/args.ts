@@ -7,6 +7,7 @@ export type Parsed = {
 
 const short: Record<string, string> = {
   R: 'repo',
+  A: 'account',
   j: 'json',
   y: 'yes',
   n: 'dry-run',

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cn } from 'cn'
 
-const field =
+export const field =
   'well w-full rounded-lg border bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/80 hover:border-foreground/25 focus-visible:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50 aria-invalid:border-danger'
 
 function Input({ className, ...props }: React.ComponentProps<'input'>) {
@@ -19,16 +19,6 @@ function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
     <textarea
       data-slot="textarea"
       className={cn(field, 'min-h-20 py-2', className)}
-      {...props}
-    />
-  )
-}
-
-function Select({ className, ...props }: React.ComponentProps<'select'>) {
-  return (
-    <select
-      data-slot="select"
-      className={cn(field, 'h-9 pr-8', className)}
       {...props}
     />
   )
@@ -57,4 +47,4 @@ function Field({
   )
 }
 
-export { Input, Textarea, Select, Field }
+export { Input, Textarea, Field }

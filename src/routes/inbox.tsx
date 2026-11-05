@@ -8,17 +8,24 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
+import type { BadgeTone } from '~/components/ui/badge'
 import type { Notification } from '~/mock/extra'
+import { RequireAuth } from '~/components/forge/auth'
 import { Stagger } from '~/components/motion'
 import { GitMergeIcon } from '~/components/icons'
 import { EmptyState } from '~/components/forge/bits'
 import { Segmented } from '~/components/ui/tabs'
+import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { notifications } from '~/mock/extra'
 
 export const Route = createFileRoute('/inbox')({
   head: () => ({ meta: [{ title: 'Inbox · source.code' }] }),
-  component: Inbox,
+  component: () => (
+    <RequireAuth>
+      <Inbox />
+    </RequireAuth>
+  ),
 })
 
 const icons = {
@@ -29,6 +36,17 @@ const icons = {
   issue: ExclamationCircleIcon,
   import: LinkIcon,
 } as const
+
+/** What each kind of item is, in words. The ones that ask something of you are coloured. */
+const kinds: Record<Notification['kind'], { label: string; tone: BadgeTone }> =
+  {
+    review: { label: 'Review', tone: 'merged' },
+    ci: { label: 'Failed', tone: 'danger' },
+    issue: { label: 'Assigned', tone: 'info' },
+    mention: { label: 'Mention', tone: 'muted' },
+    release: { label: 'Release', tone: 'muted' },
+    import: { label: 'Import', tone: 'muted' },
+  }
 
 const filters = [
   ['all', 'All'],
@@ -105,12 +123,19 @@ function Inbox() {
                     <span
                       className={cn('block text-sm', n.unread && 'font-medium')}
                     >
+                      {n.unread && <span className="sr-only">Unread: </span>}
                       {n.title}
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
                       {n.repo}, {n.when}
                     </span>
                   </span>
+                  <Badge
+                    tone={kinds[n.kind].tone}
+                    className="shrink-0 self-center"
+                  >
+                    {kinds[n.kind].label}
+                  </Badge>
                 </button>
               </li>
             )

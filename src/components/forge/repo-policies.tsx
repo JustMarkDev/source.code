@@ -5,7 +5,9 @@ import { cn } from 'cn'
 import { Chip, Modal, Panel, SectionLabel, Seg } from './bits'
 import type { Repo } from '~/mock/data'
 import type { Exception, Rule } from '~/mock/platform'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { Button } from '~/components/ui/button'
+import { Select, SelectItem } from '~/components/ui/select'
 import { useIsDark } from '~/lib/theme'
 import {
   dryRunSamples,
@@ -149,7 +151,7 @@ function Tester({ rules }: { rules: Array<Rule> }) {
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
             aria-label="Lines changed"
-            className="w-48 accent-[var(--brand-ink)]"
+            className="h-6 w-48 accent-[var(--brand-ink)]"
           />
           <span className="font-mono text-xs tabular-nums">{size} lines</span>
         </div>
@@ -184,6 +186,7 @@ function Tester({ rules }: { rules: Array<Rule> }) {
 
 export function PoliciesPage(_props: { repo: Repo }) {
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const [rules, setRules] = React.useState(initialRules)
   const [exceptions, setExceptions] =
     React.useState<Array<Exception>>(initialExceptions)
@@ -297,7 +300,7 @@ export function PoliciesPage(_props: { repo: Repo }) {
           <div className="overflow-hidden rounded-xl border">
             <File
               file={{ name: 'main.yml', contents: policyYaml }}
-              options={{ theme: dark ? 'pierre-dark' : 'pierre-light' }}
+              options={{ theme: codeTheme(dark), overflow }}
             />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -316,17 +319,16 @@ export function PoliciesPage(_props: { repo: Repo }) {
         <div className="space-y-3 text-sm">
           <label className="block space-y-1">
             <span className="text-muted-foreground">Rule</span>
-            <select
+            <Select
               value={draft.rule}
-              onChange={(e) => setDraft({ ...draft, rule: e.target.value })}
-              className="h-9 w-full rounded-lg border bg-background px-2"
+              onValueChange={(v) => setDraft({ ...draft, rule: v })}
             >
               {rules.map((r) => (
-                <option key={r.id} value={r.id}>
+                <SelectItem key={r.id} value={r.id}>
                   {r.name}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="block space-y-1">
             <span className="text-muted-foreground">Who</span>
@@ -347,15 +349,14 @@ export function PoliciesPage(_props: { repo: Repo }) {
           </label>
           <label className="block space-y-1">
             <span className="text-muted-foreground">Ends after</span>
-            <select
+            <Select
               value={draft.days}
-              onChange={(e) => setDraft({ ...draft, days: e.target.value })}
-              className="h-9 w-full rounded-lg border bg-background px-2"
+              onValueChange={(v) => setDraft({ ...draft, days: v })}
             >
-              <option value="1">1 day</option>
-              <option value="7">7 days</option>
-              <option value="30">30 days</option>
-            </select>
+              <SelectItem value="1">1 day</SelectItem>
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
+            </Select>
           </label>
         </div>
         <div className="flex justify-end gap-2">

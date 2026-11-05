@@ -14,6 +14,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { Provider } from '~/mock/extra'
+import type { AuthUser } from '~/lib/auth/client'
+import { RequireAuth } from '~/components/forge/auth'
 import { Chip, SectionLabel, SourceBadge } from '~/components/forge/bits'
 import { BrandLogo } from '~/components/brand'
 import { TargetPicker } from '~/components/forge/download-button'
@@ -22,6 +24,7 @@ import { IntegrationsPanel } from '~/components/forge/integrations-panel'
 import { Toggle } from '~/components/forge/repo-pages'
 import { ContributionGraph } from '~/components/forge/repo-shell'
 import { Button } from '~/components/ui/button'
+import { authClient } from '~/lib/auth/client'
 import { repos } from '~/mock/data'
 import { imports, providers } from '~/mock/extra'
 
@@ -39,7 +42,11 @@ type SectionId = (typeof sections)[number][0]
 
 export const Route = createFileRoute('/settings/$section')({
   head: () => ({ meta: [{ title: 'Settings · source.code' }] }),
-  component: Settings,
+  component: () => (
+    <RequireAuth>
+      <Settings />
+    </RequireAuth>
+  ),
 })
 
 function Settings() {
@@ -136,18 +143,26 @@ function Card({
 function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string
   hint?: string
+  error?: string | null
   children: React.ReactNode
 }) {
   return (
     <label className="block space-y-1.5 text-sm">
       <span className="font-medium">{label}</span>
       {children}
-      {hint && (
-        <span className="block text-xs text-muted-foreground">{hint}</span>
+      {error ? (
+        <span role="alert" className="block text-xs text-danger">
+          {error}
+        </span>
+      ) : (
+        hint && (
+          <span className="block text-xs text-muted-foreground">{hint}</span>
+        )
       )}
     </label>
   )
@@ -158,12 +173,54 @@ const input =
 
 // ---------------------------------------------------------------------------
 function ProfileSettings() {
+  const { data: session } = authClient.useSession()
+  // The route is behind RequireAuth, so there is always a person here.
+  if (!session) return null
+  return <ProfileForm user={session.user} />
+}
+
+type Problem = { field: 'name' | 'email' | 'handle'; message: string }
+const problemField: Record<string, Problem['field']> = {
+  INVALID_NAME: 'name',
+  INVALID_EMAIL: 'email',
+  INVALID_ADDRESS: 'handle',
+  ADDRESS_TAKEN: 'handle',
+}
+
+function ProfileForm({ user }: { user: AuthUser }) {
   const [saved, setSaved] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [name, setName] = React.useState(user.name)
+  const [email, setEmail] = React.useState(user.email)
+  const [address, setAddress] = React.useState(user.handle)
+  const [problem, setProblem] = React.useState<Problem | null>(null)
+  const emailChanged = email.trim().toLowerCase() !== user.email
+
+  const save = async () => {
+    setSaving(true)
+    setProblem(null)
+    const { error } = await authClient.updateUser({
+      name,
+      email,
+      handle: address,
+    })
+    setSaving(false)
+    if (error) {
+      setProblem({
+        field: problemField[error.code] ?? 'name',
+        message: error.message,
+      })
+      return
+    }
+    setSaved(true)
+  }
   const mine = repos.filter((r) => r.owner === 'dana')
   const [pinned, setPinned] = React.useState<Set<string>>(
     new Set(mine.map((r) => r.name)),
   )
   const touch = () => setSaved(false)
+  const errorOf = (f: Problem['field']) =>
+    problem?.field === f ? problem.message : null
   return (
     <div className="max-w-2xl">
       <Header id="profile" title="Profile">
@@ -171,22 +228,66 @@ function ProfileSettings() {
       </Header>
       <div className="space-y-6">
         <Card>
-          <Field label="Display name">
+          <Field
+            label="Full name"
+            hint="What people see on your page. Companies get their own page, so this is always a person's name."
+            error={errorOf('name')}
+          >
             <input
-              defaultValue="Dana Okafor"
-              onChange={touch}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                touch()
+              }}
+              autoComplete="name"
               className={input}
             />
           </Field>
           <Field
-            label="Handle"
-            hint="Your handle is part of every URL, so it cannot be changed here."
+            label="Email"
+            hint={
+              emailChanged
+                ? 'We will send a link to the new address. It changes once you open it.'
+                : 'Where we send sign-in and security messages. Never shown on your page.'
+            }
+            error={errorOf('email')}
           >
             <input
-              defaultValue="dana"
-              disabled
-              className={cn(input, 'font-mono')}
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                touch()
+              }}
+              autoComplete="email"
+              className={input}
             />
+          </Field>
+          <Field
+            label="Address"
+            hint="Your page and every project link start with it. If you change it, old links keep working and redirect to the new one."
+            error={errorOf('handle')}
+          >
+            <span className="relative block">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-sm text-muted-foreground"
+              >
+                source.code/
+              </span>
+              <input
+                value={address}
+                onChange={(e) => {
+                  setAddress(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                  )
+                  touch()
+                }}
+                autoCapitalize="none"
+                spellCheck={false}
+                className={cn(input, 'pl-[calc(12ch+1rem)] font-mono')}
+              />
+            </span>
           </Field>
           <Field label="Bio" hint="One line. Shown under your name.">
             <textarea
@@ -196,7 +297,7 @@ function ProfileSettings() {
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Location">
               <input defaultValue="Lagos" onChange={touch} className={input} />
             </Field>
@@ -241,8 +342,13 @@ function ProfileSettings() {
         </Card>
         <div className="flex items-center justify-end gap-3">
           {saved && <span className="text-sm text-success">Saved</span>}
-          <Button variant="brand" size="lg" onClick={() => setSaved(true)}>
-            Save profile
+          <Button
+            variant="brand"
+            size="lg"
+            disabled={saving}
+            onClick={() => void save()}
+          >
+            {saving ? 'Saving' : 'Save profile'}
           </Button>
         </div>
       </div>
@@ -674,6 +780,14 @@ function Privacy() {
     <div className="max-w-2xl">
       <Header id="privacy" title="Privacy">
         You decide what your profile shows. Linked accounts stay linked quietly.
+        How we handle your data is in the{' '}
+        <Link
+          to="/privacy"
+          className="underline decoration-border underline-offset-4 hover:text-foreground"
+        >
+          privacy policy
+        </Link>
+        .
       </Header>
       <div className="space-y-6">
         <Card>

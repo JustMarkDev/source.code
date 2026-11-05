@@ -9,6 +9,7 @@ import { RootProvider } from 'fumadocs-ui/provider/tanstack'
 import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import { SiteFooter, SiteHeader } from '~/components/forge/chrome'
+import { NotFoundPage } from '~/components/forge/not-found'
 import {
   MotionProvider,
   PageTransition,
@@ -56,7 +57,7 @@ export const Route = createRootRouteWithContext<{
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  notFoundComponent: () => <div>Route not found</div>,
+  notFoundComponent: () => <NotFoundPage />,
   component: RootComponent,
 })
 
@@ -73,6 +74,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const docs = useRouterState({
     select: (s) => s.location.pathname.startsWith('/docs'),
   })
+  // Account screens are one card on a quiet page, with no header or footer.
+  const bare = useRouterState({
+    select: (s) =>
+      ['/sign-in', '/sign-up', '/forgot-password', '/welcome'].includes(
+        s.location.pathname,
+      ),
+  })
   // The leaf route, not the URL: moving between tabs of one route keeps the
   // page mounted, and the page animates its own tab content.
   const routeId = useRouterState({ select: (s) => s.matches.at(-1)?.routeId })
@@ -83,6 +91,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="flex min-h-dvh flex-col">
+        {!docs && (
+          <a href="#main" className="skip-link">
+            Skip to content
+          </a>
+        )}
         <RootProvider
           theme={{ defaultTheme: 'system', enableSystem: true }}
           // The app has its own palette on ⌘K. Fumadocs' search would open a
@@ -93,10 +106,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <RouteProgress />
             {docs ? (
               children
+            ) : bare ? (
+              <main id="main" tabIndex={-1} className="flex-1 outline-none">
+                <PageTransition trigger={routeId}>{children}</PageTransition>
+              </main>
             ) : (
               <>
                 <SiteHeader />
-                <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+                <main
+                  id="main"
+                  tabIndex={-1}
+                  className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 outline-none"
+                >
                   <PageTransition trigger={routeId}>{children}</PageTransition>
                 </main>
                 <SiteFooter />

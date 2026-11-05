@@ -4,7 +4,8 @@ import { CheckIcon } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { BrandId } from '~/components/brand'
 import type { Plan } from '~/lib/pricing'
-import { brandName } from '~/components/brand'
+import { BrandLogo, brandName } from '~/components/brand'
+import { ContactSales } from '~/components/forge/contact-sales'
 import { Button } from '~/components/ui/button'
 import { Segmented } from '~/components/ui/tabs'
 import { overage, perMonth, perYear, plans, trial } from '~/lib/pricing'
@@ -89,6 +90,10 @@ function Pricing() {
           Plans cover storage, transfer, history and seats. Bring your own
           runner, model and agent. We never resell compute or tokens.
         </p>
+        <p className="text-sm text-muted-foreground">
+          Just here to download software? That is free, and never needs an
+          account or a plan.
+        </p>
         <div className="pt-2">
           <Segmented
             label="Billing"
@@ -102,7 +107,7 @@ function Pricing() {
         </div>
       </header>
 
-      <section className="grid gap-5 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
         {plans.map((p) => (
           <article
             key={p.id}
@@ -166,7 +171,7 @@ function Pricing() {
       </p>
 
       <section className="surface rounded-3xl border bg-card p-8 md:p-10">
-        <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_2fr]">
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold tracking-tight">
               Enterprise
@@ -176,10 +181,10 @@ function Pricing() {
               call.
             </p>
             <div className="pt-2">
-              <Button>Talk to us</Button>
+              <ContactSales>Talk to us</ContactSales>
             </div>
           </div>
-          <ul className="grid gap-x-6 gap-y-2.5 text-sm text-muted-foreground sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm text-muted-foreground sm:grid-cols-2">
             {[
               'SAML and SCIM',
               'Audit log export',
@@ -207,7 +212,7 @@ function Pricing() {
             anything that speaks to a git host can join it.
           </p>
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           {own.map((o) => (
             <div
               key={o.title}
@@ -221,8 +226,9 @@ function Pricing() {
                 {o.names.map((id) => (
                   <li
                     key={id}
-                    className="well rounded-lg bg-muted/70 px-2.5 py-1 text-sm"
+                    className="well inline-flex items-center gap-1.5 rounded-lg bg-muted/70 px-2.5 py-1 text-sm"
                   >
+                    <BrandLogo id={id} className="size-4" />
                     {brandName(id)}
                   </li>
                 ))}

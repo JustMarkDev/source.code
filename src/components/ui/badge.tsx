@@ -8,7 +8,7 @@ import type { VariantProps } from 'class-variance-authority'
  * no `dark:` variants: the colours flip with the theme.
  */
 const badgeVariants = cva(
-  'inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium whitespace-nowrap [&_svg]:size-3',
+  'inline-flex h-[22px] shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-medium whitespace-nowrap [&_svg]:size-3',
   {
     variants: {
       tone: {

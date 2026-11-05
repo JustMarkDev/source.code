@@ -13,7 +13,8 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Callout } from '~/components/ui/callout'
 import { Modal } from '~/components/ui/dialog'
-import { Field, Select } from '~/components/ui/input'
+import { Field } from '~/components/ui/input'
+import { Select, SelectItem } from '~/components/ui/select'
 import { envVars } from '~/mock/platform'
 
 type Grant = {
@@ -89,10 +90,10 @@ function NewGrant({
     >
       <div className="space-y-4">
         <Field label="Agent">
-          <Select value={agent} onChange={(e) => setAgent(e.target.value)}>
-            <option>fix-agent</option>
-            <option>claude via T3 Code</option>
-            <option>review-bot</option>
+          <Select value={agent} onValueChange={(v) => setAgent(v)}>
+            <SelectItem>fix-agent</SelectItem>
+            <SelectItem>claude via T3 Code</SelectItem>
+            <SelectItem>review-bot</SelectItem>
           </Select>
         </Field>
         <Field
@@ -101,13 +102,13 @@ function NewGrant({
         >
           <Select
             value={env}
-            onChange={(e) =>
-              setEnv(e.target.value === 'preview' ? 'preview' : 'development')
+            onValueChange={(v) =>
+              setEnv(v === 'preview' ? 'preview' : 'development')
             }
           >
-            <option value="development">development</option>
-            <option value="preview">preview</option>
-            <option disabled>production (not available)</option>
+            <SelectItem value="development">development</SelectItem>
+            <SelectItem value="preview">preview</SelectItem>
+            <SelectItem disabled>production (not available)</SelectItem>
           </Select>
         </Field>
         <fieldset className="space-y-2">
@@ -127,18 +128,12 @@ function NewGrant({
         <Field label="Lasts">
           <Select
             value={ttl}
-            onChange={(e) =>
-              setTtl(
-                e.target.value === '15m' || e.target.value === '8h'
-                  ? e.target.value
-                  : '1h',
-              )
-            }
+            onValueChange={(v) => setTtl(v === '15m' || v === '8h' ? v : '1h')}
           >
             {Object.entries(duration).map(([k, v]) => (
-              <option key={k} value={k}>
+              <SelectItem key={k} value={k}>
                 {v}
-              </option>
+              </SelectItem>
             ))}
           </Select>
         </Field>
@@ -285,14 +280,17 @@ export function AgentAccess({
         )}
       </Panel>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Panel className="space-y-3 p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <LockClosedIcon className="size-4" />
             What an agent does
           </div>
           <CopyField value="sx env run --env development -- bun test" />
-          <pre className="well overflow-x-auto rounded-xl bg-muted/60 p-3 font-mono text-xs leading-relaxed">
+          <pre
+            tabIndex={0}
+            className="well overflow-x-auto rounded-xl bg-muted/60 p-3 font-mono text-xs leading-relaxed"
+          >
             {`connecting to «DATABASE_URL»
 18 passed
 (2 variables injected, 1 scrubbed)`}

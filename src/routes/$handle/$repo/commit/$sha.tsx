@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { PatchDiff } from '@pierre/diffs/react'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { CommitView } from '~/components/forge/repo-history'
 import { RepoHeader } from '~/components/forge/repo-shell'
 import { findRepo } from '~/mock/data'
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/$handle/$repo/commit/$sha')({
 
 function CommitPage() {
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const { handle, repo } = Route.useParams()
   const data = Route.useLoaderData()
   const { sha } = Route.useParams()
@@ -54,7 +56,8 @@ function CommitPage() {
           <PatchDiff
             patch={f.raw}
             options={{
-              theme: dark ? 'pierre-dark' : 'pierre-light',
+              theme: codeTheme(dark),
+              overflow,
               diffStyle: 'unified',
             }}
           />

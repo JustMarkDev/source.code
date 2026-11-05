@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-router'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 import { File } from '@pierre/diffs/react'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { getRepoTree } from '~/git/server'
 import { useIsDark } from '~/lib/theme'
 import { findRepo } from '~/mock/data'
@@ -32,6 +33,7 @@ function RepoPage() {
   const { paths, commits, file } = Route.useLoaderData()
   const navigate = useNavigate({ from: Route.fullPath })
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const { model } = useFileTree({
     paths,
     initialExpansion: 'open',
@@ -53,14 +55,11 @@ function RepoPage() {
         </Link>
         /<b>{repo}</b>
       </h1>
-      <div className="grid gap-6 md:grid-cols-[240px_1fr]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
         <FileTree model={model} className="block h-96 rounded-lg border" />
         <div className="min-w-0 overflow-hidden rounded-lg border">
           {file ? (
-            <File
-              file={file}
-              options={{ theme: dark ? 'pierre-dark' : 'pierre-light' }}
-            />
+            <File file={file} options={{ theme: codeTheme(dark), overflow }} />
           ) : (
             <p className="p-4">Empty repository</p>
           )}

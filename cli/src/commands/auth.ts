@@ -1,14 +1,17 @@
 import { SxError, exit, print } from '../output'
+import { activeAccount } from '../account'
 import { resolve } from '../config'
 import type { Command } from './types'
 
-export const auth: Command = ({ rest: [sub = 'status'] }, ctx) => {
+export const auth: Command = ({ rest: [sub = 'status'], flags }, ctx) => {
   const token = process.env.SX_TOKEN
   if (sub === 'status') {
     const data = {
       host: resolve('host').value,
       authenticated: !!token,
       via: token ? 'SX_TOKEN' : null,
+      // Who the token acts as, once signed in. `sx account list` shows the others.
+      account: token ? activeAccount(flags).handle : null,
     }
     print(ctx, data, () =>
       token

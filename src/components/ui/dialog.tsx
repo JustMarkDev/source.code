@@ -44,7 +44,7 @@ function Modal({
             </div>
             <Dialog.Close
               aria-label="Close"
-              className="-mt-1 -mr-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="-mt-2 -mr-2.5 flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <XMarkIcon className="size-4" />
             </Dialog.Close>

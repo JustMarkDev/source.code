@@ -56,7 +56,11 @@ export function CodeActions({
         </Button>
       </Tip>
       <ClonePopover repo={repo} />
-      {release && <DownloadButton release={release} />}
+      {release && (
+        <div className="max-sm:order-first max-sm:basis-full">
+          <DownloadButton release={release} />
+        </div>
+      )}
     </>
   )
 }
@@ -447,7 +451,7 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
           </section>
           <section id="files" className="scroll-mt-20 space-y-3">
             <SectionLabel>All files</SectionLabel>
-            <Panel className="overflow-x-auto">
+            <Panel className="overflow-x-auto" tabIndex={0}>
               <table className="w-full text-left text-sm">
                 <thead className="border-b text-xs text-muted-foreground">
                   <tr>
@@ -455,7 +459,9 @@ export function ReleasesPage({ repo }: { repo: Repo }) {
                     <th className="px-4 py-2 font-medium">File</th>
                     <th className="px-4 py-2 font-medium">Size</th>
                     <th className="px-4 py-2 font-medium">Downloads</th>
-                    <th className="px-4 py-2" />
+                    <th className="relative px-4 py-2">
+                      <span className="sr-only">Download</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">

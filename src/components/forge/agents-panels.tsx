@@ -21,6 +21,7 @@ import { Chip, Modal, Panel, SectionLabel } from '~/components/forge/bits'
 import { CopyField } from '~/components/forge/repo-shell'
 import { Toggle } from '~/components/forge/repo-pages'
 import { Button } from '~/components/ui/button'
+import { Select, SelectItem } from '~/components/ui/select'
 import {
   automations as initialAutomations,
   bots as initialBots,
@@ -70,29 +71,24 @@ function NewAutomation({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block space-y-1">
             <span className="text-muted-foreground">Runs as</span>
-            <select
-              value={bot}
-              onChange={(e) => setBot(e.target.value)}
-              className="h-9 w-full rounded-lg border bg-background px-2"
-            >
+            <Select value={bot} onValueChange={(v) => setBot(v)}>
               {initialBots.map((b) => (
-                <option key={b.slug} value={b.slug}>
+                <SelectItem key={b.slug} value={b.slug}>
                   {b.name}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="block space-y-1">
             <span className="text-muted-foreground">Runs on</span>
-            <select
+            <Select
               value={target}
-              onChange={(e) => setTarget(e.target.value as Target)}
-              className="h-9 w-full rounded-lg border bg-background px-2"
+              onValueChange={(v) => setTarget(v as Target)}
             >
-              <option>T3 Code</option>
-              <option>boat.dev</option>
-              <option>E2B</option>
-            </select>
+              <SelectItem>T3 Code</SelectItem>
+              <SelectItem>boat.dev</SelectItem>
+              <SelectItem>E2B</SelectItem>
+            </Select>
           </label>
         </div>
         <div className="space-y-2">
@@ -312,11 +308,11 @@ function BotCard({
                   })
                 }}
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[11px] transition-colors',
+                  'inline-flex min-h-7 items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-xs transition-colors hover:border-foreground/40',
                   on
                     ? 'border-foreground bg-muted font-medium'
                     : 'text-muted-foreground',
-                  locked && 'opacity-60',
+                  locked && 'border-dashed',
                 )}
               >
                 {locked && <LockClosedIcon className="size-3" />}
@@ -422,7 +418,10 @@ export function RunRow({ r }: { r: Run }) {
           <p className="text-sm">
             <span className="text-muted-foreground">Result:</span> {r.result}
           </p>
-          <pre className="overflow-x-auto rounded-lg border bg-background p-3 font-mono text-xs leading-6">
+          <pre
+            tabIndex={0}
+            className="overflow-x-auto rounded-lg border bg-background p-3 font-mono text-xs leading-6"
+          >
             {r.log
               .map((l, i) => `${String(i + 1).padStart(2, '0')}  ${l}`)
               .join('\n')}

@@ -1,0 +1,43 @@
+---
+icon: UsersIcon
+title: Accounts and organizations
+description: People, organizations, one login for all of them, and how to switch.
+---
+
+Everything on source.code belongs to an **account**. An account is either a **person** or an **organization**, and both live in one namespace: `source.code/<address>`. A name can never mean two things.
+
+| Detail  | Person                 | Organization                        |
+| ------- | ---------------------- | ----------------------------------- |
+| Has     | A full name            | A name (a company, team or project) |
+| Owns    | Their own repositories | Its repositories, whoever made them |
+| Made by | Signing up             | A signed-in person, afterwards      |
+| Members | Just them              | People, each with a role            |
+
+## One login, any account
+
+You sign in once, as yourself. That login can act as your own account and as every organization you belong to, one at a time. Nobody needs a second login, a second password or a second token, and switching is instant.
+
+- **On the web**, the account menu in the header lists them. Pick one and the dashboard, the new repository form and the settings follow it. `⌘K` has "Switch to ..." too.
+- **In the CLI**, `sx account switch northwind`, or `-A northwind` for a single command. See [Accounts in the CLI](/docs/cli/authentication#accounts).
+
+## Creating an organization
+
+Any signed-in person can create one from the account menu ("New organization"). The creator becomes its first **owner**, and the organization, not the person, owns what is created in it. If the creator leaves, the repositories stay.
+
+## Roles
+
+| Role   | Can do                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------ |
+| Owner  | Everything: roles, the address, inviting owners. An organization always has at least one.  |
+| Admin  | Edit the organization, invite people, remove members. Cannot touch owners or other admins. |
+| Member | Work in its repositories. Cannot create repositories or manage people.                     |
+
+An organization always needs an owner. The last owner cannot be demoted, removed or leave: make someone else an owner first, then step down. That is also how you hand an organization over.
+
+## Addresses
+
+A new account gets a generated address, like `quiet-otter-482`. It says nothing about who or what the account is, so nobody can sign up as someone else's name or a company's. People see names, not addresses: a repository shows its owner's full name or the organization's name, and the address appears small on the profile with a button to copy it.
+
+You can change it in settings. The old address keeps working: links to it redirect to the new one, and nobody else can take it. Taking back your own old address ends its redirect.
+
+A few names are never available, because they are pages or belong to us: `admin`, `settings`, `organizations`, `new`, `docs` and similar.

@@ -69,7 +69,7 @@ export function AboutPanel({
           <button
             type="button"
             onClick={onOpenLicense}
-            className="text-left hover:text-foreground"
+            className="-my-1 py-1 text-left hover:text-foreground"
           >
             <span className="text-foreground">{repo.license} license</span>{' '}
             <span className="text-xs">from LICENSE</span>
@@ -81,7 +81,7 @@ export function AboutPanel({
             <Link
               to="/$handle/$repo/$tab"
               params={{ handle: repo.owner, repo: repo.name, tab: 'releases' }}
-              className="text-foreground hover:underline"
+              className="-my-1 py-1 text-foreground hover:underline"
             >
               {release.version}
             </Link>
@@ -93,7 +93,7 @@ export function AboutPanel({
           <Link
             to="/$handle/$repo/$tab"
             params={{ handle: repo.owner, repo: repo.name, tab: 'insights' }}
-            className="hover:text-foreground"
+            className="-my-1 py-1 hover:text-foreground"
           >
             21 contributors
           </Link>

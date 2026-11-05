@@ -17,6 +17,7 @@ import {
   ServerIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UsersIcon,
   VariableIcon,
 } from '@heroicons/react/24/outline'
 import { defineDocs } from 'fumadocs-mdx/macro'
@@ -44,6 +45,7 @@ const icons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   ServerIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UsersIcon,
   VariableIcon,
 }
 

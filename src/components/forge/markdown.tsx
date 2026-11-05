@@ -44,7 +44,8 @@ function Heading({
       : level === 2
         ? 'mt-10 border-b pb-2 text-xl font-semibold tracking-tight'
         : 'mt-7 text-base font-semibold'
-  const Tag = `h${level}` as const
+  // The repository page already has the h1. A README's # is the next level down.
+  const Tag = (['h2', 'h3', 'h4'] as const)[level - 1]
   return (
     <Tag id={id} className={cn('group scroll-mt-24', size)}>
       {children}
@@ -52,7 +53,7 @@ function Heading({
         <a
           href={`#${id}`}
           aria-label="Link to this section"
-          className="ml-2 inline-flex align-middle text-muted-foreground/0 transition-colors group-hover:text-muted-foreground"
+          className="ml-1 inline-flex size-6 items-center justify-center align-middle text-muted-foreground/0 transition-colors group-hover:text-muted-foreground focus-visible:text-muted-foreground"
         >
           <LinkIcon className="size-4" />
         </a>
@@ -74,7 +75,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1500)
           }}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 hover:bg-muted hover:text-foreground"
         >
           {copied ? (
             <CheckIcon className="size-3.5 text-success" />
@@ -84,7 +85,10 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed">
+      <pre
+        tabIndex={0}
+        className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed"
+      >
         {code}
       </pre>
     </div>
@@ -129,6 +133,8 @@ const components: Components = {
       type="checkbox"
       checked={checked}
       readOnly
+      tabIndex={-1}
+      aria-label={checked ? 'Done' : 'Not done'}
       className="mr-2 size-4 translate-y-0.5 accent-[var(--brand-ink)]"
     />
   ),
@@ -142,7 +148,10 @@ const components: Components = {
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
   table: ({ children }) => (
-    <div className="surface my-5 overflow-x-auto rounded-xl border bg-card">
+    <div
+      tabIndex={0}
+      className="surface my-5 overflow-x-auto rounded-xl border bg-card"
+    >
       <table className="w-full border-collapse text-left text-[14px]">
         {children}
       </table>

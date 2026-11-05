@@ -1,5 +1,9 @@
 import * as React from 'react'
-import { TagIcon } from '@heroicons/react/24/outline'
+import {
+  CheckIcon,
+  ClipboardDocumentIcon,
+  TagIcon,
+} from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import type { BadgeTone } from '~/components/ui/badge'
 import type { Source } from '~/mock/data'
@@ -19,7 +23,7 @@ export function SourceBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground',
+        'inline-flex items-center gap-1.5 rounded-full border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground',
         className,
       )}
     >
@@ -99,7 +103,7 @@ export function Avatar({
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+    <kbd className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
       {children}
     </kbd>
   )
@@ -133,7 +137,7 @@ export function RefPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 font-mono text-[11px]',
+        'inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 font-mono text-xs',
         tone === 'brand'
           ? 'bg-brand/30 text-foreground'
           : 'text-muted-foreground',
@@ -150,13 +154,15 @@ export function Panel({
   className,
   children,
   as: Component = 'section',
-}: {
-  className?: string
-  children: React.ReactNode
+  ...props
+}: Omit<React.ComponentProps<'section'>, 'ref'> & {
   as?: 'section' | 'div' | 'article' | 'aside'
 }) {
   return (
-    <Component className={cn('surface rounded-2xl border bg-card', className)}>
+    <Component
+      className={cn('surface rounded-2xl border bg-card', className)}
+      {...props}
+    >
       {children}
     </Component>
   )
@@ -225,3 +231,28 @@ export function Seg<T extends string>({
 }
 
 export { Modal } from '~/components/ui/dialog'
+
+/** The address, small and quiet under the name. One click copies it. */
+export function CopyAddress({ handle }: { handle: string }) {
+  const [copied, setCopied] = React.useState(false)
+  return (
+    <button
+      type="button"
+      aria-label={copied ? 'Copied' : `Copy address ${handle}`}
+      onClick={() => {
+        void navigator.clipboard.writeText(handle).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1500)
+        })
+      }}
+      className="group -my-1 mt-0.5 inline-flex items-center gap-1.5 rounded-md py-1 font-mono text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      @{handle}
+      {copied ? (
+        <CheckIcon className="size-3.5 text-success" />
+      ) : (
+        <ClipboardDocumentIcon className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+      )}
+    </button>
+  )
+}

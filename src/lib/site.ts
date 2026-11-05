@@ -4,7 +4,6 @@
  */
 export const socials = [
   { id: 'x', label: 'X', href: 'https://x.com' },
-  { id: 'bluesky', label: 'Bluesky', href: 'https://bsky.app' },
   { id: 'discord', label: 'Discord', href: 'https://discord.com' },
   { id: 'youtube', label: 'YouTube', href: 'https://youtube.com' },
   { id: 'github', label: 'GitHub', href: 'https://github.com' },

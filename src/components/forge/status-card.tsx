@@ -80,7 +80,8 @@ export function StatusCard({
         ) : (
           <>
             <Button
-              variant="brand"
+              // Lime means "you can do this now". Until then it is quiet.
+              variant={canLand ? 'brand' : 'outline'}
               size="lg"
               className="w-full"
               disabled={!canLand || landing === 'landing'}

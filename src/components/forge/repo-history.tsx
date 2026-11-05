@@ -12,17 +12,19 @@ import {
 import { Avatar } from './bits'
 import type { Committer } from '~/mock/commits'
 import type { Repo } from '~/mock/data'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { GitBranchIcon } from '~/components/icons'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Input, Select } from '~/components/ui/input'
+import { Input } from '~/components/ui/input'
+import { Select, SelectItem } from '~/components/ui/select'
 import { commitsFor, committers, findCommit } from '~/mock/commits'
 import { refsPatch, refsTestPatch } from '~/mock/platform'
 import { useIsDark } from '~/lib/theme'
 
 export function Who({
   who,
-  className = 'size-7 text-[11px]',
+  className = 'size-7 text-xs',
 }: {
   who: Committer
   className?: string
@@ -85,15 +87,15 @@ export function HistoryView({ repo }: { repo: Repo }) {
         </div>
         <Select
           value={author}
-          onChange={(e) => setAuthor(e.target.value)}
+          onValueChange={(v) => setAuthor(v)}
           aria-label="Author"
           className="w-52"
         >
-          <option value="">Everyone</option>
+          <SelectItem value="">Everyone</SelectItem>
           {committers.map((c) => (
-            <option key={c.name} value={c.name}>
+            <SelectItem key={c.name} value={c.name}>
               {c.name}
-            </option>
+            </SelectItem>
           ))}
         </Select>
         <span className="ml-auto text-sm text-muted-foreground">
@@ -181,6 +183,7 @@ export function HistoryView({ repo }: { repo: Repo }) {
 /** One commit: who, when, whether it passed, what changed. The diff is a sample. */
 export function CommitView({ repo, sha }: { repo: Repo; sha: string }) {
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const c = findCommit(repo, sha)
   const [copied, setCopied] = React.useState(false)
   if (!c)
@@ -270,7 +273,8 @@ export function CommitView({ repo, sha }: { repo: Repo; sha: string }) {
           <PatchDiff
             patch={raw}
             options={{
-              theme: dark ? 'pierre-dark' : 'pierre-light',
+              theme: codeTheme(dark),
+              overflow,
               diffStyle: 'unified',
             }}
           />

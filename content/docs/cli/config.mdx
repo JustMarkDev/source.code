@@ -26,22 +26,24 @@ sx config path
 
 ## All settings
 
-| Key              | Default               | Environment         | Meaning                                              |
-| ---------------- | --------------------- | ------------------- | ---------------------------------------------------- |
-| `host`           | `https://source.code` | `SX_HOST`           | The server to talk to                                |
-| `output`         | `auto`                | `SX_OUTPUT`         | `auto`, `json` or `text`                             |
-| `agent.target`   | `t3`                  | `SX_AGENT_TARGET`   | Where `sx agent start` points: `t3`, `boat` or `e2b` |
-| `agent.runtime`  | `claude`              | `SX_AGENT_RUNTIME`  | The agent runtime named in the prompt                |
-| `change.base`    | `main`                | `SX_CHANGE_BASE`    | Base branch for new changes                          |
-| `change.draft`   | `false`               | `SX_CHANGE_DRAFT`   | Create changes as drafts                             |
-| `clone.protocol` | `ssh`                 | `SX_CLONE_PROTOCOL` | `ssh` or `https` for `repo clone`                    |
+| Key              | Default               | Environment         | Meaning                                                 |
+| ---------------- | --------------------- | ------------------- | ------------------------------------------------------- |
+| `host`           | `https://source.code` | `SX_HOST`           | The server to talk to                                   |
+| `account`        | (you)                 | `SX_ACCOUNT`        | The account commands act as. Set by `sx account switch` |
+| `output`         | `auto`                | `SX_OUTPUT`         | `auto`, `json` or `text`                                |
+| `agent.target`   | `t3`                  | `SX_AGENT_TARGET`   | Where `sx agent start` points: `t3`, `boat` or `e2b`    |
+| `agent.runtime`  | `claude`              | `SX_AGENT_RUNTIME`  | The agent runtime named in the prompt                   |
+| `change.base`    | `main`                | `SX_CHANGE_BASE`    | Base branch for new changes                             |
+| `change.draft`   | `false`               | `SX_CHANGE_DRAFT`   | Create changes as drafts                                |
+| `clone.protocol` | `ssh`                 | `SX_CLONE_PROTOCOL` | `ssh` or `https` for `repo clone`                       |
 
 ## Other environment variables
 
-| Variable        | Meaning                                    |
-| --------------- | ------------------------------------------ |
-| `SX_TOKEN`      | A token for signing in                     |
-| `SX_REPO`       | The repository when you are not in a clone |
-| `SX_CONFIG_DIR` | Where the settings file lives              |
-| `SX_DEBUG`      | Print stack traces                         |
-| `NO_COLOR`      | Turn off colour                            |
+| Variable        | Meaning                                        |
+| --------------- | ---------------------------------------------- |
+| `SX_TOKEN`      | A token for signing in                         |
+| `SX_REPO`       | The repository when you are not in a clone     |
+| `SX_ACCOUNT`    | The account to act as. Wins over the saved one |
+| `SX_CONFIG_DIR` | Where the settings file lives                  |
+| `SX_DEBUG`      | Print stack traces                             |
+| `NO_COLOR`      | Turn off colour                                |

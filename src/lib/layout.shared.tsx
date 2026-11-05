@@ -5,7 +5,7 @@ export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
       title: (
-        <span className="font-mono text-sm font-semibold tracking-tight">
+        <span className="-my-1.5 block py-1.5 font-mono text-sm font-semibold tracking-tight">
           source.code
         </span>
       ),

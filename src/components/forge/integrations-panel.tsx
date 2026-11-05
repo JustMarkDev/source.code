@@ -12,9 +12,10 @@ import type { Integration, IntegrationGroup } from '~/mock/hub'
 import { BrandLogo, brandName } from '~/components/brand'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Field, Input, Select } from '~/components/ui/input'
+import { Field, Input } from '~/components/ui/input'
 import { Switch } from '~/components/ui/switch'
 import { StateTabs } from '~/components/ui/tabs'
+import { Select, SelectItem } from '~/components/ui/select'
 import { catalog, connections, groups, useConnections } from '~/mock/hub'
 
 const nameOf = (i: Integration) =>
@@ -36,25 +37,25 @@ function Logo({ i }: { i: Integration }) {
 function RepoSettings({ group }: { group: IntegrationGroup }) {
   if (group === 'review')
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="A high-severity finding">
           <Select defaultValue="block">
-            <option value="block">Blocks landing until handled</option>
-            <option value="warn">Warns, never blocks</option>
+            <SelectItem value="block">Blocks landing until handled</SelectItem>
+            <SelectItem value="warn">Warns, never blocks</SelectItem>
           </Select>
         </Field>
         <Field label="Review">
           <Select defaultValue="all">
-            <option value="all">Every change</option>
-            <option value="ready">Only when marked ready</option>
-            <option value="mention">Only when mentioned</option>
+            <SelectItem value="all">Every change</SelectItem>
+            <SelectItem value="ready">Only when marked ready</SelectItem>
+            <SelectItem value="mention">Only when mentioned</SelectItem>
           </Select>
         </Field>
       </div>
     )
   if (group === 'runners')
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field
           label="Runs jobs labelled"
           hint="Workflows that ask for this label run here."
@@ -68,12 +69,14 @@ function RepoSettings({ group }: { group: IntegrationGroup }) {
     )
   if (group === 'environments')
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Access an agent gets">
           <Select defaultValue="supervised">
-            <option value="read">Read only</option>
-            <option value="supervised">Supervised: you approve actions</option>
-            <option value="full">Full access</option>
+            <SelectItem value="read">Read only</SelectItem>
+            <SelectItem value="supervised">
+              Supervised: you approve actions
+            </SelectItem>
+            <SelectItem value="full">Full access</SelectItem>
           </Select>
         </Field>
         <Field label="Spending limit per task">
@@ -83,25 +86,25 @@ function RepoSettings({ group }: { group: IntegrationGroup }) {
     )
   if (group === 'secrets')
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Schema file">
           <Input defaultValue=".env.schema" className="font-mono text-xs" />
         </Field>
         <Field label="Check on">
           <Select defaultValue="push">
-            <option value="push">Every push</option>
-            <option value="change">Every change</option>
+            <SelectItem value="push">Every push</SelectItem>
+            <SelectItem value="change">Every change</SelectItem>
           </Select>
         </Field>
       </div>
     )
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Move issues when">
         <Select defaultValue="land">
-          <option value="land">A change lands</option>
-          <option value="open">A change opens</option>
-          <option value="never">Never</option>
+          <SelectItem value="land">A change lands</SelectItem>
+          <SelectItem value="open">A change opens</SelectItem>
+          <SelectItem value="never">Never</SelectItem>
         </Select>
       </Field>
     </div>
@@ -347,7 +350,7 @@ export function IntegrationsPanel({ repo }: { repo?: string }) {
         return (
           <section key={g} className="space-y-2">
             <div>
-              <h3 className="text-sm font-medium">{groups[g].title}</h3>
+              <h2 className="text-sm font-medium">{groups[g].title}</h2>
               <p className="text-sm text-muted-foreground">{groups[g].blurb}</p>
             </div>
             <ul className="divide-y rounded-xl border bg-card">

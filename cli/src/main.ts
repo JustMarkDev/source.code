@@ -2,6 +2,7 @@
 import { has, parse } from './args'
 import { SxError, exit, fail, wantsJson } from './output'
 import { completions, groupHelp, topHelp, version } from './help'
+import { account } from './commands/account'
 import { agent } from './commands/agent'
 import { auth } from './commands/auth'
 import { change } from './commands/change'
@@ -27,6 +28,7 @@ const commands: Record<string, Command> = {
   agent,
   context,
   config,
+  account,
   auth,
   skill,
   mcp,

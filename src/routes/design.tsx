@@ -34,16 +34,18 @@ import {
 import { Sparkline } from '~/components/dither-kit'
 import { Kbd, LangDot, Tile } from '~/components/forge/bits'
 import { DeveloperRow, RepoCard, RepoRow } from '~/components/forge/repo-card'
+import { SoftwareCard } from '~/components/forge/software-card'
 import { CopyField } from '~/components/forge/repo-shell'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Callout } from '~/components/ui/callout'
 import { Modal } from '~/components/ui/dialog'
-import { Field, Input, Select, Textarea } from '~/components/ui/input'
+import { Field, Input, Textarea } from '~/components/ui/input'
 import { Dropdown, MenuItem, MenuSeparator } from '~/components/ui/menu'
 import { Switch, SwitchRow } from '~/components/ui/switch'
 import { Segmented, StateTabs } from '~/components/ui/tabs'
 import { Tip } from '~/components/ui/tooltip'
+import { Select, SelectItem } from '~/components/ui/select'
 import { developers, repos } from '~/mock/data'
 
 export const Route = createFileRoute('/design')({
@@ -55,6 +57,7 @@ const sections = [
   ['principles', 'Principles'],
   ['colour', 'Colour'],
   ['type', 'Type and shape'],
+  ['accessibility', 'Accessibility'],
   ['brand', 'Brand logos'],
   ['icons', 'Icons'],
   ['buttons', 'Buttons'],
@@ -185,9 +188,9 @@ function Design() {
         <Section
           id="principles"
           title="Principles"
-          note="Five rules that decide most design questions."
+          note="Seven rules that decide most design questions."
         >
-          <ol className="grid gap-4 sm:grid-cols-2">
+          <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
               [
                 'One next step',
@@ -208,6 +211,14 @@ function Design() {
               [
                 'Same everywhere',
                 'A thing you can connect, a thing you can toggle, a thing that failed: each looks the same on every page.',
+              ],
+              [
+                'Readable by everyone',
+                'Nothing under 12px, lines of about 68 characters, text at 4.5 to 1 contrast or better. Colour never carries meaning alone.',
+              ],
+              [
+                'Reachable any way',
+                'Every control works with a keyboard, shows one focus ring and sits in a target of at least 24px. A page never scrolls sideways on a phone.',
               ],
             ].map(([t, d], i) => (
               <li key={t} className="space-y-1 rounded-xl border bg-card p-4">
@@ -248,7 +259,7 @@ function Design() {
         <Section
           id="type"
           title="Type and shape"
-          note="Geist for text, Geist Mono for code, names and ids. Panels round to 12px, controls to 8px, badges to 6px."
+          note="Geist for text, Geist Mono for code, names and ids. Nothing is set below 12px. Panels round to 12px, controls to 8px, badges to 6px."
         >
           <div className="space-y-4 rounded-xl border bg-card p-5">
             <div className="text-2xl font-semibold tracking-tight">
@@ -264,8 +275,122 @@ function Design() {
             <p className="text-sm text-muted-foreground">
               Secondary text, 14, muted. Explains the thing above it.
             </p>
+            <p className="text-xs text-muted-foreground">
+              Caption, 12, the smallest size. Hints, timestamps, badges.
+            </p>
             <p className="font-mono text-xs">dana/gitfs · ch_7f3a · v1.4.0</p>
           </div>
+        </Section>
+
+        <Section
+          id="accessibility"
+          title="Accessibility"
+          note="The rules that make the product usable by a keyboard, a screen reader, a small screen and tired eyes. Most are enforced by the components, so a page gets them for free."
+        >
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <Specimen
+              label="Focus ring"
+              source="app.css, @layer base"
+              className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-5"
+            >
+              <Button className="ring-2 ring-ring ring-offset-2 ring-offset-background">
+                Focused
+              </Button>
+              <span className="max-w-[28ch] text-sm text-muted-foreground">
+                2px, offset 2px, the same on every control. A component that
+                draws its own ring turns this one off.
+              </span>
+            </Specimen>
+            <Specimen
+              label="Target size"
+              source="Button sizes"
+              className="flex flex-wrap items-end gap-4 rounded-xl border bg-card p-5"
+            >
+              {(
+                [
+                  ['24', 'size-6', 'minimum'],
+                  ['32', 'h-8 w-12', 'sm'],
+                  ['36', 'h-9 w-12', 'md'],
+                  ['44', 'h-11 w-12', 'lg'],
+                ] as const
+              ).map(([px, box, name]) => (
+                <div key={px} className="space-y-1.5 text-center">
+                  <div
+                    className={`${box} rounded-lg border border-dashed border-foreground/40 bg-muted`}
+                  />
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {px}px {name}
+                  </div>
+                </div>
+              ))}
+            </Specimen>
+            <Specimen
+              label="Contrast"
+              source="Badge tones"
+              className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-5"
+            >
+              {tones.map(([name]) => (
+                <Badge key={name} tone={name}>
+                  {name}
+                </Badge>
+              ))}
+              <p className="basis-full text-sm text-muted-foreground">
+                Every tone is at least 4.5 to 1 on its own tint, in light and
+                dark. A status is also a word, never colour alone.
+              </p>
+            </Specimen>
+            <Specimen
+              label="Keyboard"
+              source="Base UI and our tabs"
+              className="space-y-2 rounded-xl border bg-card p-5 text-sm"
+            >
+              {(
+                [
+                  ['Tab', 'Move to the next control'],
+                  ['← →', 'Move between tabs'],
+                  ['↑ ↓', 'Move in a menu'],
+                  ['Enter', 'Choose'],
+                  ['Esc', 'Close a menu or dialog'],
+                ] as const
+              ).map(([k, d]) => (
+                <div key={k} className="flex items-center gap-3">
+                  <span className="w-14">
+                    <Kbd>{k}</Kbd>
+                  </span>
+                  <span className="text-muted-foreground">{d}</span>
+                </div>
+              ))}
+            </Specimen>
+          </div>
+          <ul className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm text-muted-foreground sm:grid-cols-2">
+            <li>
+              A <b className="font-medium text-foreground">skip link</b> is the
+              first stop on every page.
+            </li>
+            <li>
+              One <b className="font-medium text-foreground">h1</b> a page, and
+              headings never skip a level.
+            </li>
+            <li>
+              Menus are <b className="font-medium text-foreground">ours</b>,
+              never the browser&apos;s, so they look and behave the same.
+            </li>
+            <li>
+              Things that scroll sideways can be{' '}
+              <b className="font-medium text-foreground">
+                scrolled by keyboard
+              </b>
+              .
+            </li>
+            <li>
+              Nothing is dimmed to say it is secondary. Use the muted colour,
+              which is checked.
+            </li>
+            <li>
+              Lines of text stop at{' '}
+              <b className="font-medium text-foreground">68 characters</b>.
+            </li>
+          </ul>
         </Section>
 
         <Section
@@ -388,16 +513,16 @@ function Design() {
         <Section
           id="forms"
           title="Forms"
-          note="A label, a control, one line of help. That is every form."
+          note="A label, a control, one line of help. That is every form. Menus are ours, never the browser's."
         >
-          <div className="grid gap-5 rounded-xl border bg-card p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 rounded-xl border bg-card p-5 sm:grid-cols-2">
             <Field label="Name" hint="Letters, numbers and dashes.">
               <Input defaultValue="gitfs" />
             </Field>
             <Field label="Visibility">
               <Select defaultValue="public">
-                <option value="public">Public</option>
-                <option value="private">Private</option>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
               </Select>
             </Field>
             <Field label="Description" className="sm:col-span-2">
@@ -490,7 +615,7 @@ function Design() {
               </div>
             </Modal>
           </Specimen>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Callout tone="info" title="Info">
               Neutral guidance.
             </Callout>
@@ -508,7 +633,7 @@ function Design() {
           title="Charts"
           note="Dither Kit. Ordered-dither canvas charts that give data texture without chart-junk. Always in a parent with a height."
         >
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Specimen
               label="Trend"
               source="TrendChart"
@@ -587,6 +712,18 @@ function Design() {
           title="Patterns"
           note="Larger parts built from the pieces above. The same row shape shows up wherever a list of things appears."
         >
+          <Specimen
+            label="Software card"
+            source="SoftwareCard"
+            className="grid grid-cols-1 gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2"
+          >
+            {repos
+              .filter((r) => r.releases.length > 0)
+              .slice(0, 2)
+              .map((r) => (
+                <SoftwareCard key={r.name} repo={r} />
+              ))}
+          </Specimen>
           <Specimen
             label="Project row"
             source="RepoRow"

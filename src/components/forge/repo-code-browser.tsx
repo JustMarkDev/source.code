@@ -19,12 +19,12 @@ import { Who } from './repo-history'
 import { ReadmeCard } from './markdown'
 import type { RepoDoc } from './markdown'
 import type { Repo } from '~/mock/data'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Modal } from '~/components/ui/dialog'
 import { commitsFor } from '~/mock/commits'
 import { useIsDark } from '~/lib/theme'
-import '~/lib/highlight'
 
 const rust = `pub struct Refs {
     disk: Disk,
@@ -235,6 +235,7 @@ export function CodeBrowser({
   onFinding: (open: boolean) => void
 }) {
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const files = React.useMemo(() => filesFor(repo), [repo])
   const ext = repo.language === 'Rust' ? 'rs' : 'ts'
   const paths = React.useMemo(() => Object.keys(files).sort(), [files])
@@ -259,7 +260,7 @@ export function CodeBrowser({
         <>
           <div className="surface overflow-hidden rounded-2xl border bg-card">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-5 py-3 text-sm">
-              <Who who={latest.author} className="size-6 text-[10px]" />
+              <Who who={latest.author} className="size-6 text-xs" />
               <b className="font-medium">{latest.author.name}</b>
               <Link
                 to="/$handle/$repo/commit/$sha"
@@ -268,7 +269,7 @@ export function CodeBrowser({
                   repo: repo.name,
                   sha: latest.sha,
                 }}
-                className="min-w-0 flex-1 truncate text-muted-foreground hover:text-foreground hover:underline"
+                className="min-w-0 flex-1 py-0.5 text-muted-foreground hover:text-foreground hover:underline max-sm:basis-full sm:truncate"
               >
                 {latest.message}
               </Link>
@@ -288,7 +289,7 @@ export function CodeBrowser({
                 to="/$handle/$repo/$tab"
                 params={{ handle: repo.owner, repo: repo.name, tab: 'code' }}
                 search={{ view: 'history' }}
-                className="inline-flex items-center gap-1.5 font-medium hover:underline"
+                className="inline-flex items-center gap-1.5 py-0.5 font-medium hover:underline"
               >
                 <ClockIcon className="size-4 text-muted-foreground" />
                 214 commits
@@ -357,7 +358,7 @@ export function CodeBrowser({
           </div>
 
           {!dir && (
-            <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
               <ReadmeCard repo={repo} doc={doc} onDoc={setDoc} />
               <AboutPanel repo={repo} onOpenLicense={() => setDoc('license')} />
             </div>
@@ -394,7 +395,8 @@ export function CodeBrowser({
               key={path}
               file={{ name: path, contents: files[path] }}
               options={{
-                theme: dark ? 'pierre-dark' : 'pierre-light',
+                theme: codeTheme(dark),
+                overflow,
                 disableFileHeader: true,
               }}
             />

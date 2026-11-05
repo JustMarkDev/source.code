@@ -1,5 +1,12 @@
 {
   "title": "Concepts",
-  "pages": ["changes", "policies", "secrets", "agent-secrets", "agents"],
+  "pages": [
+    "accounts",
+    "changes",
+    "policies",
+    "secrets",
+    "agent-secrets",
+    "agents"
+  ],
   "icon": "LightBulbIcon"
 }

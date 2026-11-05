@@ -5,9 +5,10 @@ import type { Category } from '~/mock/data'
 import { Stagger } from '~/components/motion'
 import { DeveloperRow, RepoRow } from '~/components/forge/repo-card'
 import { LangDot } from '~/components/forge/bits'
-import { Input, Select } from '~/components/ui/input'
+import { Input } from '~/components/ui/input'
 import { StateTabs } from '~/components/ui/tabs'
-import { categories, developers, repos } from '~/mock/data'
+import { Select, SelectItem } from '~/components/ui/select'
+import { categories, developers, hoursAgo, repos } from '~/mock/data'
 
 type View = 'projects' | 'people'
 type Sort = 'trending' | 'stars' | 'updated'
@@ -49,9 +50,9 @@ function FilterList<T extends string>({
 }) {
   return (
     <div className="space-y-1">
-      <h3 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
+      <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
         {title}
-      </h3>
+      </h2>
       {options.map((o) => (
         <button
           key={o}
@@ -98,7 +99,7 @@ function Discover() {
       sort === 'stars'
         ? b.stars - a.stars
         : sort === 'updated'
-          ? a.updated.localeCompare(b.updated)
+          ? hoursAgo(a.updated) - hoursAgo(b.updated)
           : b.starsToday - a.starsToday,
     )
   const people = developers.filter(
@@ -135,7 +136,7 @@ function Discover() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[200px_minmax(0,1fr)]">
         {view === 'projects' && (
-          <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+          <aside className="hidden space-y-6 lg:sticky lg:top-20 lg:block lg:self-start">
             <FilterList
               title="Category"
               value={category}
@@ -159,6 +160,37 @@ function Discover() {
           )}
         >
           {view === 'projects' && (
+            // On a phone the filters are two menus, so results start on the first screen.
+            <div className="grid grid-cols-2 gap-2 lg:hidden">
+              <Select
+                value={category ?? ''}
+                onValueChange={(v) =>
+                  set({ category: categories.find((c) => c === v) })
+                }
+                aria-label="Category"
+              >
+                <SelectItem value="">All categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </Select>
+              <Select
+                value={lang ?? ''}
+                onValueChange={(v) => set({ lang: v || undefined })}
+                aria-label="Language"
+              >
+                <SelectItem value="">All languages</SelectItem>
+                {languages.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {l}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          )}
+          {view === 'projects' && (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
                 {filtered ? `${projects.length} results` : 'Popular this week'}
@@ -176,24 +208,25 @@ function Discover() {
               </p>
               <Select
                 value={sort}
-                onChange={(e) =>
+                onValueChange={(v) =>
                   set({
-                    sort:
-                      e.target.value === 'stars' || e.target.value === 'updated'
-                        ? e.target.value
-                        : undefined,
+                    sort: v === 'stars' || v === 'updated' ? v : undefined,
                   })
                 }
                 aria-label="Sort"
                 className="w-44"
               >
-                <option value="trending">Trending</option>
-                <option value="stars">Most stars</option>
-                <option value="updated">Recently updated</option>
+                <SelectItem value="trending">Trending</SelectItem>
+                <SelectItem value="stars">Most stars</SelectItem>
+                <SelectItem value="updated">Recently updated</SelectItem>
               </Select>
             </div>
           )}
 
+          {/* Results get their own heading, so project names are never h3s straight under the h1. */}
+          <h2 className="sr-only">
+            {view === 'projects' ? 'Projects' : 'People'}
+          </h2>
           <Stagger className="divide-y overflow-hidden rounded-xl border bg-card">
             {view === 'projects' &&
               projects.map((r) => (

@@ -28,9 +28,40 @@ export const schema: Array<CommandSpec> = [
     example: 'sx context',
   },
   {
-    command: 'repo list',
-    summary: 'Repositories you can see.',
+    command: 'account list',
+    summary:
+      'Every account you can act as (yourself and your organizations), your role in each, and which one is in use.',
     args: '',
+    mutates: false,
+    idempotent: true,
+    exits: [],
+    example: 'sx account list',
+  },
+  {
+    command: 'account current',
+    summary:
+      'Who commands act as now and why: -A, SX_ACCOUNT, the repository you are in, a saved setting, or your own account.',
+    args: '[-A handle]',
+    mutates: false,
+    idempotent: true,
+    exits: [3],
+    example: 'sx account current',
+  },
+  {
+    command: 'account switch',
+    summary:
+      'Act as another account from now on. Saved in settings; repeating it changes nothing. For one command only, pass -A handle instead.',
+    args: '<handle>',
+    mutates: true,
+    idempotent: true,
+    exits: [2, 3],
+    example: 'sx account switch northwind',
+  },
+  {
+    command: 'repo list',
+    summary:
+      'Repositories of the account you act as. Add --all for every account you can act as.',
+    args: '[--all]',
     mutates: false,
     idempotent: true,
     exits: [],
@@ -47,12 +78,13 @@ export const schema: Array<CommandSpec> = [
   },
   {
     command: 'repo create',
-    summary: 'Create a repository.',
-    args: '<owner/name> [--private] [--description t]',
+    summary:
+      'Create a repository. A bare name goes in the account you act as; owner/name picks the owner. Members of an organization cannot create there.',
+    args: '<name | owner/name> [--private] [--description t]',
     mutates: true,
     idempotent: true,
-    exits: [2],
-    example: 'sx repo create dana/notes --public',
+    exits: [2, 3, 5],
+    example: 'sx repo create notes -A northwind',
   },
   {
     command: 'repo clone',

@@ -15,10 +15,12 @@ import { WorkWithAgent } from './work-with-agent'
 import type { StatusItem } from './status-card'
 import type { Repo } from '~/mock/data'
 import type { Author, ChangeItem, Finding } from '~/mock/platform'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Switch } from '~/components/ui/switch'
 import { StateTabs } from '~/components/ui/tabs'
+import { Select, SelectItem } from '~/components/ui/select'
 import { useIsDark } from '~/lib/theme'
 import {
   changes,
@@ -30,7 +32,7 @@ import {
 
 function AuthorMark({ author }: { author: Author }) {
   if (author.kind === 'human')
-    return <Tile name={author.name} round className="size-5 text-[10px]" />
+    return <Tile name={author.name} round className="size-6 text-xs" />
   return (
     <span className="flex size-5 items-center justify-center rounded-full bg-muted">
       <CpuChipIcon className="size-3" />
@@ -51,7 +53,7 @@ function ReviewerMark({ r }: { r: ChangeItem['reviewers'][number] }) {
       className="relative inline-flex shrink-0"
     >
       {r.kind === 'human' ? (
-        <Tile name={r.name} round className="size-6 text-[10px]" />
+        <Tile name={r.name} round className="size-6 text-xs" />
       ) : (
         <span className="flex size-6 items-center justify-center rounded-full bg-muted">
           {r.kind === 'agent' ? (
@@ -200,7 +202,7 @@ function FindingCard({
     >
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {f.kind === 'human' ? (
-          <Tile name={f.by} round className="size-5 text-[10px]" />
+          <Tile name={f.by} round className="size-6 text-xs" />
         ) : (
           <span className="flex size-5 items-center justify-center rounded-full bg-muted">
             <MagnifyingGlassIcon className="size-3" />
@@ -246,17 +248,17 @@ function FindingCard({
       )}
       {st.s === 'open' && dismissing && (
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Select
             aria-label="Reason"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="h-8 rounded-md border bg-background px-2 text-xs"
+            onValueChange={(v) => setReason(v)}
+            className="h-8 w-auto text-xs"
           >
-            <option>Not a problem here</option>
-            <option>Out of scope for this change</option>
-            <option>Already handled elsewhere</option>
-            <option>Reviewer is wrong</option>
-          </select>
+            <SelectItem>Not a problem here</SelectItem>
+            <SelectItem>Out of scope for this change</SelectItem>
+            <SelectItem>Already handled elsewhere</SelectItem>
+            <SelectItem>Reviewer is wrong</SelectItem>
+          </Select>
           <Button size="sm" variant="outline" onClick={() => onDismiss(reason)}>
             Dismiss with reason
           </Button>
@@ -549,7 +551,7 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
       />
 
       {tab === 'summary' && (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <div className="min-w-0 space-y-6">
             <StatusCard
               items={items}
@@ -606,7 +608,10 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
                     : `get_change { "id": "${change.id}" }`
                 }
               />
-              <pre className="well overflow-x-auto rounded-xl bg-muted/60 p-3 font-mono text-xs leading-relaxed">
+              <pre
+                tabIndex={0}
+                className="well overflow-x-auto rounded-xl bg-muted/60 p-3 font-mono text-xs leading-relaxed"
+              >
                 {asJson}
               </pre>
               <p className="text-xs text-muted-foreground">
@@ -658,11 +663,7 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
           {[...baseTimeline, ...events].map((e, i) => (
             <li key={i} className="flex items-start gap-3 text-sm">
               {e.kind === 'human' ? (
-                <Tile
-                  name={e.who}
-                  round
-                  className="mt-0.5 size-6 text-[10px]"
-                />
+                <Tile name={e.who} round className="mt-0.5 size-6 text-xs" />
               ) : (
                 <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-muted">
                   {e.kind === 'agent' ? (
@@ -734,6 +735,7 @@ function CodeReview({
   set: (id: string, s: FindingState) => void
 }) {
   const dark = useIsDark()
+  const overflow = useCodeOverflow()
   const latest = change.patchSets.length
   const files = ['src/refs.rs', 'tests/refs_test.rs']
   const { model } = useFileTree({
@@ -800,7 +802,7 @@ function CodeReview({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
         <div className="pierre surface h-fit overflow-hidden rounded-2xl border bg-card p-1 md:sticky md:top-20">
           <FileTree model={model} className="block h-36" />
         </div>
@@ -829,7 +831,8 @@ function CodeReview({
                   )
                 }}
                 options={{
-                  theme: dark ? 'pierre-dark' : 'pierre-light',
+                  theme: codeTheme(dark),
+                  overflow,
                   diffStyle: style,
                 }}
               />

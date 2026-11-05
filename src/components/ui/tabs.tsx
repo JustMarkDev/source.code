@@ -63,15 +63,42 @@ function StateTabs<T extends string>({
   className?: string
 }) {
   const pill = React.useId()
+  const refs = React.useRef<Array<HTMLButtonElement | null>>([])
+  // A tablist is one stop for Tab and moves with the arrow keys, like any native one.
+  const go = (to: number) => {
+    const next = (to + options.length) % options.length
+    onChange(options[next].id)
+    refs.current[next]?.focus()
+  }
+  const keys = (e: React.KeyboardEvent, i: number) => {
+    const target =
+      e.key === 'ArrowRight'
+        ? i + 1
+        : e.key === 'ArrowLeft'
+          ? i - 1
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? options.length - 1
+              : null
+    if (target === null) return
+    e.preventDefault()
+    go(target)
+  }
   return (
     <div role="tablist" aria-label={label} className={cn(trough, className)}>
-      {options.map((o) => (
+      {options.map((o, i) => (
         <button
           key={o.id}
+          ref={(el) => {
+            refs.current[i] = el
+          }}
           type="button"
           role="tab"
           aria-selected={value === o.id}
+          tabIndex={value === o.id ? 0 : -1}
           onClick={() => onChange(o.id)}
+          onKeyDown={(e) => keys(e, i)}
           className={cn(base, value === o.id && on)}
         >
           {value === o.id && <Pill id={pill} />}

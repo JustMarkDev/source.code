@@ -42,6 +42,18 @@ export type Repo = {
   stars: number
 }
 
+/**
+ * Something you can act as: yourself, or an organization you belong to. One
+ * login covers all of them. `role` is what you may do there; for your own
+ * account it is always `owner`.
+ */
+export type Account = {
+  handle: string
+  name: string
+  kind: 'person' | 'organization'
+  role: 'owner' | 'admin' | 'member'
+}
+
 export type EnvVar = { name: string; secret: boolean; set: Array<string> }
 
 export type Grant = {
@@ -61,6 +73,24 @@ export type Grant = {
 export type AuditEntry = { when: string; who: string; what: string }
 
 export const store = {
+  /** Who the token belongs to. Your own account is the one with this handle. */
+  login: 'dana',
+  accounts: <Array<Account>>[
+    { handle: 'dana', name: 'Dana Okafor', kind: 'person', role: 'owner' },
+    {
+      handle: 'northwind',
+      name: 'Northwind Labs',
+      kind: 'organization',
+      role: 'owner',
+    },
+    // A member can work in its repositories but not create new ones.
+    {
+      handle: 'lumen-studio',
+      name: 'Lumen Studio',
+      kind: 'organization',
+      role: 'member',
+    },
+  ],
   repos: <Array<Repo>>[
     {
       slug: 'dana/gitfs',
@@ -75,6 +105,13 @@ export const store = {
       visibility: 'public',
       defaultBranch: 'main',
       stars: 640,
+    },
+    {
+      slug: 'northwind/relay',
+      description: 'A small message relay with at-least-once delivery.',
+      visibility: 'public',
+      defaultBranch: 'main',
+      stars: 310,
     },
   ],
   changes: <Array<Change>>[

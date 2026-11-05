@@ -77,7 +77,7 @@ export function DownloadButton({
           {hint && (
             <span
               className={cn(
-                'text-[0.8em] font-normal opacity-80',
+                'text-xs font-normal opacity-80',
                 size !== 'sm' && 'max-sm:hidden',
               )}
             >
@@ -99,7 +99,7 @@ export function DownloadButton({
           {label}
           <span
             className={cn(
-              'font-mono text-[0.8em] font-normal opacity-70',
+              'font-mono text-xs font-normal opacity-70',
               size !== 'sm' && 'max-sm:hidden',
             )}
           >
@@ -141,7 +141,7 @@ export function DownloadButton({
                 const first = list.at(0)
                 return (
                   <div key={os}>
-                    <div className="flex items-center justify-between px-2 pt-2 pb-1 font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                    <div className="flex items-center justify-between px-2 pt-2 pb-1 font-mono text-xs tracking-wider text-muted-foreground uppercase">
                       {osLabel[os]}
                       {target?.os !== os && (
                         <Menu.Item

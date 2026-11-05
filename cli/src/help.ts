@@ -15,6 +15,7 @@ Commands
   agent     start (hand an issue or change to an agent)
   context   everything an agent needs, no secret values
   config    list, get, set, path
+  account   list, current, switch (one login, any account)
   commands  every command as JSON (for agents)
   skill     print or install the agent skill that teaches sx
   mcp       serve the MCP server over stdio
@@ -25,6 +26,8 @@ Using an agent? Run: sx skill install   (then it knows sx), or: sx commands
 
 Flags on every command
   -R, --repo owner/name   which repository (default: the git remote)
+  -A, --account handle    act as this account (default: the repo's owner,
+                          else the one you switched to, else you)
   -j, --json              JSON output (default when piped)
   -n, --dry-run           say what would happen, change nothing
       --no-color          or set NO_COLOR
@@ -46,9 +49,10 @@ export const groupHelp: Record<string, string> = {
 `,
   repo: `sx repo <command>
 
-  list                    repositories you can see
+  list [--all]            repositories of the account you act as (--all: every account)
   view                    the current repository
-  create owner/name       create one (--private, --description)
+  create <name>           create one in the account you act as (--private, --description)
+                          or name the owner: create owner/name
   clone owner/name        print the clone command (uses clone.protocol)
 `,
   issue: `sx issue <command>
@@ -85,6 +89,20 @@ export const groupHelp: Record<string, string> = {
   Builds the prompt from the issue or change, the policies that apply and the
   env schema (never values), then prints the command that starts the agent.
 `,
+  account: `sx account <command>
+
+  list                    every account you can act as, and your role in each
+  current                 who you act as now, and why (flag, env, repo, setting, default)
+  switch <handle>         act as that account from now on (saved in your settings)
+
+  One login covers yourself and every organization you belong to, so there is
+  nothing to sign in to again. Which account a command acts as, in order:
+    1. -A, --account handle
+    2. SX_ACCOUNT
+    3. the owner of the repository you are in, when you can act as it
+    4. the account saved by sx account switch
+    5. you
+`,
   config: `sx config <command>
 
   list                    every setting, its value and where it came from
@@ -95,12 +113,12 @@ export const groupHelp: Record<string, string> = {
 }
 
 export const completions: Record<string, string> = {
-  bash: `_sx() { COMPREPLY=($(compgen -W "repo change issue env policy mirror agent context config auth skill mcp commands completion" -- "\${COMP_WORDS[COMP_CWORD]}")); }
+  bash: `_sx() { COMPREPLY=($(compgen -W "repo change issue env policy mirror agent context config account auth skill mcp commands completion" -- "\${COMP_WORDS[COMP_CWORD]}")); }
 complete -F _sx sx
 `,
   zsh: `#compdef sx
-_arguments '1: :(repo change issue env policy mirror agent context config auth skill mcp commands completion)'
+_arguments '1: :(repo change issue env policy mirror agent context config account auth skill mcp commands completion)'
 `,
-  fish: `complete -c sx -f -a "repo change issue env policy mirror agent context config auth skill mcp commands completion"
+  fish: `complete -c sx -f -a "repo change issue env policy mirror agent context config account auth skill mcp commands completion"
 `,
 }

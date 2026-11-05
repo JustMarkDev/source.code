@@ -93,6 +93,13 @@ export function createSxMcpServer(): McpServer {
     .describe('Report what would happen and change nothing.')
 
   tool(
+    'list_accounts',
+    'Every account you can act as (a person and their organizations) with your role in each. Commands act as the owner of the repository you name; set SX_ACCOUNT for the server to act as another.',
+    {},
+    () => ['account', 'list'],
+    { readOnly: true },
+  )
+  tool(
     'get_context',
     'Start here. Repository, default branch, open changes with their blockers, open issues, policy summary and the env schema (names only).',
     { repo: repoArg },

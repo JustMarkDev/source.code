@@ -1,3 +1,4 @@
+import { activeAccount } from '../account'
 import { gitContext, resolveRepo } from '../repo'
 import { print } from '../output'
 import { str } from '../args'
@@ -9,7 +10,9 @@ import type { Command } from './types'
 export const context: Command = ({ flags }, ctx) => {
   const repo = resolveRepo(str(flags, 'repo'))
   const git = gitContext()
+  const acting = activeAccount(flags)
   const data = {
+    account: { handle: acting.handle, kind: acting.kind, role: acting.role },
     repo: repo.slug,
     defaultBranch: repo.defaultBranch,
     branch: git.branch ?? null,

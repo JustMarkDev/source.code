@@ -1,6 +1,8 @@
+import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   CheckCircleIcon,
+  CheckIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
@@ -110,37 +112,81 @@ function Days({ seed, state }: { seed: number; state: State }) {
 }
 
 function Status() {
+  const [subscribed, setSubscribed] = React.useState(false)
+  const affected = services.filter((s) => s.state !== 'up')
   const worst = services.some((s) => s.state === 'down')
     ? 'down'
-    : services.some((s) => s.state === 'degraded')
+    : affected.length > 0
       ? 'degraded'
       : 'up'
+  // Say what is wrong, not just that something is. The open incident, if there is one.
+  const open = incidents.find((i) => i.state !== 'Resolved')
+  const headline =
+    worst === 'up'
+      ? 'All systems operational'
+      : affected.length === 1
+        ? `${affected[0].name} is ${affected[0].state === 'down' ? 'down' : 'degraded'}`
+        : `${affected.length} services are affected`
   return (
     <div className="mx-auto max-w-3xl space-y-12">
       <header className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight">Status</h1>
         <div
           className={cn(
-            'surface flex items-center gap-3 rounded-2xl border bg-card p-5',
+            'surface flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border p-5',
+            worst === 'up'
+              ? 'bg-card'
+              : worst === 'down'
+                ? 'border-danger/30 bg-danger/5'
+                : 'border-warning/30 bg-warning/5',
           )}
         >
           {worst === 'up' ? (
-            <CheckCircleIcon className="size-6 text-success" />
+            <CheckCircleIcon className="size-6 shrink-0 text-success" />
           ) : (
-            <ExclamationTriangleIcon className="size-6 text-warning" />
+            <ExclamationTriangleIcon
+              className={cn(
+                'size-6 shrink-0',
+                worst === 'down' ? 'text-danger' : 'text-warning',
+              )}
+            />
           )}
-          <div className="flex-1">
-            <p className="font-medium">
-              {worst === 'up'
-                ? 'All systems operational'
-                : 'Everything works, one service is degraded'}
-            </p>
+          <div className="min-w-0 flex-1 basis-64 space-y-0.5">
+            <h2 className="font-medium">{headline}</h2>
             <p className="text-sm text-muted-foreground">
-              Your repositories, history and releases are safe on source.code
-              whatever other hosts do.
+              {worst === 'up'
+                ? 'Your repositories, history and releases are safe on source.code whatever other hosts do.'
+                : 'Everything else is working. Your repositories, history and releases are safe on source.code whatever other hosts do.'}
             </p>
+            {open && worst !== 'up' && (
+              <p className="text-sm">
+                <a
+                  href="#incidents"
+                  className="font-medium underline decoration-border underline-offset-4 hover:decoration-foreground"
+                >
+                  {open.title}
+                </a>
+                <span className="text-muted-foreground">
+                  {' '}
+                  · {open.state.toLowerCase()} since {open.date}
+                </span>
+              </p>
+            )}
           </div>
-          <Button size="sm">Subscribe</Button>
+          <Button
+            size="sm"
+            variant={subscribed ? 'default' : 'outline'}
+            aria-pressed={subscribed}
+            onClick={() => setSubscribed((s) => !s)}
+          >
+            {subscribed ? (
+              <>
+                <CheckIcon /> Subscribed
+              </>
+            ) : (
+              'Subscribe to updates'
+            )}
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Sample data for this preview.
@@ -151,7 +197,13 @@ function Status() {
         <h2 className="text-sm font-medium">Services</h2>
         <ul className="surface divide-y rounded-2xl border bg-card">
           {services.map((s, i) => (
-            <li key={s.name} className="space-y-3 p-5">
+            <li
+              key={s.name}
+              className={cn(
+                'space-y-3 p-5',
+                s.state !== 'up' && 'bg-warning/5',
+              )}
+            >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{s.name}</div>
@@ -168,7 +220,7 @@ function Status() {
                 </span>
               </div>
               <Days seed={i + 11} state={s.state} />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>90 days ago</span>
                 <span>Today</span>
               </div>
@@ -177,7 +229,7 @@ function Status() {
         </ul>
       </section>
 
-      <section className="space-y-3">
+      <section id="incidents" className="scroll-mt-24 space-y-3">
         <h2 className="text-sm font-medium">Recent incidents</h2>
         <ul className="space-y-4">
           {incidents.map((i) => (

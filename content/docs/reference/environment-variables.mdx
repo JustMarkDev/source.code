@@ -4,17 +4,18 @@ title: Environment variables
 description: Variables sx reads.
 ---
 
-| Variable                              | Meaning                                       |
-| ------------------------------------- | --------------------------------------------- |
-| `SX_TOKEN`                            | Token used to sign in                         |
-| `SX_HOST`                             | Server address. Same as the `host` setting    |
-| `SX_REPO`                             | Repository to use when you are not in a clone |
-| `SX_CONFIG_DIR`                       | Folder that holds `config.json`               |
-| `SX_OUTPUT`                           | `auto`, `json` or `text`                      |
-| `SX_AGENT_TARGET`, `SX_AGENT_RUNTIME` | Defaults for `sx agent start`                 |
-| `SX_CHANGE_BASE`, `SX_CHANGE_DRAFT`   | Defaults for `sx change create`               |
-| `SX_CLONE_PROTOCOL`                   | `ssh` or `https`                              |
-| `SX_DEBUG`                            | Print stack traces                            |
-| `NO_COLOR`                            | Turn off colour                               |
+| Variable                              | Meaning                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `SX_TOKEN`                            | Token used to sign in                                                     |
+| `SX_HOST`                             | Server address. Same as the `host` setting                                |
+| `SX_REPO`                             | Repository to use when you are not in a clone                             |
+| `SX_ACCOUNT`                          | Account to act as. Same as the `account` setting, and beats the saved one |
+| `SX_CONFIG_DIR`                       | Folder that holds `config.json`                                           |
+| `SX_OUTPUT`                           | `auto`, `json` or `text`                                                  |
+| `SX_AGENT_TARGET`, `SX_AGENT_RUNTIME` | Defaults for `sx agent start`                                             |
+| `SX_CHANGE_BASE`, `SX_CHANGE_DRAFT`   | Defaults for `sx change create`                                           |
+| `SX_CLONE_PROTOCOL`                   | `ssh` or `https`                                                          |
+| `SX_DEBUG`                            | Print stack traces                                                        |
+| `NO_COLOR`                            | Turn off colour                                                           |
 
 Every setting can be set as `SX_` plus its key in capitals, with `.` written as `_`. See [Settings](/docs/cli/config).

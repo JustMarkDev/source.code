@@ -9,7 +9,8 @@ import {
   RocketLaunchIcon,
 } from '@heroicons/react/24/outline'
 import { api } from '../../../convex/_generated/api'
-import { EmptyState, LangDot, Tile } from './bits'
+import { useSignInGate } from './auth'
+import { CopyAddress, EmptyState, LangDot, Tile } from './bits'
 import { RepoCard, RepoRow } from './repo-card'
 import { ContributionGraph } from './repo-shell'
 import { profileTabs } from './profile-tabs'
@@ -32,10 +33,12 @@ import {
   compact,
   developers,
   repos as mockRepos,
+  reposOwnedBy,
   seeded,
   totalDownloads,
 } from '~/mock/data'
 import { Stagger } from '~/components/motion'
+import { authClient } from '~/lib/auth/client'
 import { workShape } from '~/mock/platform'
 
 export type { ProfileTab }
@@ -125,24 +128,31 @@ export function ProfileView({
   handle,
   tab,
   tabLink,
+  embedded = false,
 }: {
+  /** Shown inside another page that already has the h1. */
+  embedded?: boolean
   handle: string
   tab: ProfileTab
   tabLink: (tab: ProfileTab) => LinkProps
 }) {
   const { data } = useQuery(convexQuery(api.profiles.get, { handle }))
   const dev = developers.find((d) => d.handle === handle)
-  const isMe = handle === 'dana'
+  const Name = embedded ? 'h2' : 'h1'
+  const { data: session } = authClient.useSession()
+  const gate = useSignInGate()
+  const isMe = session?.user.handle === handle
   const [following, setFollowing] = React.useState(false)
 
-  const name = data?.user.name ?? dev?.name ?? handle
-  const bio = data?.user.bio ?? dev?.bio ?? ''
-  const now = data?.user.now
+  const name =
+    data?.account.name ?? dev?.name ?? (isMe ? session.user.name : handle)
+  const bio = data?.account.bio ?? dev?.bio ?? ''
+  const now = data?.account.now
   const followers = dev?.followers ?? 128
   const contributions = dev?.contributions ?? 412
 
   const projects: Array<Repo> = React.useMemo(() => {
-    const own = mockRepos.filter((r) => r.owner === handle)
+    const own = reposOwnedBy(handle)
     const fromConvex = data?.repos.map((r) => toRepo(handle, r)) ?? []
     const byName = new Map([...own, ...fromConvex].map((r) => [r.name, r]))
     return [...byName.values()].sort((a, b) => b.stars - a.stars)
@@ -246,8 +256,8 @@ export function ProfileView({
           className="size-20 text-2xl"
         />
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{name}</h1>
-          <p className="font-mono text-sm text-muted-foreground">@{handle}</p>
+          <Name className="text-xl font-semibold tracking-tight">{name}</Name>
+          <CopyAddress handle={handle} />
         </div>
         {bio && <p className="text-sm">{bio}</p>}
         {now && <p className="text-sm text-muted-foreground">Now: {now}</p>}
@@ -266,7 +276,7 @@ export function ProfileView({
             className="w-full"
             variant={following ? 'outline' : 'default'}
             aria-pressed={following}
-            onClick={() => setFollowing((f) => !f)}
+            onClick={() => gate(() => setFollowing((f) => !f))}
           >
             {following ? 'Following' : 'Follow'}
           </Button>
@@ -336,7 +346,7 @@ export function ProfileView({
               </div>
             </Block>
 
-            <div className="grid gap-8 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
               <Block title="What they work on">
                 <div className="h-48">
                   <ShapeRadar data={charts.shape} />
@@ -362,7 +372,7 @@ export function ProfileView({
 
             {projects.length > 0 && (
               <Block title="Popular projects">
-                <Stagger className="grid gap-4 sm:grid-cols-2">
+                <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {projects.slice(0, 4).map((r) => (
                     <RepoCard key={r.name} repo={r} />
                   ))}

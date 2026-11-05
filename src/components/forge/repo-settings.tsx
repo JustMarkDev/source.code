@@ -18,9 +18,10 @@ import type { Repo } from '~/mock/data'
 import { BrandLogo } from '~/components/brand'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Field, Input, Select, Textarea } from '~/components/ui/input'
+import { Field, Input, Textarea } from '~/components/ui/input'
 import { Modal } from '~/components/ui/dialog'
 import { SwitchRow } from '~/components/ui/switch'
+import { Select, SelectItem } from '~/components/ui/select'
 import { hostNames, mirrorsFor } from '~/mock/hub'
 
 const sections = [
@@ -70,14 +71,13 @@ function General({ repo }: { repo: Repo }) {
           />
         </Field>
         <Field label="Visibility">
-          <Select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-          >
-            <option value="public">
+          <Select value={visibility} onValueChange={(v) => setVisibility(v)}>
+            <SelectItem value="public">
               Public: anyone can find it and download releases
-            </option>
-            <option value="private">Private: only people you invite</option>
+            </SelectItem>
+            <SelectItem value="private">
+              Private: only people you invite
+            </SelectItem>
           </Select>
         </Field>
         <SwitchRow
@@ -202,7 +202,7 @@ function MirrorRow({
         </span>
         <button
           type="button"
-          className="inline-flex items-center gap-1 hover:text-foreground"
+          className="-my-1 inline-flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-muted hover:text-foreground"
           onClick={() =>
             onChange({
               ...m,
@@ -213,7 +213,11 @@ function MirrorRow({
           <PauseIcon className="size-3.5" />
           {m.state === 'behind' ? 'Resume' : 'Pause'}
         </button>
-        <button type="button" className="hover:text-danger" onClick={onRemove}>
+        <button
+          type="button"
+          className="-my-1 rounded-md px-2 py-1.5 hover:bg-danger/10 hover:text-danger"
+          onClick={onRemove}
+        >
           Remove
         </button>
       </div>
@@ -242,14 +246,11 @@ function AddMirror({
     >
       <div className="space-y-4">
         <Field label="Host">
-          <Select
-            value={host}
-            onChange={(e) => setHost(e.target.value as Host)}
-          >
+          <Select value={host} onValueChange={(v) => setHost(v as Host)}>
             {(Object.keys(hostNames) as Array<Host>).map((h) => (
-              <option key={h} value={h}>
+              <SelectItem key={h} value={h}>
                 {hostNames[h]}
-              </option>
+              </SelectItem>
             ))}
           </Select>
         </Field>
@@ -264,15 +265,15 @@ function AddMirror({
         <Field label="Direction">
           <Select
             value={direction}
-            onChange={(e) =>
-              setDirection(e.target.value as Mirror['direction'])
-            }
+            onValueChange={(v) => setDirection(v as Mirror['direction'])}
           >
-            <option value="push">Push: send everything there</option>
-            <option value="two-way">
+            <SelectItem value="push">Push: send everything there</SelectItem>
+            <SelectItem value="two-way">
               Two-way: also bring back issues and pull requests
-            </option>
-            <option value="pull">Pull: only receive from that host</option>
+            </SelectItem>
+            <SelectItem value="pull">
+              Pull: only receive from that host
+            </SelectItem>
           </Select>
         </Field>
         <div className="flex justify-end gap-2">
@@ -379,7 +380,7 @@ function Mirrors({ repo }: { repo: Repo }) {
         <Link
           to="/settings/$section"
           params={{ section: 'accounts' }}
-          className="inline-block text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          className="inline-block py-1 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
         >
           Manage connected accounts and imported history
         </Link>

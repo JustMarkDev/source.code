@@ -6,6 +6,7 @@ import type { Developer, Repo } from '~/mock/data'
 import { GitForkIcon } from '~/components/icons'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { availableOses, osLabel } from '~/lib/platform'
 import { compact, latestStable } from '~/mock/data'
 
 export const repoLink = (r: Repo, tab: string = 'code') =>
@@ -87,15 +88,38 @@ export function RepoRow({
             </Link>
           </h3>
           {release && <Badge tone="outline">{release.version}</Badge>}
+          {release && (
+            <span className="text-xs text-muted-foreground">
+              {availableOses(release)
+                .map((os) => osLabel[os])
+                .join(' · ')}
+            </span>
+          )}
         </div>
-        <p className="truncate text-sm text-muted-foreground">
+        <p className="line-clamp-2 text-sm text-muted-foreground sm:line-clamp-1">
           {repo.description}
         </p>
         <Counts repo={repo} showToday={showToday} />
       </div>
-      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-        {repo.category}
-      </span>
+      {release ? (
+        <Button
+          size="sm"
+          className="relative hidden shrink-0 sm:inline-flex"
+          render={
+            <Link
+              {...repoLink(repo, 'releases')}
+              aria-label={`Download ${repo.name}`}
+            />
+          }
+          nativeButton={false}
+        >
+          Download
+        </Button>
+      ) : (
+        <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+          {repo.category}
+        </span>
+      )}
     </article>
   )
 }

@@ -6,6 +6,7 @@ import { SxError, exit } from './output'
 /** Every key sx reads, with its default. Documented in docs/cli/config. */
 export const defaults = {
   host: 'https://source.code',
+  account: '',
   output: 'auto',
   'agent.target': 't3',
   'agent.runtime': 'claude',

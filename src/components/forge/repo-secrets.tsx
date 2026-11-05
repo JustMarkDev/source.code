@@ -20,6 +20,7 @@ import { CopyField } from './repo-shell'
 import { Toggle } from './repo-pages'
 import type { Repo } from '~/mock/data'
 import type { AuditEvent, EnvName, EnvVar, Recipient } from '~/mock/platform'
+import { codeTheme, useCodeOverflow } from '~/lib/highlight'
 import { Button } from '~/components/ui/button'
 import { useIsDark } from '~/lib/theme'
 import {
@@ -57,7 +58,7 @@ function Variables({
   onRotate: (v: EnvVar) => void
 }) {
   return (
-    <Panel className="overflow-x-auto">
+    <Panel className="overflow-x-auto" tabIndex={0}>
       <table className="w-full min-w-[40rem] text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -65,7 +66,9 @@ function Variables({
             <th className="px-4 py-2 font-medium">Type</th>
             <th className="px-4 py-2 font-medium">In {env}</th>
             <th className="px-4 py-2 font-medium">Rotated</th>
-            <th className="px-4 py-2" />
+            <th className="relative px-4 py-2">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -73,7 +76,8 @@ function Variables({
             const has = v.set[env]
             const needed = v.required.includes(env)
             return (
-              <tr key={v.name}>
+              // A missing required value is the one thing here that needs doing, so it stands out.
+              <tr key={v.name} className={cn(!has && needed && 'bg-danger/5')}>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2 font-mono text-xs font-semibold">
                     {v.sensitive && (
@@ -393,7 +397,8 @@ function Audit({ events }: { events: Array<AuditEvent> }) {
 
 export function SecretsPage(_props: { repo: Repo }) {
   const dark = useIsDark()
-  const theme = dark ? 'pierre-dark' : 'pierre-light'
+  const overflow = useCodeOverflow()
+  const theme = codeTheme(dark)
   const [env, setEnv] = React.useState<EnvName>('production')
   const [vars, setVars] = React.useState(envVars)
   const [rotating, setRotating] = React.useState<EnvVar | null>(null)
@@ -483,12 +488,12 @@ export function SecretsPage(_props: { repo: Repo }) {
             {file === 'schema' ? (
               <File
                 file={{ name: '.env.schema', contents: envSchema }}
-                options={{ theme }}
+                options={{ theme, overflow }}
               />
             ) : (
               <PatchDiff
                 patch={encryptedDiff}
-                options={{ theme, diffStyle: 'unified' }}
+                options={{ theme, overflow, diffStyle: 'unified' }}
               />
             )}
           </div>

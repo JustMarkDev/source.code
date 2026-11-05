@@ -226,6 +226,26 @@ export const repos: Array<Repo> = [
     releases: [],
   },
   {
+    // Owned by an organization, not by a person.
+    owner: 'northwind',
+    name: 'relay',
+    description:
+      'A small message relay with at-least-once delivery and a replayable log.',
+    category: 'Infrastructure',
+    language: 'Go',
+    languages: [
+      ['Go', 91.4],
+      ['Shell', 8.6],
+    ],
+    stars: 310,
+    starsToday: 6,
+    forks: 18,
+    license: 'Apache-2.0',
+    updated: '1 day ago',
+    source: 'native',
+    releases: [],
+  },
+  {
     owner: 'hollis',
     name: 'lumen',
     description:
@@ -703,14 +723,50 @@ export const categories = [
   'Audio and media',
 ] as const
 
+/** "3 hours ago", "yesterday", "2 weeks ago" as hours, so a list can be sorted by it. */
+export function hoursAgo(text: string): number {
+  if (text === 'yesterday') return 24
+  const m = /^(\d+) (minute|hour|day|week|month|year)s? ago$/.exec(text)
+  if (!m) return Number.MAX_SAFE_INTEGER
+  const unit = {
+    minute: 1 / 60,
+    hour: 1,
+    day: 24,
+    week: 168,
+    month: 720,
+    year: 8760,
+  }
+  return Number(m[1]) * unit[m[2] as keyof typeof unit]
+}
+
 export function compact(n: number) {
   if (n >= 10_000) return `${Math.round(n / 1000)}k`
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`
   return String(n)
 }
 
+/**
+ * The sample repositories name their owner once, as written. An organization
+ * can be renamed, so the directory registers a way back from its current
+ * address to the one written here.
+ */
+let originalOwner: (handle: string) => string | undefined = () => undefined
+export function setOriginalOwner(fn: typeof originalOwner) {
+  originalOwner = fn
+}
+
+/** The address the sample data knows an account by, even after it was renamed. */
+export const ownerAsWritten = (handle: string) =>
+  originalOwner(handle) ?? handle
+
+/** The repositories an account owns, wherever it has been renamed to. */
+export function reposOwnedBy(handle: string) {
+  const written = ownerAsWritten(handle)
+  return repos.filter((r) => r.owner === written || r.owner === handle)
+}
+
 export function findRepo(owner: string, name: string) {
-  return repos.find((r) => r.owner === owner && r.name === name)
+  return reposOwnedBy(owner).find((r) => r.name === name)
 }
 
 export function latestStable(repo: Repo) {

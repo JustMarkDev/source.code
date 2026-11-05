@@ -38,7 +38,7 @@ export function RadarFrame() {
           />
         ))}
       </g>
-      <g className="font-mono text-[10px]">
+      <g className="font-mono text-xs">
         {axes.map((ax, i) => {
           const lx = polarX(cx, R + 10, ax.angle)
           const ly = polarY(cy, R + 10, ax.angle)

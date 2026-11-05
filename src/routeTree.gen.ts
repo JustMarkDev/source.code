@@ -13,19 +13,27 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DesignRouteImport } from './routes/design'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as HandleIndexRouteImport } from './routes/$handle/index'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as SettingsSectionRouteImport } from './routes/settings/$section'
 import { Route as HandleRepoIndexRouteImport } from './routes/$handle/$repo/index'
 import { Route as HandleRepoTabRouteImport } from './routes/$handle/$repo/$tab'
+import { Route as OrganizationsHandleSectionRouteImport } from './routes/organizations/$handle.$section'
 import { Route as HandleRepoCommitShaRouteImport } from './routes/$handle/$repo/commit/$sha'
 
 const IndexRoute = IndexRouteImport.update({
@@ -46,6 +54,11 @@ const DesignRoute = DesignRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxRoute = InboxRouteImport.update({
@@ -78,9 +91,34 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HandleIndexRoute = HandleIndexRouteImport.update({
@@ -98,6 +136,11 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsNewRoute = OrganizationsNewRouteImport.update({
+  id: '/organizations/new',
+  path: '/organizations/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsSectionRoute = SettingsSectionRouteImport.update({
   id: '/settings/$section',
   path: '/settings/$section',
@@ -113,6 +156,12 @@ const HandleRepoTabRoute = HandleRepoTabRouteImport.update({
   path: '/$handle/$repo/$tab',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsHandleSectionRoute =
+  OrganizationsHandleSectionRouteImport.update({
+    id: '/organizations/$handle/$section',
+    path: '/organizations/$handle/$section',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HandleRepoCommitShaRoute = HandleRepoCommitShaRouteImport.update({
   id: '/$handle/$repo/commit/$sha',
   path: '/$handle/$repo/commit/$sha',
@@ -124,18 +173,26 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
+  '/welcome': typeof WelcomeRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
@@ -144,18 +201,26 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
+  '/welcome': typeof WelcomeRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
@@ -165,18 +230,26 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/new': typeof NewRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/status': typeof StatusRoute
+  '/terms': typeof TermsRoute
+  '/welcome': typeof WelcomeRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
 }
@@ -187,18 +260,26 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/design'
     | '/discover'
+    | '/forgot-password'
     | '/inbox'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/new'
     | '/pricing'
+    | '/privacy'
+    | '/sign-in'
+    | '/sign-up'
     | '/status'
+    | '/terms'
+    | '/welcome'
     | '/api/search'
     | '/docs/$'
+    | '/organizations/new'
     | '/settings/$section'
     | '/$handle/'
     | '/$handle/$repo/$tab'
+    | '/organizations/$handle/$section'
     | '/$handle/$repo/'
     | '/$handle/$repo/commit/$sha'
   fileRoutesByTo: FileRoutesByTo
@@ -207,18 +288,26 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/design'
     | '/discover'
+    | '/forgot-password'
     | '/inbox'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/new'
     | '/pricing'
+    | '/privacy'
+    | '/sign-in'
+    | '/sign-up'
     | '/status'
+    | '/terms'
+    | '/welcome'
     | '/api/search'
     | '/docs/$'
+    | '/organizations/new'
     | '/settings/$section'
     | '/$handle'
     | '/$handle/$repo/$tab'
+    | '/organizations/$handle/$section'
     | '/$handle/$repo'
     | '/$handle/$repo/commit/$sha'
   id:
@@ -227,18 +316,26 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/design'
     | '/discover'
+    | '/forgot-password'
     | '/inbox'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/new'
     | '/pricing'
+    | '/privacy'
+    | '/sign-in'
+    | '/sign-up'
     | '/status'
+    | '/terms'
+    | '/welcome'
     | '/api/search'
     | '/docs/$'
+    | '/organizations/new'
     | '/settings/$section'
     | '/$handle/'
     | '/$handle/$repo/$tab'
+    | '/organizations/$handle/$section'
     | '/$handle/$repo/'
     | '/$handle/$repo/commit/$sha'
   fileRoutesById: FileRoutesById
@@ -248,18 +345,26 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DesignRoute: typeof DesignRoute
   DiscoverRoute: typeof DiscoverRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InboxRoute: typeof InboxRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   McpRoute: typeof McpRoute
   NewRoute: typeof NewRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
   StatusRoute: typeof StatusRoute
+  TermsRoute: typeof TermsRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiSearchRoute: typeof ApiSearchRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  OrganizationsNewRoute: typeof OrganizationsNewRoute
   SettingsSectionRoute: typeof SettingsSectionRoute
   HandleIndexRoute: typeof HandleIndexRoute
   HandleRepoTabRoute: typeof HandleRepoTabRoute
+  OrganizationsHandleSectionRoute: typeof OrganizationsHandleSectionRoute
   HandleRepoIndexRoute: typeof HandleRepoIndexRoute
   HandleRepoCommitShaRoute: typeof HandleRepoCommitShaRoute
 }
@@ -292,6 +397,13 @@ declare module '@tanstack/react-router' {
       path: '/discover'
       fullPath: '/discover'
       preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inbox': {
@@ -336,11 +448,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/status': {
       id: '/status'
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$handle/': {
@@ -364,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/new': {
+      id: '/organizations/new'
+      path: '/organizations/new'
+      fullPath: '/organizations/new'
+      preLoaderRoute: typeof OrganizationsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/$section': {
       id: '/settings/$section'
       path: '/settings/$section'
@@ -385,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleRepoTabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/$handle/$section': {
+      id: '/organizations/$handle/$section'
+      path: '/organizations/$handle/$section'
+      fullPath: '/organizations/$handle/$section'
+      preLoaderRoute: typeof OrganizationsHandleSectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$handle/$repo/commit/$sha': {
       id: '/$handle/$repo/commit/$sha'
       path: '/$handle/$repo/commit/$sha'
@@ -400,18 +561,26 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DesignRoute: DesignRoute,
   DiscoverRoute: DiscoverRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InboxRoute: InboxRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   McpRoute: McpRoute,
   NewRoute: NewRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
   StatusRoute: StatusRoute,
+  TermsRoute: TermsRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiSearchRoute: ApiSearchRoute,
   DocsSplatRoute: DocsSplatRoute,
+  OrganizationsNewRoute: OrganizationsNewRoute,
   SettingsSectionRoute: SettingsSectionRoute,
   HandleIndexRoute: HandleIndexRoute,
   HandleRepoTabRoute: HandleRepoTabRoute,
+  OrganizationsHandleSectionRoute: OrganizationsHandleSectionRoute,
   HandleRepoIndexRoute: HandleRepoIndexRoute,
   HandleRepoCommitShaRoute: HandleRepoCommitShaRoute,
 }

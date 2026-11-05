@@ -30,3 +30,26 @@ Exit code `4` means you are not signed in.
 ## Signing in as a person
 
 `sx auth login` will open a browser. It needs the hosted service and is not available in the preview, so it exits with a message that says to use `SX_TOKEN`.
+
+## Accounts
+
+One login covers yourself and every organization you belong to, so there is nothing to sign in to again. See [Accounts and organizations](/docs/concepts/accounts).
+
+```bash
+sx account list              # who you can act as, and your role in each
+sx account current           # who you act as now, and why
+sx account switch northwind  # act as it from now on
+sx repo create tools -A northwind   # as northwind, for this one command
+```
+
+Which account a command acts as, in order:
+
+1. `-A, --account handle`
+2. `SX_ACCOUNT`
+3. The owner of the repository you are in, when you can act as it. Working in a clone needs no switching.
+4. The account saved by `sx account switch`
+5. You
+
+`sx account current` prints `from`: `flag`, `env`, `repo`, `config` or `default`, so a surprise is easy to trace. An account you cannot act as exits `3` with `account_not_found`. Your role limits what you can do there: members of an organization cannot create repositories in it, which exits `5` with `account_forbidden`.
+
+A token acts as the person it belongs to, with access to the same accounts. Agents should pass `-A` or set `SX_ACCOUNT` rather than switch, so a run never changes a saved setting.

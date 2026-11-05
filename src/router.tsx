@@ -4,6 +4,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexProvider } from 'convex/react'
 import { routeTree } from './routeTree.gen'
+import { ErrorPage } from '~/components/forge/not-found'
 
 export function getRouter() {
   const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
@@ -32,12 +33,7 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0, // Let React Query handle all caching
-    defaultErrorComponent: ({ error }) => (
-      <p>
-        Something went wrong:{' '}
-        {error instanceof Error ? error.message : 'unknown error'}
-      </p>
-    ),
+    defaultErrorComponent: ErrorPage,
     defaultNotFoundComponent: () => <p>not found</p>,
     Wrap: ({ children }) => (
       <ConvexProvider client={convexQueryClient.convexClient}>

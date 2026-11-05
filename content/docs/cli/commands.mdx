@@ -6,24 +6,38 @@ description: Every command, with its flags and what it prints.
 
 Flags that work on every command:
 
-| Flag                    | Meaning                                                     |
-| ----------------------- | ----------------------------------------------------------- |
-| `-R, --repo owner/name` | Which repository. Default: your git remote, then `SX_REPO`. |
-| `-j, --json`            | JSON output. This is the default when output is piped.      |
-| `-n, --dry-run`         | Say what would happen and change nothing.                   |
-| `--no-color`            | Plain output. `NO_COLOR` works too.                         |
-| `-h, --help`            | Help for the command.                                       |
+| Flag                    | Meaning                                                                 |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `-R, --repo owner/name` | Which repository. Default: your git remote, then `SX_REPO`.             |
+| `-A, --account handle`  | Act as this account. See [Accounts](/docs/cli/authentication#accounts). |
+| `-j, --json`            | JSON output. This is the default when output is piped.                  |
+| `-n, --dry-run`         | Say what would happen and change nothing.                               |
+| `--no-color`            | Plain output. `NO_COLOR` works too.                                     |
+| `-h, --help`            | Help for the command.                                                   |
 
 ## repo
 
 ```bash
-sx repo list
+sx repo list [--all]
 sx repo view
-sx repo create dana/notes --private --description "Scratch notes"
+sx repo create notes --private --description "Scratch notes"
+sx repo create northwind/tools
 sx repo clone dana/gitfs
 ```
 
-`repo clone` prints the command and honours `clone.protocol` (`ssh` or `https`). `repo create` returns `created: false` when the repository already exists.
+`repo list` shows the repositories of the account you act as. `--all` shows every account you can act as. `repo create` takes a bare name, which goes in the account you act as, or `owner/name`. It returns `created: false` when the repository already exists, and exits `5` if you are only a member of that organization.
+
+`repo clone` prints the command and honours `clone.protocol` (`ssh` or `https`).
+
+## account
+
+```bash
+sx account list
+sx account current
+sx account switch <handle>
+```
+
+`list` shows every account you can act as with your role and which is in use. `switch` is saved in your settings and is safe to repeat: `switched: false` means you were already there. For one command, pass `-A handle`.
 
 ## change
 

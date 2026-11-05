@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   CheckCircleIcon,
+  ExclamationCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline'
@@ -10,6 +11,7 @@ const tones = {
   info: { icon: InformationCircleIcon, cls: 'bg-info/8 text-info' },
   success: { icon: CheckCircleIcon, cls: 'bg-success/8 text-success' },
   warning: { icon: ExclamationTriangleIcon, cls: 'bg-warning/8 text-warning' },
+  danger: { icon: ExclamationCircleIcon, cls: 'bg-danger/8 text-danger' },
 } as const
 
 /** A short note that sits inside a page. Use it for what the reader must not miss. */

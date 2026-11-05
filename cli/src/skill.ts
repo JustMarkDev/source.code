@@ -29,6 +29,10 @@ it before. Do not guess commands. Learn it from the tool itself.
 - Creating things is safe to repeat: \`change create\`, \`issue create\` and
   \`repo create\` return the existing thing instead of duplicating it.
 - Pass \`-R owner/name\` if you are not inside a clone.
+- sx acts as one account at a time: you, or an organization you belong to.
+  \`sx account current\` says which and why. In a clone it is the repository's
+  owner. To act as another for one command, pass \`-A handle\`; \`sx account switch\`
+  changes it for good, so do not use it unless told to.
 
 ## Exit codes
 

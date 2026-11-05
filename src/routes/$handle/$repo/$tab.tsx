@@ -1,6 +1,12 @@
 import * as React from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  notFound,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router'
 import type { RepoPage } from '~/components/forge/repo-shell'
+import { RequireAuth } from '~/components/forge/auth'
 import {
   ActionsPage,
   InsightsPage,
@@ -15,6 +21,7 @@ import {
 } from '~/components/forge/repo-variants'
 import { RepoFrame } from '~/components/forge/repo-shell'
 import { RepoSettings } from '~/components/forge/repo-settings'
+import { directory, useDirectoryLookups } from '~/lib/auth/accounts'
 import { findRepo } from '~/mock/data'
 
 /** URL segment -> the tab it highlights. */
@@ -50,14 +57,43 @@ export const Route = createFileRoute('/$handle/$repo/$tab')({
     path: typeof s.path === 'string' && s.path ? s.path : undefined,
     view: s.view === 'history' ? 'history' : undefined,
   }),
+  // An address an account used to have leads to the one it has now.
+  loader: ({ params }) => {
+    if (typeof window === 'undefined') return
+    directory.load()
+    const to = directory.resolveAlias(params.handle)
+    if (to)
+      throw redirect({
+        to: '/$handle/$repo/$tab',
+        params: { ...params, handle: to },
+        search: true,
+      })
+  },
   component: RepoTab,
 })
 
 function RepoTab() {
   const { handle, repo: name, tab } = Route.useParams()
-  const { n, section, path, view } = Route.useSearch()
+  const search = Route.useSearch()
+  const { n, section, path, view } = search
+  const navigate = useNavigate()
+  const { resolveAlias, ready } = useDirectoryLookups()
   const repo = findRepo(handle, name)
   const [finding, setFinding] = React.useState(false)
+  // An old address leads to the new one. The loader cannot do this on a first
+  // page load (rendered on the server), so the page does it once the
+  // browser's accounts are read.
+  const alias = resolveAlias(handle)
+  React.useEffect(() => {
+    if (alias)
+      void navigate({
+        to: '/$handle/$repo/$tab',
+        params: { handle: alias, repo: name, tab },
+        search,
+        replace: true,
+      })
+  }, [alias, navigate, name, tab, search])
+  if (alias || (!repo && !ready)) return null
   if (!repo) throw notFound()
   const active = activeOf[tab]
   if (!active) throw notFound()
@@ -131,7 +167,11 @@ function RepoTabPage({
     case 'insights':
       return <InsightsPage repo={repo} />
     case 'settings':
-      return <RepoSettings repo={repo} section={section} />
+      return (
+        <RequireAuth>
+          <RepoSettings repo={repo} section={section} />
+        </RequireAuth>
+      )
     default:
       throw notFound()
   }

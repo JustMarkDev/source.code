@@ -35,7 +35,7 @@ function Labels({ labels }: { labels: Array<string> }) {
         <span
           key={l}
           className={cn(
-            'rounded-full px-2 py-0.5 text-[11px] font-medium',
+            'rounded-full px-2 py-0.5 text-xs font-medium',
             labelStyle[l] ?? 'bg-muted text-muted-foreground',
           )}
         >
@@ -105,7 +105,7 @@ export function IssuesPage({ repo, n }: { repo: Repo; n?: number }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Filter issues"
             aria-label="Filter issues"
-            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            className="h-7 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
           />
         </label>
         <Seg
@@ -285,7 +285,7 @@ function IssueDetail({
         ].map((c, i) => (
           <Panel key={i} className="overflow-hidden">
             <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2 text-sm">
-              <Tile name={c.who} round className="size-6 text-[10px]" />
+              <Tile name={c.who} round className="size-6 text-xs" />
               <b className="font-medium">{c.who}</b>
               <span className="text-muted-foreground">{c.when}</span>
             </div>
@@ -342,7 +342,7 @@ function IssueDetail({
         <div className="space-y-2 border-t pt-4">
           <SectionLabel>Assignees</SectionLabel>
           <div className="flex items-center gap-2">
-            <Tile name="dana" round className="size-6 text-[10px]" />
+            <Tile name="dana" round className="size-6 text-xs" />
             dana
           </div>
         </div>
@@ -432,7 +432,7 @@ export function ActionsPage() {
             </button>
             {openId === r.id && (
               <div className="border-t bg-muted/30 px-4 py-3">
-                <ul className="grid gap-1 sm:grid-cols-2">
+                <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                   {jobs.map((j) => (
                     <li
                       key={j.name}
@@ -531,7 +531,7 @@ export function InsightsPage({ repo }: { repo: Repo }) {
           </Panel>
         </section>
 
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <section className="space-y-3">
             <h2 className="text-sm font-medium">Downloads by platform</h2>
             {release ? (
@@ -554,7 +554,7 @@ export function InsightsPage({ repo }: { repo: Repo }) {
             <ul className="space-y-3">
               {contributors.map((c) => (
                 <li key={c.name} className="flex items-center gap-3 text-sm">
-                  <Tile name={c.name} round className="size-7 text-[11px]" />
+                  <Tile name={c.name} round className="size-7 text-xs" />
                   <span className="w-16 font-medium">{c.name}</span>
                   <span
                     className="h-1.5 rounded-full bg-foreground/70"

@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { parse } from './args'
 import { run } from './main'
 
@@ -105,9 +108,6 @@ describe('agent support', () => {
   })
 
   test('the skill installs once and is then unchanged', async () => {
-    const { mkdtempSync } = await import('node:fs')
-    const { tmpdir } = await import('node:os')
-    const { join } = await import('node:path')
     const { installSkill } = await import('./skill')
     const dir = mkdtempSync(join(tmpdir(), 'sx-'))
     expect(installSkill(dir, 'claude').action).toBe('created')
@@ -267,5 +267,196 @@ describe('agent access to secrets', () => {
       sx('env', 'run', '-R', 'dana/gitfs', '--', 'echo', 'hi'),
     )
     expect(JSON.parse(r.err).error.code).toBe('grant_required')
+  })
+})
+
+describe('accounts', () => {
+  let dir = ''
+  beforeEach(() => {
+    // Settings go to a folder of their own, so a test never touches yours.
+    dir = mkdtempSync(join(tmpdir(), 'sx-accounts-'))
+    process.env.SX_CONFIG_DIR = dir
+    delete process.env.SX_ACCOUNT
+    delete process.env.SX_REPO
+  })
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+    delete process.env.SX_CONFIG_DIR
+    delete process.env.SX_ACCOUNT
+    delete process.env.SX_REPO
+  })
+  const json = (r: { out: string }) => JSON.parse(r.out)
+
+  test('list shows yourself and your organizations, with your role in each', async () => {
+    const rows = json(await sx('account', 'list')) as Array<{
+      handle: string
+      kind: string
+      role: string
+      active: boolean
+    }>
+    expect(rows.map((r) => [r.handle, r.kind, r.role])).toEqual([
+      ['dana', 'person', 'owner'],
+      ['northwind', 'organization', 'owner'],
+      ['lumen-studio', 'organization', 'member'],
+    ])
+    expect(rows.filter((r) => r.active).map((r) => r.handle)).toEqual(['dana'])
+  })
+
+  test('by default you act as yourself, and it says why', async () => {
+    const cur = json(await sx('account', 'current'))
+    expect(cur).toMatchObject({
+      handle: 'dana',
+      kind: 'person',
+      from: 'default',
+      login: 'dana',
+    })
+  })
+
+  test('-A acts as another account for one command, and saves nothing', async () => {
+    const cur = json(await sx('account', 'current', '-A', 'northwind'))
+    expect(cur).toMatchObject({ handle: 'northwind', from: 'flag' })
+    expect(json(await sx('account', 'current')).handle).toBe('dana')
+  })
+
+  test('an account you cannot act as is an error with a hint, exit 3', async () => {
+    const r = await sx('account', 'current', '-A', 'someone-else')
+    expect(r.code).toBe(3)
+    const e = JSON.parse(r.err).error
+    expect(e.code).toBe('account_not_found')
+    expect(e.hint).toContain('sx account list')
+    expect((await sx('account', 'switch', 'someone-else')).code).toBe(3)
+  })
+
+  test('switch is saved, and repeating it changes nothing', async () => {
+    const first = json(await sx('account', 'switch', 'northwind'))
+    expect(first).toMatchObject({
+      handle: 'northwind',
+      switched: true,
+      previous: 'dana',
+    })
+    expect(json(await sx('account', 'current'))).toMatchObject({
+      handle: 'northwind',
+      from: 'config',
+    })
+    const again = json(await sx('account', 'switch', 'northwind'))
+    expect(again.switched).toBe(false)
+    // Back to yourself is the same kind of switch.
+    expect(json(await sx('account', 'switch', 'dana')).switched).toBe(true)
+  })
+
+  test('--dry-run switches nothing', async () => {
+    const r = json(await sx('account', 'switch', 'northwind', '--dry-run'))
+    expect(r.switched).toBe(true)
+    expect(json(await sx('account', 'current')).handle).toBe('dana')
+  })
+
+  test('in a clone you act as the repository owner, with no switching', async () => {
+    const cur = json(await sx('account', 'current', '-R', 'northwind/relay'))
+    expect(cur).toMatchObject({ handle: 'northwind', from: 'repo' })
+    // A saved switch does not beat the repository you are working in.
+    await sx('account', 'switch', 'dana')
+    process.env.SX_REPO = 'northwind/relay'
+    expect(json(await sx('account', 'current')).from).toBe('repo')
+  })
+
+  test('precedence: flag, SX_ACCOUNT, repository, saved, you', async () => {
+    await sx('account', 'switch', 'lumen-studio')
+    expect(json(await sx('account', 'current')).from).toBe('config')
+    process.env.SX_REPO = 'northwind/relay'
+    expect(json(await sx('account', 'current')).handle).toBe('northwind')
+    process.env.SX_ACCOUNT = 'dana'
+    expect(json(await sx('account', 'current'))).toMatchObject({
+      handle: 'dana',
+      from: 'env',
+    })
+    expect(
+      json(await sx('account', 'current', '-A', 'lumen-studio')),
+    ).toMatchObject({ handle: 'lumen-studio', from: 'flag' })
+  })
+
+  test('switching says so when SX_ACCOUNT would still win', async () => {
+    process.env.SX_ACCOUNT = 'dana'
+    const r = json(await sx('account', 'switch', 'northwind'))
+    expect(r.overriddenBy).toBe('SX_ACCOUNT')
+  })
+
+  test('repo list is the account you act as; --all is every account', async () => {
+    const mine = json(await sx('repo', 'list')) as Array<{ slug: string }>
+    expect(mine.map((r) => r.slug)).toEqual(['dana/gitfs', 'dana/tinyqueue'])
+    const org = json(await sx('repo', 'list', '-A', 'northwind')) as Array<{
+      slug: string
+    }>
+    expect(org.map((r) => r.slug)).toEqual(['northwind/relay'])
+    const all = json(await sx('repo', 'list', '--all')) as Array<{
+      slug: string
+    }>
+    expect(all.map((r) => r.slug)).toEqual([
+      'dana/gitfs',
+      'dana/tinyqueue',
+      'northwind/relay',
+    ])
+  })
+
+  test('a bare repo name is created in the account you act as', async () => {
+    const r = json(
+      await sx('repo', 'create', 'tools', '-A', 'northwind', '--dry-run'),
+    )
+    expect(r.slug).toBe('northwind/tools')
+    const own = json(await sx('repo', 'create', 'notes', '--dry-run'))
+    expect(own.slug).toBe('dana/notes')
+  })
+
+  test('members cannot create in an organization; the hint says who can', async () => {
+    const r = await sx('repo', 'create', 'lumen-studio/x', '--dry-run')
+    expect(r.code).toBe(5)
+    const e = JSON.parse(r.err).error
+    expect(e.code).toBe('account_forbidden')
+    expect(e.hint).toContain('owner or admin')
+  })
+
+  test('creating under an account you cannot act as is not found', async () => {
+    const r = await sx('repo', 'create', 'stranger/x', '--dry-run')
+    expect(r.code).toBe(3)
+    expect(JSON.parse(r.err).error.code).toBe('account_not_found')
+  })
+
+  test('context and auth status name the account', async () => {
+    const ctx = json(await sx('context', '-R', 'northwind/relay'))
+    expect(ctx.account).toEqual({
+      handle: 'northwind',
+      kind: 'organization',
+      role: 'owner',
+    })
+    process.env.SX_TOKEN = 'sxt_test'
+    try {
+      expect(json(await sx('auth', 'status', '-A', 'northwind')).account).toBe(
+        'northwind',
+      )
+    } finally {
+      delete process.env.SX_TOKEN
+    }
+  })
+
+  test('the MCP server can list accounts', async () => {
+    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
+    const { InMemoryTransport } =
+      await import('@modelcontextprotocol/sdk/inMemory.js')
+    const { createSxMcpServer } = await import('./mcp')
+    const [a, b] = InMemoryTransport.createLinkedPair()
+    await createSxMcpServer().connect(b)
+    const c = new Client({ name: 'test', version: '0' })
+    await c.connect(a)
+    const { tools } = await c.listTools()
+    expect(
+      tools.find((t) => t.name === 'list_accounts')?.annotations?.readOnlyHint,
+    ).toBe(true)
+    const r = (await c.callTool({ name: 'list_accounts', arguments: {} })) as {
+      content: Array<{ text: string }>
+    }
+    expect(
+      (JSON.parse(r.content[0].text) as Array<{ handle: string }>).map(
+        (x) => x.handle,
+      ),
+    ).toContain('northwind')
   })
 })

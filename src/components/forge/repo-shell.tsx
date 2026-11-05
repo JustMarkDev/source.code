@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import * as m from 'motion/react-m'
+import { useSignInGate } from './auth'
 import { Avatar } from './bits'
 import type { Repo } from '~/mock/data'
 import { GitCommitIcon, GitForkIcon, GitMergeIcon } from '~/components/icons'
@@ -17,6 +18,7 @@ import { PageTransition } from '~/components/motion'
 import { LinkTabs } from '~/components/ui/tabs'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
+import { useDirectoryLookups } from '~/lib/auth/accounts'
 import { compact, languageColors, seeded } from '~/mock/data'
 
 export type RepoPage =
@@ -146,6 +148,11 @@ export function RepoHeader({
   actions?: React.ReactNode
 }) {
   const [starred, setStarred] = React.useState(false)
+  const gate = useSignInGate()
+  const { canManage, nameOf } = useDirectoryLookups()
+  // Settings belong to whoever manages the account that owns it: the person,
+  // or an owner or admin of the organization. Everyone else sees the public tabs.
+  const mine = canManage(repo.owner)
   const numbers: Partial<Record<RepoPage, number>> = {
     issues: 5,
     pulls: 5,
@@ -160,9 +167,9 @@ export function RepoHeader({
             <Link
               to="/$handle"
               params={{ handle: repo.owner }}
-              className="block text-xs leading-none text-muted-foreground hover:text-foreground"
+              className="-my-1.5 block py-1.5 text-xs leading-none text-muted-foreground hover:text-foreground"
             >
-              {repo.owner}
+              {nameOf(repo.owner)}
             </Link>
             <h1 className="mt-1 flex items-center gap-2 text-xl leading-none font-semibold tracking-tight">
               {repo.name}
@@ -171,7 +178,7 @@ export function RepoHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm">
+          <Button size="sm" onClick={() => gate()}>
             <GitForkIcon /> Fork
             <span className="text-muted-foreground tabular-nums">
               {compact(repo.forks)}
@@ -180,7 +187,7 @@ export function RepoHeader({
           <Button
             size="sm"
             aria-pressed={starred}
-            onClick={() => setStarred((s) => !s)}
+            onClick={() => gate(() => setStarred((s) => !s))}
           >
             <m.span
               key={String(starred)}
@@ -200,21 +207,35 @@ export function RepoHeader({
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      {active !== 'code' && (
+        <p className="max-w-[65ch] text-sm text-muted-foreground">
+          {repo.description}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 max-sm:flex-col max-sm:items-stretch">
         <LinkTabs
+          className="max-sm:order-2 max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)]"
           label="Repository"
-          tabs={tabs.map(([id, label]) => ({
-            label,
-            count: numbers[id],
-            active: id === active,
-            link: {
-              to: '/$handle/$repo/$tab',
-              params: { handle: repo.owner, repo: repo.name, tab: tabSlug[id] },
-            },
-          }))}
+          tabs={tabs
+            .filter(([id]) => id !== 'settings' || mine)
+            .map(([id, label]) => ({
+              label,
+              count: numbers[id],
+              active: id === active,
+              link: {
+                to: '/$handle/$repo/$tab',
+                params: {
+                  handle: repo.owner,
+                  repo: repo.name,
+                  tab: tabSlug[id],
+                },
+              },
+            }))}
         />
         {actions && (
-          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          <div className="flex flex-wrap items-center gap-2 max-sm:order-1">
+            {actions}
+          </div>
         )}
       </div>
     </header>
@@ -294,7 +315,7 @@ export function ContributionGraph({
           />
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
         Less
         {LEVELS.map((l) => (
           <span key={l} className={cn('size-2.5 rounded-[2px]', l)} />
