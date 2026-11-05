@@ -24,7 +24,7 @@ import {
   GitForkIcon,
   GitMergeIcon,
 } from '~/components/icons'
-import { BrandLogo, brandName, brands } from '~/components/brand'
+import { BrandLogo, BrandTile, brandName, brands } from '~/components/brand'
 import {
   GroupedBars,
   ShapeRadar,
@@ -278,7 +278,7 @@ function Design() {
             <p className="text-xs text-muted-foreground">
               Caption, 12, the smallest size. Hints, timestamps, badges.
             </p>
-            <p className="font-mono text-xs">dana/gitfs · ch_7f3a · v1.4.0</p>
+            <p className="font-mono text-xs">dana/gitfs · #216 · v1.4.0</p>
           </div>
         </Section>
 
@@ -396,7 +396,7 @@ function Design() {
         <Section
           id="brand"
           title="Brand logos"
-          note="Simple Icons where the vendor is listed there, the vendor's own icon file otherwise. Hosts show only on private screens."
+          note="Simple Icons where the vendor is listed there, the vendor's own icon file otherwise. Vector marks get a colour for each theme, with at least 4:1 against the card in light and 4.5:1 in dark. A vendor file that is a dark mark on a transparent background is lightness-flipped in dark. Hosts show only on private screens."
         >
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {logoIds.map((id) => (
@@ -758,9 +758,7 @@ function Design() {
                 ['Blacksmith', 'blacksmith', false],
               ].map(([name, id, connected]) => (
                 <li key={String(id)} className="flex items-center gap-3 p-4">
-                  <span className="flex size-9 items-center justify-center rounded-lg border bg-card">
-                    <BrandLogo id={id as BrandId} />
-                  </span>
+                  <BrandTile id={id as BrandId} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       {String(name)}

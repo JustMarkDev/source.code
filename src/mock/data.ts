@@ -81,6 +81,9 @@ export type Repo = {
   upstream?: string
   releases: Array<Release>
   install?: string
+  /** The project's own site and documentation, when it has them. */
+  website?: string
+  docs?: string
 }
 
 function assets(name: string, v: string, total: number): Array<Asset> {
@@ -168,6 +171,8 @@ export const repos: Array<Repo> = [
     starsToday: 84,
     forks: 118,
     license: 'MIT',
+    website: 'https://gitfs.dev',
+    docs: 'https://gitfs.dev/docs',
     updated: '2 days ago',
     source: 'native',
     install: 'curl -fsSL https://source.code/dana/gitfs/install | sh',
@@ -261,6 +266,8 @@ export const repos: Array<Repo> = [
     starsToday: 412,
     forks: 904,
     license: 'AGPL-3.0',
+    website: 'https://lumen.app',
+    docs: 'https://lumen.app/docs',
     updated: '3 hours ago',
     source: 'codeberg',
     upstream: 'codeberg.org/hollis/lumen',
@@ -376,6 +383,8 @@ export const repos: Array<Repo> = [
     starsToday: 133,
     forks: 288,
     license: 'Apache-2.0',
+    website: 'https://tern.dev',
+    docs: 'https://tern.dev/docs',
     updated: 'yesterday',
     source: 'gitlab',
     upstream: 'gitlab.com/ines/tern',
@@ -397,124 +406,7 @@ export const repos: Array<Repo> = [
     ],
   },
   {
-    owner: 'kofi',
-    name: 'spindle',
-    description: 'Zig HTTP server that serves a static site in 600 KB of RAM.',
-    category: 'Developer tools',
-    language: 'Zig',
-    languages: [['Zig', 100]],
-    stars: 3410,
-    starsToday: 61,
-    forks: 87,
-    license: 'MIT',
-    updated: '4 days ago',
-    source: 'native',
-    install: 'curl -fsSL https://source.code/kofi/spindle/install | sh',
-    releases: [
-      {
-        version: 'v0.5.0',
-        channel: 'stable',
-        date: 'Oct 28, 2026',
-        signed: false,
-        title: 'HTTP/2',
-        notes: { added: ['HTTP/2 support.'], changed: [], fixed: [] },
-        assets: assets('spindle', 'v0.5.0', 9100).filter(
-          (a) => a.platform !== 'windows',
-        ),
-      },
-    ],
-  },
-  {
-    owner: 'mira',
-    name: 'pocket-synth',
-    description:
-      'A tiny polyphonic synth for macOS menu bars. 4 oscillators, 1 knob, infinite vibes.',
-    category: 'Audio and media',
-    language: 'Swift',
-    languages: [
-      ['Swift', 92],
-      ['C', 8],
-    ],
-    stars: 5280,
-    starsToday: 207,
-    forks: 140,
-    license: 'GPL-3.0',
-    updated: '1 hour ago',
-    source: 'github',
-    upstream: 'github.com/mira/pocket-synth',
-    releases: [
-      {
-        version: 'v1.3.0',
-        channel: 'stable',
-        date: 'Nov 3, 2026',
-        signed: true,
-        title: 'MIDI learn',
-        notes: {
-          added: ['MIDI learn for every knob.'],
-          changed: [],
-          fixed: ['Crackle at 44.1 kHz.'],
-        },
-        assets: assets('pocket-synth', 'v1.3.0', 38400).slice(0, 2),
-      },
-    ],
-  },
-  {
-    owner: 'otto',
-    name: 'pulse',
-    description:
-      'Self-hosted uptime monitor with a status page you will not be embarrassed by.',
-    category: 'Infrastructure',
-    language: 'Go',
-    languages: [
-      ['Go', 71],
-      ['TypeScript', 27],
-      ['Dockerfile', 2],
-    ],
-    stars: 12100,
-    starsToday: 95,
-    forks: 610,
-    license: 'MIT',
-    updated: '6 hours ago',
-    source: 'gitea',
-    upstream: 'gitea.com/otto/pulse',
-    install: 'docker run -p 8080:8080 ghcr.io/otto/pulse',
-    releases: [
-      {
-        version: 'v3.0.2',
-        channel: 'stable',
-        date: 'Nov 1, 2026',
-        signed: true,
-        title: 'Maintenance',
-        notes: {
-          added: [],
-          changed: ['Faster dashboards.'],
-          fixed: ['Memory leak in probes.'],
-        },
-        assets: assets('pulse', 'v3.0.2', 77000),
-      },
-    ],
-  },
-  {
-    owner: 'priya',
-    name: 'weft',
-    description:
-      'Elixir framework for collaborative apps: presence, CRDTs and offline sync built in.',
-    category: 'Infrastructure',
-    language: 'Elixir',
-    languages: [
-      ['Elixir', 97],
-      ['JavaScript', 3],
-    ],
-    stars: 1980,
-    starsToday: 22,
-    forks: 64,
-    license: 'Apache-2.0',
-    updated: '3 days ago',
-    source: 'native',
-    releases: [],
-  },
-  {
-    owner: 'sol',
+    owner: 'ines',
     name: 'inkwell',
     description:
       'Python library for typesetting beautiful PDFs from plain data.',
@@ -530,107 +422,6 @@ export const repos: Array<Repo> = [
     upstream: 'gitlab.com/sol/inkwell',
     install: 'pip install inkwell',
     releases: [],
-  },
-  {
-    owner: 'tomas',
-    name: 'beacon',
-    description:
-      'Desktop app that turns any folder into a shareable link in one click.',
-    category: 'Apps',
-    language: 'TypeScript',
-    languages: [
-      ['TypeScript', 78],
-      ['Rust', 22],
-    ],
-    stars: 9040,
-    starsToday: 174,
-    forks: 355,
-    license: 'MPL-2.0',
-    updated: 'yesterday',
-    source: 'codeberg',
-    upstream: 'codeberg.org/tomas/beacon',
-    releases: [
-      {
-        version: 'v0.14.0',
-        channel: 'stable',
-        date: 'Oct 30, 2026',
-        signed: true,
-        title: 'Resumable transfers',
-        notes: {
-          added: ['Resume interrupted transfers.'],
-          changed: [],
-          fixed: [],
-        },
-        assets: assets('beacon', 'v0.14.0', 51000),
-      },
-    ],
-  },
-  {
-    owner: 'vera',
-    name: 'kiln',
-    description: 'A build system that reads your mind (and your lockfile).',
-    category: 'Developer tools',
-    language: 'Rust',
-    languages: [
-      ['Rust', 99],
-      ['Starlark', 1],
-    ],
-    stars: 6150,
-    starsToday: 71,
-    forks: 233,
-    license: 'Apache-2.0',
-    updated: '12 hours ago',
-    source: 'native',
-    install: 'cargo install kiln',
-    releases: [
-      {
-        version: 'v0.31.0',
-        channel: 'stable',
-        date: 'Nov 2, 2026',
-        signed: true,
-        title: 'Remote cache',
-        notes: {
-          added: ['Remote cache over HTTP.'],
-          changed: [],
-          fixed: ['Cache key drift on Windows.'],
-        },
-        assets: assets('kiln', 'v0.31.0', 22800),
-      },
-    ],
-  },
-  {
-    owner: 'yuki',
-    name: 'sumi',
-    description:
-      'Minimal terminal emulator with ligatures, sixels and a 2 ms input path.',
-    category: 'Apps',
-    language: 'C',
-    languages: [
-      ['C', 83],
-      ['Lua', 17],
-    ],
-    stars: 15300,
-    starsToday: 260,
-    forks: 502,
-    license: 'ISC',
-    updated: '8 hours ago',
-    source: 'github',
-    upstream: 'github.com/yuki/sumi',
-    releases: [
-      {
-        version: 'v4.2.0',
-        channel: 'stable',
-        date: 'Nov 3, 2026',
-        signed: true,
-        title: 'Sixel graphics',
-        notes: {
-          added: ['Sixel image protocol.'],
-          changed: [],
-          fixed: ['Ligature flicker.'],
-        },
-        assets: assets('sumi', 'v4.2.0', 131000),
-      },
-    ],
   },
 ]
 
@@ -680,39 +471,6 @@ export const developers: Array<Developer> = [
     hue: 280,
     featured: 'tern',
   },
-  {
-    handle: 'mira',
-    name: 'Mira Takahashi',
-    bio: 'Audio plugins and tiny macOS apps.',
-    followers: 3550,
-    contributions: 2290,
-    sources: ['github'],
-    languages: ['Swift', 'C'],
-    hue: 330,
-    featured: 'pocket-synth',
-  },
-  {
-    handle: 'kofi',
-    name: 'Kofi Mensah',
-    bio: 'Systems programmer. Zig evangelist. Small binaries only.',
-    followers: 2780,
-    contributions: 1760,
-    sources: ['native', 'codeberg'],
-    languages: ['Zig', 'C'],
-    hue: 90,
-    featured: 'spindle',
-  },
-  {
-    handle: 'yuki',
-    name: 'Yuki Arai',
-    bio: 'Terminals, text rendering, latency.',
-    followers: 9120,
-    contributions: 6100,
-    sources: ['github', 'gitea'],
-    languages: ['C', 'Lua'],
-    hue: 210,
-    featured: 'sumi',
-  },
 ]
 
 export const categories = [
@@ -720,7 +478,6 @@ export const categories = [
   'Apps',
   'Infrastructure',
   'Databases',
-  'Audio and media',
 ] as const
 
 /** "3 hours ago", "yesterday", "2 weeks ago" as hours, so a list can be sorted by it. */

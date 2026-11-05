@@ -8,12 +8,12 @@ import {
 import type { RepoPage } from '~/components/forge/repo-shell'
 import { RequireAuth } from '~/components/forge/auth'
 import {
-  ActionsPage,
   InsightsPage,
   IssuesPage,
   openIssueCount,
 } from '~/components/forge/repo-pages'
 import { ChangesPage } from '~/components/forge/repo-changes'
+import { PipelinesPage } from '~/components/forge/repo-runs'
 import {
   CodeActions,
   CodePage,
@@ -23,13 +23,14 @@ import { RepoFrame } from '~/components/forge/repo-shell'
 import { RepoSettings } from '~/components/forge/repo-settings'
 import { directory, useDirectoryLookups } from '~/lib/auth/accounts'
 import { findRepo } from '~/mock/data'
+import { openChangeCount } from '~/mock/platform'
 
 /** URL segment -> the tab it highlights. */
 const activeOf: Partial<Record<string, RepoPage>> = {
   code: 'code',
   issues: 'issues',
   changes: 'pulls',
-  actions: 'actions',
+  pipelines: 'pipelines',
   releases: 'release',
   insights: 'insights',
   settings: 'settings',
@@ -43,6 +44,15 @@ type TabSearch = {
 }
 
 export const Route = createFileRoute('/$handle/$repo/$tab')({
+  // The tab was called Actions. Old links lead to the same page under its name.
+  beforeLoad: ({ params }) => {
+    if (params.tab === 'actions')
+      throw redirect({
+        to: '/$handle/$repo/$tab',
+        params: { ...params, tab: 'pipelines' },
+        search: true,
+      })
+  },
   head: ({ params }) => ({
     meta: [{ title: `${params.handle}/${params.repo} · source.code` }],
   }),
@@ -105,7 +115,10 @@ function RepoTab() {
       key={repo.name}
       repo={repo}
       active={active}
-      counts={{ issues: openIssueCount(repo) }}
+      counts={{
+        issues: openIssueCount(repo),
+        pulls: openChangeCount(repo),
+      }}
       actions={
         tab === 'code' && view !== 'history' ? (
           <CodeActions repo={repo} onFind={() => setFinding(true)} />
@@ -160,8 +173,8 @@ function RepoTabPage({
       return <IssuesPage key={repo.name} repo={repo} n={n} />
     case 'changes':
       return <ChangesPage key={repo.name} repo={repo} n={n} />
-    case 'actions':
-      return <ActionsPage />
+    case 'pipelines':
+      return <PipelinesPage key={repo.name} repo={repo} n={n} />
     case 'releases':
       return <ReleasesPage repo={repo} />
     case 'insights':

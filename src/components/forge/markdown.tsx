@@ -8,6 +8,7 @@ import {
   ListBulletIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
+import { LicenseView } from './license-view'
 import type { Components } from 'react-markdown'
 import type { ReactNode } from 'react'
 import type { Repo } from '~/mock/data'
@@ -197,9 +198,15 @@ export function headingsOf(
 }
 
 /** Renders markdown the way a README should read: calm type, anchors, copyable code. */
-export function MarkdownBody({ source }: { source: string }) {
+export function MarkdownBody({
+  source,
+  className,
+}: {
+  source: string
+  className?: string
+}) {
   return (
-    <div className="max-w-[72ch] text-[15.5px]">
+    <div className={cn('text-[15.5px]', className)}>
       <Markdown remarkPlugins={[remarkGfm]} components={components}>
         {source}
       </Markdown>
@@ -399,9 +406,7 @@ export function ReadmeCard({
         )}
       </div>
       {doc === 'license' ? (
-        <pre className="max-w-[72ch] font-mono text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85">
-          {licenseFor(repo)}
-        </pre>
+        <LicenseView id={repo.license} text={licenseFor(repo)} />
       ) : (
         <MarkdownBody source={source} />
       )}

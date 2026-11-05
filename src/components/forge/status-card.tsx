@@ -88,7 +88,7 @@ export function StatusCard({
               onClick={onLand}
             >
               <GitMergeIcon />
-              {landing === 'landing' ? 'Landing' : `Land ${changeId}`}
+              {landing === 'landing' ? 'Landing' : `Land #${changeId}`}
             </Button>
             <p className="px-1 text-center text-xs text-muted-foreground">
               {note}

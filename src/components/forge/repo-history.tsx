@@ -136,7 +136,7 @@ export function HistoryView({ repo }: { repo: Repo }) {
                           }}
                           className="font-mono hover:text-foreground"
                         >
-                          via {c.change}
+                          via #{c.change}
                         </Link>
                       )}
                     </p>
@@ -229,7 +229,7 @@ export function CommitView({ repo, sha }: { repo: Repo; sha: string }) {
               params={{ handle: repo.owner, repo: repo.name, tab: 'changes' }}
               className="font-mono hover:text-foreground"
             >
-              landed via {c.change}
+              landed via #{c.change}
             </Link>
           )}
         </div>

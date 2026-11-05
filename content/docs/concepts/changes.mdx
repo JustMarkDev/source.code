@@ -12,7 +12,7 @@ A pull request is a branch with a conversation attached. Rebase or force-push th
 
 |                         | Pull request                | Change                                 |
 | ----------------------- | --------------------------- | -------------------------------------- |
-| Identity                | The branch                  | A stable id such as `ch_7f3a`          |
+| Identity                | The branch                  | A stable number such as `#216`         |
 | You push again          | New commits on the branch   | A new **patch set** on the same change |
 | You rebase              | Reviews can go stale        | Reviews follow the change              |
 | Reviewing an update     | Read the diff again         | Read the difference between patch sets |
@@ -34,12 +34,36 @@ For most work, yes, and it costs almost nothing to adopt: pushing a branch and r
 It is not free everywhere:
 
 - It is one more idea to learn for people who know only pull requests.
-- When a repository is mirrored two-way, a change maps to a pull request on the other host, and a patch set maps to a push. Review comments carry across, but the richer history stays here.
+- When a repository is mirrored two-way, a change maps to a pull request on the other host, and a patch set maps to a push. Review comments carry across, but the richer history stays here. [How the mapping works](/docs/concepts/pull-requests) lists what travels and what does not.
 - Forks and drive-by contributions still work as a branch from a fork. The maintainer sees a change.
+
+## Numbers
+
+A change is named by a number, `#216`, from the same counter as the repository's issues. A bare `#216` is never ambiguous, and it is the number you type: `sx change view 216`. It does not change when you rewrite the change, and it does not depend on any host. Pull requests on other hosts have their own numbers, and a change remembers which one is which.
 
 ## Findings from reviewers
 
-AI reviewers such as CodeRabbit and Greptile leave **findings** on lines of a patch set. A finding has a severity and an owner. You can resolve it, dismiss it with a reason, or send it to an agent. Whether a high-severity finding blocks landing is up to your [policy](/docs/concepts/policies).
+AI reviewers such as CodeRabbit and Greptile leave **findings** on lines of a patch set. A finding has a severity and an owner. Most come with two things you can act on:
+
+- **A suggested change**, shown as the lines that go and the lines that come. **Accept suggestion** applies it to your draft in one click. It finds its place by the text it replaces, not by line number, so several suggestions can be accepted in a row. If the code has moved, it says so instead of guessing.
+- **A prompt for an agent**, the same fix written as instructions. Copy it, or send the finding to an agent.
+
+You can also resolve a finding or dismiss it with a reason. Whether a high-severity finding blocks landing is up to your [policy](/docs/concepts/policies).
+
+## Editing in the browser
+
+On the newest patch set, **Edit** turns the diff into an editor. Type in the new version, undo with the usual shortcuts, then choose **Done editing**. Your edits, and any suggestions you accepted, stay in a draft that nobody else sees. **Save as patch set** turns the draft into the next patch set, and the findings it addressed are marked with it. Discard throws the draft away.
+
+## Showing what changed
+
+A diff says what the code does. It does not say what a person will see. A change can carry:
+
+- **Before and after images**, side by side, with a slider, or flipping between them.
+- **Recordings**, which play and can be scrubbed.
+- **Interactive previews**, small pages that run in a sandbox and cannot reach the rest of the site.
+- **Test results**, with which tests ran, how each behaved on the base and here, and the screenshots a test took before and after. A test that fails on the base and passes on the change is the strongest evidence that the change does what it says.
+
+Agents and CI attach these as they work, and each one says who made it and where it ran. Issues take images and videos too: paste or drop them into a comment.
 
 ## Issues first
 

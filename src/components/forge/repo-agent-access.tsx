@@ -51,7 +51,7 @@ const initial: Array<Grant> = [
     left: '',
     uses: 0,
     maxUses: 20,
-    reason: 'Run the test suite for ch_81b2',
+    reason: 'Run the test suite for #217',
   },
 ]
 

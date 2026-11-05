@@ -27,7 +27,7 @@ Events: `issue.created`, `change.opened`, `change.updated`, `finding.raised`, `c
 You choose, per task, from the environments you have connected:
 
 - **T3 Code**: a thread on your own computer, with your own agent logins.
-- **boat.dev, E2B, Daytona, Modal** and similar: a clean cloud machine or sandbox.
+- **boat.dev**: a clean cloud machine for the task. More sandboxes, such as E2B and Daytona, are planned.
 
 source.code does not host machines for agents or runners. See [Integrations](/docs/integrations).
 
@@ -36,7 +36,7 @@ source.code does not host machines for agents or runners. See [Integrations](/do
 On an issue or change, **Work with an agent** builds a prompt from the text, the policies that apply, open findings and the env schema, and gives you the command to start it:
 
 ```bash
-sx agent start ch_7f3a -R dana/gitfs --target t3
+sx agent start 216 -R dana/gitfs --target t3
 ```
 
 Secret values are never part of the prompt. See [Agents and the CLI](/docs/cli/agents).

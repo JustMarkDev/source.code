@@ -14,7 +14,11 @@ import { Modal } from './bits'
 import type { Target } from '~/mock/platform'
 import { Button } from '~/components/ui/button'
 
-type Subject = { kind: 'issue' | 'change'; ref: string; title: string }
+type Subject = {
+  kind: 'issue' | 'change' | 'run'
+  ref: string
+  title: string
+}
 
 const targets: Array<{
   id: Target
@@ -45,6 +49,7 @@ const targets: Array<{
 const runtimes = ['Claude Code', 'Codex', 'OpenCode'] as const
 
 const context = [
+  ['log', 'The log of the step that failed'],
   ['text', 'The issue or change text'],
   ['policies', 'Policies that apply to the paths involved'],
   ['findings', 'Open review findings'],
@@ -65,7 +70,11 @@ export function WorkWithAgent({
   const [runtime, setRuntime] =
     React.useState<(typeof runtimes)[number]>('Claude Code')
   const [picked, setPicked] = React.useState<Set<string>>(
-    new Set(['text', 'policies', 'schema']),
+    new Set(
+      subject.kind === 'run'
+        ? ['log', 'text', 'policies']
+        : ['text', 'policies', 'schema'],
+    ),
   )
   const [phase, setPhase] = React.useState<'idle' | 'starting' | 'started'>(
     'idle',
@@ -101,7 +110,11 @@ export function WorkWithAgent({
         open={open}
         onClose={close}
         wide
-        title="Work on this with an agent"
+        title={
+          subject.kind === 'run'
+            ? 'Fix this failure with an agent'
+            : 'Work on this with an agent'
+        }
         description={`${subject.ref} ${subject.title}`}
       >
         {phase === 'started' ? (
@@ -117,8 +130,9 @@ export function WorkWithAgent({
                       : 'Agent running in your sandbox'}
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  It will open a draft change on top of {subject.ref} and link
-                  it here. You approve before anything lands.
+                  {subject.kind === 'run'
+                    ? 'It will read the failing log, reproduce the failure, and open a draft change with the fix. The change links back to this run. You approve before anything lands.'
+                    : `It will open a draft change on top of ${subject.ref} and link it here. You approve before anything lands.`}
                 </p>
               </div>
             </div>
@@ -171,17 +185,19 @@ export function WorkWithAgent({
               <legend className="mb-1 text-sm font-medium">
                 What to send with it
               </legend>
-              {context.map(([id, text]) => (
-                <label key={id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={picked.has(id)}
-                    onChange={() => toggle(id)}
-                    className="size-4 accent-[var(--brand-ink)]"
-                  />
-                  {text}
-                </label>
-              ))}
+              {context
+                .filter(([id]) => id !== 'log' || subject.kind === 'run')
+                .map(([id, text]) => (
+                  <label key={id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={picked.has(id)}
+                      onChange={() => toggle(id)}
+                      className="size-4 accent-[var(--brand-ink)]"
+                    />
+                    {text}
+                  </label>
+                ))}
               <p className="text-xs text-muted-foreground">
                 Secret values are never included. Decrypting for an agent is a
                 separate, expiring grant under Secrets.

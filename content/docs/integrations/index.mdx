@@ -17,13 +17,17 @@ To add a service from a repository, use **Add an integration**. It opens the sam
 
 ## What you can connect
 
-| Kind                    | Services                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------- |
-| Code review             | CodeRabbit, Greptile, Macroscope, Qodo, Cursor Bugbot, Claude Code Review, Sourcery, Ellipsis  |
-| Runners                 | Blacksmith, Namespace, Depot, WarpBuild, RunsOn, Ubicloud, or your own machines                |
-| Agent environments      | T3 Code, boat.dev, E2B, Daytona, Modal, Vercel Sandbox, Cloudflare Sandbox, Fly Sprites        |
-| Secrets and config      | Varlock, 1Password, Infisical, Doppler, HashiCorp Vault, Bitwarden Secrets Manager, Pulumi ESC |
-| Planning and monitoring | Linear, Sentry                                                                                 |
+| Kind                    | Works today                      | Planned                                                       |
+| ----------------------- | -------------------------------- | ------------------------------------------------------------- |
+| Code review             | CodeRabbit, or your own reviewer | Greptile, Macroscope, Cursor Bugbot, Claude Code Review, Qodo |
+| Runners                 | Blacksmith, or your own machines | Namespace, Depot, WarpBuild                                   |
+| Agent environments      | T3 Code, boat.dev                | E2B, Daytona, Vercel Sandbox, Cloudflare Sandbox              |
+| Secrets and config      | Varlock                          |                                                               |
+| Planning and monitoring |                                  | Linear, Sentry                                                |
+
+A planned service is listed so you can see what is coming. It cannot be connected yet.
+
+**Your own reviewer** and **your own runners** work the same way: register them with a token, and they report through the API like any other. The reviewer can be any model or tool you run.
 
 <Callout type="warn" title="What is verified">
   The list is of services that publish a way to use them from another host or

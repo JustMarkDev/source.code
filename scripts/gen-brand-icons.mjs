@@ -6,25 +6,19 @@ import { writeFileSync } from 'node:fs'
 import * as si from 'simple-icons'
 
 const brands = [
-  'si1password',
   'siBitbucket',
-  'siBitwarden',
   'siClaude',
   'siCloudflare',
   'siCodeberg',
   'siCoderabbit',
   'siCursor',
-  'siFlydotio',
   'siForgejo',
   'siGitea',
   'siGithub',
   'siGitlab',
   'siLinear',
-  'siModal',
-  'siPulumi',
   'siQodo',
   'siSentry',
-  'siVault',
   'siVercel',
 ]
 // The footer shows these on every page, so they live apart from the brand

@@ -246,7 +246,7 @@ export function PoliciesPage(_props: { repo: Repo }) {
                       <div className="font-medium">
                         {d.title}{' '}
                         <span className="font-mono text-xs text-muted-foreground">
-                          {d.change}
+                          #{d.change}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">

@@ -3,6 +3,7 @@
   "pages": [
     "accounts",
     "changes",
+    "pull-requests",
     "policies",
     "secrets",
     "agent-secrets",

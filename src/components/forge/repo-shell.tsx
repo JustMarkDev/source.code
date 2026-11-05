@@ -22,14 +22,20 @@ import { useDirectoryLookups } from '~/lib/auth/accounts'
 import { compact, languageColors, seeded } from '~/mock/data'
 
 export type RepoPage =
-  'code' | 'issues' | 'pulls' | 'actions' | 'release' | 'insights' | 'settings'
+  | 'code'
+  | 'issues'
+  | 'pulls'
+  | 'pipelines'
+  | 'release'
+  | 'insights'
+  | 'settings'
 
 /** Page id -> URL segment. */
 export const tabSlug: Record<RepoPage, string> = {
   code: 'code',
   issues: 'issues',
   pulls: 'changes',
-  actions: 'actions',
+  pipelines: 'pipelines',
   release: 'releases',
   insights: 'insights',
   settings: 'settings',
@@ -39,7 +45,7 @@ const tabs: Array<[RepoPage, string]> = [
   ['code', 'Code'],
   ['issues', 'Issues'],
   ['pulls', 'Changes'],
-  ['actions', 'Actions'],
+  ['pipelines', 'Pipelines'],
   ['release', 'Releases'],
   ['insights', 'Insights'],
   ['settings', 'Settings'],
@@ -153,29 +159,26 @@ export function RepoHeader({
   // Settings belong to whoever manages the account that owns it: the person,
   // or an owner or admin of the organization. Everyone else sees the public tabs.
   const mine = canManage(repo.owner)
-  const numbers: Partial<Record<RepoPage, number>> = {
-    issues: 5,
-    pulls: 5,
-    ...counts,
-  }
+  const numbers: Partial<Record<RepoPage, number>> = { ...counts }
   return (
     <header className="mb-5 space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar handle={repo.owner} className="size-10 text-base" />
-          <div className="min-w-0">
+          <Avatar handle={repo.owner} className="size-9 text-sm" />
+          <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xl leading-tight font-semibold tracking-tight">
             <Link
               to="/$handle"
               params={{ handle: repo.owner }}
-              className="-my-1.5 block py-1.5 text-xs leading-none text-muted-foreground hover:text-foreground"
+              className="font-normal text-muted-foreground hover:text-foreground"
             >
               {nameOf(repo.owner)}
             </Link>
-            <h1 className="mt-1 flex items-center gap-2 text-xl leading-none font-semibold tracking-tight">
-              {repo.name}
-              <Badge tone="outline">Public</Badge>
-            </h1>
-          </div>
+            <span aria-hidden className="font-normal text-muted-foreground/50">
+              /
+            </span>
+            {repo.name}
+            <Badge tone="outline">Public</Badge>
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => gate()}>
@@ -207,11 +210,6 @@ export function RepoHeader({
           </Button>
         </div>
       </div>
-      {active !== 'code' && (
-        <p className="max-w-[65ch] text-sm text-muted-foreground">
-          {repo.description}
-        </p>
-      )}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 max-sm:flex-col max-sm:items-stretch">
         <LinkTabs
           className="max-sm:order-2 max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)]"

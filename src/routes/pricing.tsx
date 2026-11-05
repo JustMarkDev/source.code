@@ -19,7 +19,7 @@ const own: Array<{ title: string; body: string; names: Array<BrandId> }> = [
   {
     title: 'Runners',
     body: 'Run workflows on any runner you like.',
-    names: ['blacksmith', 'namespace', 'depot', 'warpbuild', 'runson'],
+    names: ['blacksmith', 'namespace', 'depot', 'warpbuild'],
   },
   {
     title: 'Models and agents',
@@ -29,7 +29,7 @@ const own: Array<{ title: string; body: string; names: Array<BrandId> }> = [
   {
     title: 'Environments',
     body: 'Hand work to a machine you choose.',
-    names: ['t3code', 'boat', 'e2b', 'daytona', 'modal'],
+    names: ['t3code', 'boat', 'e2b', 'daytona'],
   },
 ]
 

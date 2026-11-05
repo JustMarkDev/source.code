@@ -40,13 +40,13 @@ const personalNeeds: Array<NeedsItem> = [
     action: 'See the run',
     link: {
       to: '/$handle/$repo/$tab',
-      params: { handle: 'dana', repo: 'gitfs', tab: 'actions' },
+      params: { handle: 'dana', repo: 'gitfs', tab: 'pipelines' },
     },
   },
   {
     severity: 'review',
     title: 'Review: Cache negative ref lookups',
-    where: 'dana/gitfs · ch_7f3a',
+    where: 'dana/gitfs · #216',
     note: 'hollis approved. Greptile found 1 high finding: NegCache is unbounded.',
     age: '1 hour ago',
     action: 'Open change',
@@ -86,7 +86,7 @@ const personalProgress: Array<InProgress> = [
   {
     kind: 'agent',
     title: 'Add an SSE transport to the mount daemon',
-    where: 'dana/gitfs · ch_81b2',
+    where: 'dana/gitfs · #217',
     status: 'Agent working',
     tone: 'info',
     detail: 'claude via T3 Code · 12 min · 3 files · asks before it pushes',
@@ -99,7 +99,7 @@ const personalProgress: Array<InProgress> = [
   {
     kind: 'change',
     title: 'Retry with jitter',
-    where: 'dana/tinyqueue · ch_55c1',
+    where: 'dana/tinyqueue · #18',
     status: 'Waiting on ines',
     tone: 'muted',
     detail: '1 of 2 approvals · checks passed',
@@ -111,7 +111,7 @@ const personalProgress: Array<InProgress> = [
   {
     kind: 'change',
     title: 'Document the mount flags',
-    where: 'dana/gitfs · ch_6e09',
+    where: 'dana/gitfs · #219',
     status: 'Checks running',
     tone: 'warning',
     detail: 'ci/test · 3 of 4 jobs done',
@@ -139,7 +139,7 @@ const personalActivity: Array<Activity> = [
   {
     who: 'hollis',
     did: 'approved',
-    what: 'ch_7f3a',
+    what: '#216',
     where: 'dana/gitfs',
     when: '1 hour ago',
     day: 'Today',
@@ -148,7 +148,7 @@ const personalActivity: Array<Activity> = [
   {
     who: 'greptile',
     did: 'found 1 high issue in',
-    what: 'ch_7f3a',
+    what: '#216',
     where: 'dana/gitfs',
     when: '1 hour ago',
     day: 'Today',
@@ -157,7 +157,7 @@ const personalActivity: Array<Activity> = [
   {
     who: 'claude via T3 Code',
     did: 'opened a draft',
-    what: 'ch_81b2',
+    what: '#217',
     where: 'dana/gitfs',
     when: '3 hours ago',
     day: 'Today',
@@ -172,10 +172,10 @@ const personalActivity: Array<Activity> = [
     kind: 'other',
   },
   {
-    who: 'kofi',
+    who: 'hollis',
     did: 'released',
-    what: 'v0.9.1',
-    where: 'kofi/spindle',
+    what: 'v2.4.1',
+    where: 'hollis/lumen',
     when: 'yesterday',
     day: 'Yesterday',
     kind: 'release',
@@ -183,7 +183,7 @@ const personalActivity: Array<Activity> = [
   {
     who: 'claude via T3 Code',
     did: 'finished a session on',
-    what: 'ch_6e09',
+    what: '#219',
     where: 'dana/gitfs',
     when: 'yesterday',
     day: 'Yesterday',
@@ -199,7 +199,7 @@ const personalActivity: Array<Activity> = [
     kind: 'release',
   },
   {
-    who: 'mira',
+    who: 'hollis',
     did: 'opened an issue on',
     what: 'dana/tinyqueue',
     when: '4 days ago',
@@ -363,12 +363,12 @@ const northwind: DashboardData = {
       note: 'The postgres service container did not start on the last 2 runs.',
       age: '40 minutes ago',
       action: 'See the run',
-      link: relayLink('actions'),
+      link: relayLink('pipelines'),
     },
     {
       severity: 'review',
       title: 'Review: Bound the replay window',
-      where: 'northwind/relay · ch_2a91',
+      where: 'northwind/relay · #88',
       note: 'ines asked for changes. 2 comments are unresolved.',
       age: '3 hours ago',
       action: 'Open change',
@@ -379,7 +379,7 @@ const northwind: DashboardData = {
     {
       kind: 'agent',
       title: 'Add backpressure to the consumer loop',
-      where: 'northwind/relay · ch_4c70',
+      where: 'northwind/relay · #89',
       status: 'Agent working',
       tone: 'info',
       detail: 'codex via boat.dev · 6 min · 2 files · asks before it pushes',
@@ -388,7 +388,7 @@ const northwind: DashboardData = {
     {
       kind: 'change',
       title: 'Document the delivery guarantees',
-      where: 'northwind/relay · ch_5d12',
+      where: 'northwind/relay · #90',
       status: 'Waiting on hollis',
       tone: 'muted',
       detail: '0 of 1 approvals · checks passed',
@@ -399,7 +399,7 @@ const northwind: DashboardData = {
     {
       who: 'ines',
       did: 'asked for changes on',
-      what: 'ch_2a91',
+      what: '#88',
       where: 'northwind/relay',
       when: '3 hours ago',
       day: 'Today',
@@ -408,7 +408,7 @@ const northwind: DashboardData = {
     {
       who: 'codex via boat.dev',
       did: 'opened a draft',
-      what: 'ch_4c70',
+      what: '#89',
       where: 'northwind/relay',
       when: '6 hours ago',
       day: 'Today',
@@ -426,7 +426,7 @@ const northwind: DashboardData = {
     {
       who: 'dana',
       did: 'merged',
-      what: 'ch_1f08',
+      what: '#91',
       where: 'northwind/relay',
       when: '3 days ago',
       day: 'Earlier this week',

@@ -1,14 +1,23 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  BookOpenIcon,
+  DocumentTextIcon,
+  GlobeAltIcon,
   RocketLaunchIcon,
   ScaleIcon,
-  UsersIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
+import { Avatar } from './bits'
 import { CopyField, Languages } from './repo-shell'
 import type { Repo } from '~/mock/data'
 import { Segmented } from '~/components/ui/tabs'
 import { latestStable } from '~/mock/data'
+import { contributorsFor } from '~/mock/extra'
+
+const TOTAL_CONTRIBUTORS = 21
+const ACTIVE_THIS_MONTH = 6
+const SHOWN_AVATARS = 6
 
 const langInstall: Record<string, [string, (name: string) => string]> = {
   Rust: ['cargo', (n) => `cargo install ${n}`],
@@ -33,6 +42,79 @@ function installsFor(repo: Repo): Array<[string, string]> {
   return out
 }
 
+function Section({
+  title,
+  aside,
+  children,
+}: {
+  title: string
+  aside?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-2.5 px-5 py-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-xs font-medium text-muted-foreground">{title}</h2>
+        {aside && (
+          <span className="text-xs text-muted-foreground">{aside}</span>
+        )}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+type Icon = React.ComponentType<{ className?: string }>
+
+const linkClass =
+  'inline-flex items-center gap-1.5 py-0.5 text-muted-foreground hover:text-foreground'
+
+function ExternalLink({
+  href,
+  icon: Icon,
+  children,
+}: {
+  href: string
+  icon: Icon
+  children: React.ReactNode
+}) {
+  return (
+    <li>
+      <a href={href} target="_blank" rel="noreferrer" className={linkClass}>
+        <Icon className="size-4" />
+        {children}
+      </a>
+    </li>
+  )
+}
+
+/** A file in the repository, opened in the code browser. */
+function FileLink({
+  repo,
+  path,
+  icon: Icon,
+  children,
+}: {
+  repo: Repo
+  path: string
+  icon: Icon
+  children: React.ReactNode
+}) {
+  return (
+    <li>
+      <Link
+        to="/$handle/$repo/$tab"
+        params={{ handle: repo.owner, repo: repo.name, tab: 'code' }}
+        search={{ path }}
+        className={linkClass}
+      >
+        <Icon className="size-4" />
+        {children}
+      </Link>
+    </li>
+  )
+}
+
 /**
  * The facts about a repository, kept out of the README. Everything here is
  * detected: the license from the LICENSE file, languages from the code, the
@@ -50,10 +132,14 @@ export function AboutPanel({
   const [which, setWhich] = React.useState(installs[0][0])
   const current = installs.find(([k]) => k === which) ?? installs[0]
   const release = latestStable(repo)
+  const contributors = contributorsFor(repo)
+  const insights = {
+    to: '/$handle/$repo/$tab',
+    params: { handle: repo.owner, repo: repo.name, tab: 'insights' },
+  } as const
   return (
-    <aside className="space-y-6 text-sm">
-      <section className="space-y-2">
-        <h2 className="font-medium">Install</h2>
+    <aside className="surface flex min-w-0 flex-col divide-y overflow-hidden rounded-2xl border bg-card text-sm">
+      <Section title="Install">
         <Segmented
           label="Install with"
           value={which}
@@ -61,49 +147,90 @@ export function AboutPanel({
           options={installs.map(([k]): [string, string] => [k, k])}
         />
         <CopyField value={current[1]} prefix="$" />
-      </section>
+      </Section>
 
-      <ul className="space-y-2.5 text-muted-foreground">
-        <li className="flex items-center gap-2.5">
-          <ScaleIcon className="size-4 shrink-0" />
-          <button
-            type="button"
-            onClick={onOpenLicense}
-            className="-my-1 py-1 text-left hover:text-foreground"
-          >
-            <span className="text-foreground">{repo.license} license</span>{' '}
-            <span className="text-xs">from LICENSE</span>
-          </button>
-        </li>
-        {release && (
+      <Section title="Details">
+        <ul className="space-y-2">
+          {release && (
+            <li className="flex items-center gap-2.5">
+              <RocketLaunchIcon className="size-4 shrink-0 text-muted-foreground" />
+              <Link
+                to="/$handle/$repo/$tab"
+                params={{
+                  handle: repo.owner,
+                  repo: repo.name,
+                  tab: 'releases',
+                }}
+                className="font-medium hover:underline"
+              >
+                {release.version}
+              </Link>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {release.date}
+              </span>
+            </li>
+          )}
           <li className="flex items-center gap-2.5">
-            <RocketLaunchIcon className="size-4 shrink-0" />
-            <Link
-              to="/$handle/$repo/$tab"
-              params={{ handle: repo.owner, repo: repo.name, tab: 'releases' }}
-              className="-my-1 py-1 text-foreground hover:underline"
+            <ScaleIcon className="size-4 shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={onOpenLicense}
+              className="font-medium hover:underline"
             >
-              {release.version}
-            </Link>
-            <span className="text-xs">{release.date}</span>
+              {repo.license}
+            </button>
+            <span className="ml-auto text-xs text-muted-foreground">
+              license
+            </span>
           </li>
-        )}
-        <li className="flex items-center gap-2.5">
-          <UsersIcon className="size-4 shrink-0" />
-          <Link
-            to="/$handle/$repo/$tab"
-            params={{ handle: repo.owner, repo: repo.name, tab: 'insights' }}
-            className="-my-1 py-1 hover:text-foreground"
-          >
-            21 contributors
-          </Link>
-        </li>
-      </ul>
+        </ul>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t pt-2.5 text-xs">
+          {repo.website && (
+            <ExternalLink href={repo.website} icon={GlobeAltIcon}>
+              Website
+            </ExternalLink>
+          )}
+          {repo.docs && (
+            <ExternalLink href={repo.docs} icon={BookOpenIcon}>
+              Docs
+            </ExternalLink>
+          )}
+          <FileLink repo={repo} path="SECURITY.md" icon={ShieldCheckIcon}>
+            Security policy
+          </FileLink>
+          <FileLink repo={repo} path="CHANGELOG.md" icon={DocumentTextIcon}>
+            Changelog
+          </FileLink>
+        </ul>
+      </Section>
 
-      <section className="space-y-2">
-        <h2 className="font-medium">Languages</h2>
+      <Section
+        title="Contributors"
+        aside={`${ACTIVE_THIS_MONTH} active this month`}
+      >
+        <Link
+          {...insights}
+          className="group -my-1 flex items-center gap-3 py-1"
+        >
+          <span className="flex -space-x-1.5">
+            {contributors.slice(0, SHOWN_AVATARS).map((c) => (
+              <Avatar
+                key={c.name}
+                handle={c.name}
+                className="size-7 text-xs ring-2 ring-card"
+              />
+            ))}
+          </span>
+          <span className="text-xs text-muted-foreground group-hover:text-foreground">
+            <b className="font-medium text-foreground">{TOTAL_CONTRIBUTORS}</b>{' '}
+            in total
+          </span>
+        </Link>
+      </Section>
+
+      <Section title="Languages">
         <Languages repo={repo} />
-      </section>
+      </Section>
     </aside>
   )
 }

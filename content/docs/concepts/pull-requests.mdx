@@ -1,0 +1,64 @@
+---
+icon: ArrowsRightLeftIcon
+title: Changes and pull requests
+description: How a change becomes a pull request on another host, and back. What travels, what does not, and how stacks work.
+---
+
+A repository mirrored two-way keeps its changes and the host's pull requests in step. This page is the mapping: what each side becomes on the other, and what stays on source.code because the host has nowhere to put it.
+
+The names differ. GitHub, Codeberg and Gitea say pull request. GitLab says merge request, written `!58` rather than `#58`. A change maps to whichever the host uses.
+
+## One change, one request
+
+| Here                      | On the host                                                         |
+| ------------------------- | ------------------------------------------------------------------- |
+| Change `#216`             | One pull request, with its own number there                         |
+| A patch set               | A push to one branch, `sx/216-cache-negative-ref-lookups`           |
+| Draft                     | A draft flag on GitHub. A `Draft:` or `WIP:` title prefix elsewhere |
+| Landed                    | Merged                                                              |
+| Abandoned                 | Closed                                                              |
+| Title and description     | Title and body                                                      |
+| Labels                    | Labels, matched by name                                             |
+| Checks                    | Commit statuses on the pushed branch                                |
+| Comments and line threads | Review comments on the same lines                                   |
+| Approval                  | An approval                                                         |
+| Request for changes       | A request for changes. On GitLab, an unresolved thread              |
+
+The branch is named from the number and the title as it was when the change was opened. It never changes after that, so renaming a change does not break the link. A hidden line at the end of the description carries the change number, which is how either side finds the other again after a rewrite.
+
+## Opened on the host
+
+A pull request opened there becomes a change here. It takes the next number in the repository, not the host's number, so numbers never depend on a host. A new push to its branch, forced or not, is a new patch set. A draft title becomes a draft change, without the prefix. When it is merged there, the change is landed here, and when it is closed, the change is abandoned.
+
+## Stacks
+
+A stack has no field on any host. What all of them understand is a chain of requests where each one is aimed at the branch of the one below it. That is how a stack is sent out: `#216` is aimed at `main`, `#217` at the branch of `#216`, `#218` at the branch of `#217`.
+
+It is also how a stack is read when it arrives. Requests that point at each other's branches become a stack, bottom first. Two details are worth knowing:
+
+- **A request with two children is not a line.** The chain is cut there and each child starts its own stack.
+- **A merged parent re-aims its children.** Hosts move them to the default branch. Here they become a new patch set, rebased onto what landed. Squash and rebase merges rewrite the parent's commits, so the children still carry the old ones until that rebase.
+
+Landing in order, and rebasing the children without losing their approvals, is done on source.code. On a host each request is merged by hand.
+
+## What stays here
+
+A host only sees what it has a place for. These stay on source.code and are marked as native in the change page:
+
+| Native to source.code            | What the host gets                                              |
+| -------------------------------- | --------------------------------------------------------------- |
+| Comparing patch sets             | Nothing                                                         |
+| Approvals that follow a rewrite  | Nothing. The host may mark an approval stale after a force-push |
+| Sending a finding to an agent    | Nothing                                                         |
+| Findings with a severity         | A line comment that starts with the severity                    |
+| Policies as code                 | One required status, `source.code/policy`. The rules stay here  |
+| Sliders and interactive previews | Two plain images, and a link                                    |
+| Test runs and their screenshots  | A check with the counts. The detail stays here                  |
+
+A few things travel in part. The host shows pushes, not numbered patch sets, so a comment names each one. A finding that blocks landing is a policy here, and only a comment there.
+
+<Callout type="warn" title="What is verified">
+  This is the mapping source.code is built around, written from each host's
+  documented model of pull requests and merge requests. In this preview the
+  mirror screens run on sample data, so nothing is sent to a real host yet.
+</Callout>

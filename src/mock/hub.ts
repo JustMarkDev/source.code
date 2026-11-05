@@ -10,9 +10,13 @@ import type { Repo } from '~/mock/data'
 export type IntegrationGroup =
   'review' | 'runners' | 'environments' | 'secrets' | 'planning'
 
+/** `available` works today. `planned` is on the roadmap and cannot be connected yet. */
+export type IntegrationStatus = 'available' | 'planned'
+
 export type Integration = {
-  id: BrandId | 'selfhosted'
+  id: BrandId | 'selfhosted' | 'selfhostedreviewer'
   group: IntegrationGroup
+  status: IntegrationStatus
   tagline: string
   does: Array<string>
   /** What it is allowed to do once connected, in plain words. */
@@ -55,15 +59,9 @@ export const groups: Record<
 
 export const catalog: Array<Integration> = [
   {
-    id: 'coderabbit',
-    group: 'review',
-    tagline: 'Line-by-line review of each change, with a summary.',
-    does: ['Comments on diff lines', 'Summarizes the change'],
-    access: ['Read code and changes', 'Comment on changes'],
-  },
-  {
     id: 'greptile',
     group: 'review',
+    status: 'planned',
     tagline: 'Reviews with an index of the whole repository.',
     does: ['Cross-file findings', 'Uses repo-wide context'],
     access: ['Read code and changes', 'Comment on changes'],
@@ -71,20 +69,23 @@ export const catalog: Array<Integration> = [
   {
     id: 'macroscope',
     group: 'review',
+    status: 'planned',
     tagline: 'Bug findings and plain-language change summaries.',
     does: ['Bug findings', 'Change summaries'],
     access: ['Read code and changes', 'Comment on changes'],
   },
   {
-    id: 'qodo',
+    id: 'coderabbit',
     group: 'review',
-    tagline: 'Review and test suggestions on each change.',
-    does: ['Review comments', 'Test suggestions'],
+    status: 'available',
+    tagline: 'Line-by-line review of each change, with a summary.',
+    does: ['Comments on diff lines', 'Summarizes the change'],
     access: ['Read code and changes', 'Comment on changes'],
   },
   {
     id: 'bugbot',
     group: 'review',
+    status: 'planned',
     tagline: 'Looks for bugs in changes before they land.',
     does: ['Bug findings'],
     access: ['Read code and changes', 'Comment on changes'],
@@ -92,27 +93,32 @@ export const catalog: Array<Integration> = [
   {
     id: 'claudereview',
     group: 'review',
+    status: 'planned',
     tagline: 'Anthropic’s code review for teams (research preview).',
     does: ['Review comments'],
     access: ['Read code and changes', 'Comment on changes'],
   },
   {
-    id: 'sourcery',
+    id: 'qodo',
     group: 'review',
-    tagline: 'Review and refactoring suggestions.',
-    does: ['Review comments', 'Refactor suggestions'],
+    status: 'planned',
+    tagline: 'Review and test suggestions on each change.',
+    does: ['Review comments', 'Test suggestions'],
     access: ['Read code and changes', 'Comment on changes'],
   },
   {
-    id: 'ellipsis',
+    id: 'selfhostedreviewer',
     group: 'review',
-    tagline: 'Reviews changes and can propose fixes.',
-    does: ['Review comments', 'Fix suggestions'],
+    status: 'available',
+    tagline:
+      'Your own AI reviewer, any model or tool, registered with a token.',
+    does: ['Any model or tool you run', 'Posts findings through the API'],
     access: ['Read code and changes', 'Comment on changes'],
   },
   {
     id: 'blacksmith',
     group: 'runners',
+    status: 'available',
     tagline: 'Faster hosted runners. Change one label to switch.',
     does: ['Hosted Linux runners', 'Cache next to the runner'],
     access: ['Read workflows', 'Report check results'],
@@ -120,6 +126,7 @@ export const catalog: Array<Integration> = [
   {
     id: 'namespace',
     group: 'runners',
+    status: 'planned',
     tagline: 'Runners with persistent cache volumes and remote builders.',
     does: ['Linux, macOS and Windows runners', 'Cache volumes'],
     access: ['Read workflows', 'Report check results'],
@@ -127,6 +134,7 @@ export const catalog: Array<Integration> = [
   {
     id: 'depot',
     group: 'runners',
+    status: 'planned',
     tagline: 'Hosted runners and fast container builds.',
     does: ['Hosted runners', 'Remote container builds'],
     access: ['Read workflows', 'Report check results'],
@@ -134,27 +142,15 @@ export const catalog: Array<Integration> = [
   {
     id: 'warpbuild',
     group: 'runners',
+    status: 'planned',
     tagline: 'Managed runners for Linux and macOS.',
     does: ['Hosted runners', 'Job observability'],
     access: ['Read workflows', 'Report check results'],
   },
   {
-    id: 'runson',
-    group: 'runners',
-    tagline: 'Runs in your own AWS account and shuts down when idle.',
-    does: ['Self-hosted on AWS', 'You keep the infrastructure'],
-    access: ['Read workflows', 'Report check results'],
-  },
-  {
-    id: 'ubicloud',
-    group: 'runners',
-    tagline: 'Lower-cost Linux runners on bare metal.',
-    does: ['Linux runners', 'Lower cost'],
-    access: ['Read workflows', 'Report check results'],
-  },
-  {
     id: 'selfhosted',
     group: 'runners',
+    status: 'available',
     tagline: 'Your own machines, registered with a token.',
     does: ['Any machine you control'],
     access: ['Read workflows', 'Report check results'],
@@ -162,6 +158,7 @@ export const catalog: Array<Integration> = [
   {
     id: 't3code',
     group: 'environments',
+    status: 'available',
     tagline: 'Hand work to an agent on your own computer.',
     does: [
       'Start a thread from an issue or change',
@@ -173,6 +170,7 @@ export const catalog: Array<Integration> = [
   {
     id: 'boat',
     group: 'environments',
+    status: 'available',
     tagline: 'Persistent Linux machines made for agents.',
     does: ['A clean machine per task', 'CLI, HTTP API and SDKs'],
     access: ['An API key', 'A spending limit'],
@@ -181,6 +179,7 @@ export const catalog: Array<Integration> = [
   {
     id: 'e2b',
     group: 'environments',
+    status: 'planned',
     tagline: 'Sandboxes for running agent-written code.',
     does: ['Isolated sandboxes', 'Broad framework support'],
     access: ['An API key', 'A spending limit'],
@@ -189,22 +188,16 @@ export const catalog: Array<Integration> = [
   {
     id: 'daytona',
     group: 'environments',
+    status: 'planned',
     tagline: 'Fast-starting sandboxes with many SDK languages.',
     does: ['Fast starts', 'Optional GPU'],
     access: ['An API key', 'A spending limit'],
     credential: { label: 'API key', placeholder: 'dtn_…' },
   },
   {
-    id: 'modal',
-    group: 'environments',
-    tagline: 'Sandboxes for Python and GPU workloads.',
-    does: ['GPU sandboxes', 'Python-first SDK'],
-    access: ['A token', 'A spending limit'],
-    credential: { label: 'Token', placeholder: 'ak-…' },
-  },
-  {
     id: 'vercel',
     group: 'environments',
+    status: 'planned',
     tagline: 'Sandboxes next to the apps you deploy on Vercel.',
     does: ['Firecracker microVMs', 'Billed on active time'],
     access: ['A token', 'A spending limit'],
@@ -213,77 +206,24 @@ export const catalog: Array<Integration> = [
   {
     id: 'cloudflare',
     group: 'environments',
+    status: 'planned',
     tagline: 'Sandboxes built on Cloudflare Containers.',
     does: ['Runs close to Workers', 'Sleeps when idle'],
     access: ['A token', 'A spending limit'],
     credential: { label: 'API token', placeholder: 'cf_…' },
   },
   {
-    id: 'fly',
-    group: 'environments',
-    tagline: 'Long-lived machines with checkpoints.',
-    does: ['Persistent disk', 'Checkpoint and restore'],
-    access: ['A token', 'A spending limit'],
-    credential: { label: 'Token', placeholder: 'fo1_…' },
-  },
-  {
     id: 'varlock',
     group: 'secrets',
+    status: 'available',
     tagline: 'A typed env schema, committed with the code.',
     does: ['Validates every environment', 'Shows variables without values'],
     access: ['Read the schema file'],
   },
   {
-    id: 'onepassword',
-    group: 'secrets',
-    tagline: 'Resolve values from a vault at deploy time.',
-    does: ['Reference by vault path', 'No values in git'],
-    access: ['A service account token'],
-    credential: { label: 'Service account token', placeholder: 'ops_…' },
-  },
-  {
-    id: 'infisical',
-    group: 'secrets',
-    tagline: 'Open-source secrets platform you can self-host.',
-    does: ['Sync both ways', 'Self-hostable'],
-    access: ['A machine identity'],
-    credential: { label: 'Client secret', placeholder: '…' },
-  },
-  {
-    id: 'doppler',
-    group: 'secrets',
-    tagline: 'Secrets organised by project and environment.',
-    does: ['Sync both ways', 'Per-environment configs'],
-    access: ['A service token'],
-    credential: { label: 'Service token', placeholder: 'dp.st…' },
-  },
-  {
-    id: 'vault',
-    group: 'secrets',
-    tagline: 'Dynamic secrets and rotation for larger teams.',
-    does: ['Dynamic secrets', 'Rotation'],
-    access: ['A role and address'],
-    credential: { label: 'Vault address', placeholder: 'https://vault.…' },
-  },
-  {
-    id: 'bitwarden',
-    group: 'secrets',
-    tagline: 'Open-source secrets manager, self-hostable.',
-    does: ['Machine accounts', 'Self-hostable'],
-    access: ['An access token'],
-    credential: { label: 'Access token', placeholder: '0.…' },
-  },
-  {
-    id: 'pulumi',
-    group: 'secrets',
-    tagline: 'Pull secrets and config from many stores into one place.',
-    does: ['Composable environments', 'Pulls from other stores'],
-    access: ['An access token'],
-    credential: { label: 'Access token', placeholder: 'pul-…' },
-  },
-  {
     id: 'linear',
     group: 'planning',
+    status: 'planned',
     tagline: 'Link Linear issues to changes and move them as work lands.',
     does: ['Issue ↔ change links', 'Status follows the change'],
     access: ['Read and update issues'],
@@ -291,14 +231,27 @@ export const catalog: Array<Integration> = [
   {
     id: 'sentry',
     group: 'planning',
+    status: 'planned',
     tagline: 'Turn new errors into issues and link fixes back.',
     does: ['Errors become issues', 'Fixes link back'],
     access: ['Read projects and issues'],
   },
 ]
 
-export function integrationName(i: Integration, names: Record<string, string>) {
-  return i.id === 'selfhosted' ? 'Self-hosted runners' : (names[i.id] ?? i.id)
+/**
+ * The order a list is shown in. Connected services come first, then the ones
+ * that work today, then the planned ones. Within each, the catalog order holds.
+ */
+export function sortIntegrations(
+  list: ReadonlyArray<Integration>,
+  connected: ReadonlySet<string>,
+) {
+  const rank = (i: Integration) =>
+    connected.has(i.id) ? 0 : i.status === 'available' ? 1 : 2
+  return list
+    .map((i, n) => ({ i, n }))
+    .sort((a, b) => rank(a.i) - rank(b.i) || a.n - b.n)
+    .map(({ i }) => i)
 }
 
 /* A tiny external store so the account page and the repository page agree. */
@@ -309,15 +262,9 @@ type State = {
 }
 
 let state: State = {
-  connected: new Set([
-    'coderabbit',
-    'greptile',
-    't3code',
-    'varlock',
-    'selfhosted',
-  ]),
+  connected: new Set(['coderabbit', 't3code', 'varlock', 'selfhosted']),
   enabled: {
-    'dana/gitfs': new Set(['coderabbit', 'greptile', 't3code', 'varlock']),
+    'dana/gitfs': new Set(['coderabbit', 't3code', 'varlock']),
   },
 }
 const listeners = new Set<() => void>()

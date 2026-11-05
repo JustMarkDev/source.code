@@ -1,29 +1,27 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  ArrowPathIcon,
   ChatBubbleLeftIcon,
   CheckCircleIcon,
-  ClockIcon,
   ExclamationCircleIcon,
   MagnifyingGlassIcon,
-  PlayIcon,
-  XCircleIcon,
+  PaperClipIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
 import { Chip, EmptyState, Panel, SectionLabel, Seg, Tile } from './bits'
+import { EvidenceSection } from './evidence'
 import { slugOf, useRepoCounts } from './repo-shell'
 import { WorkWithAgent } from './work-with-agent'
 import type { Repo } from '~/mock/data'
-import type { Issue, Run } from '~/mock/extra'
+import type { Issue } from '~/mock/extra'
 import { compact, latestStable } from '~/mock/data'
+import { mediaForIssue } from '~/mock/evidence'
 import {
   contributorsFor,
   downloadsSeries,
   issuesFor,
-  jobs,
   labelStyle,
-  runs,
 } from '~/mock/extra'
 import { ShareDonut, TrendChart } from '~/components/charts'
 import { Button } from '~/components/ui/button'
@@ -228,6 +226,95 @@ export function IssuesPage({ repo, n }: { repo: Repo; n?: number }) {
   )
 }
 
+type Attached = { name: string; type: string; url: string }
+type Comment = {
+  who: string
+  when: string
+  text: string
+  files?: Array<Attached>
+}
+
+/** Files picked for a comment, shown from the browser until it is posted. */
+function useAttachments() {
+  const [files, setFiles] = React.useState<Array<Attached>>([])
+  const posted = React.useRef<Array<string>>([])
+  const pending = React.useRef<Array<string>>([])
+  React.useEffect(
+    () => () => {
+      for (const u of [...pending.current, ...posted.current])
+        URL.revokeObjectURL(u)
+    },
+    [],
+  )
+  return {
+    files,
+    add(list: FileList | null) {
+      const next = Array.from(list ?? [])
+        .filter(
+          (f) => f.type.startsWith('image/') || f.type.startsWith('video/'),
+        )
+        .map((f) => ({
+          name: f.name || 'pasted image',
+          type: f.type,
+          url: URL.createObjectURL(f),
+        }))
+      pending.current.push(...next.map((n) => n.url))
+      if (next.length) setFiles((all) => [...all, ...next])
+    },
+    remove(url: string) {
+      URL.revokeObjectURL(url)
+      pending.current = pending.current.filter((u) => u !== url)
+      setFiles((all) => all.filter((f) => f.url !== url))
+    },
+    /** The comment is posted: the files now belong to it. */
+    release() {
+      posted.current.push(...pending.current)
+      pending.current = []
+      setFiles([])
+    },
+  }
+}
+
+function AttachmentGrid({
+  files,
+  onRemove,
+}: {
+  files: Array<Attached>
+  onRemove?: (url: string) => void
+}) {
+  return (
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {files.map((f) => (
+        <li key={f.url} className="relative min-w-0">
+          {f.type.startsWith('video/') ? (
+            <video
+              src={f.url}
+              controls
+              className="max-h-64 w-full rounded-lg border bg-black"
+            />
+          ) : (
+            <img
+              src={f.url}
+              alt={f.name}
+              className="max-h-64 w-full rounded-lg border object-contain"
+            />
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              aria-label={`Remove ${f.name}`}
+              onClick={() => onRemove(f.url)}
+              className="absolute top-1.5 right-1.5 rounded-full bg-background/90 p-1 shadow hover:bg-background"
+            >
+              <XMarkIcon className="size-4" />
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function IssueDetail({
   repo,
   issue,
@@ -237,7 +324,7 @@ function IssueDetail({
   issue: Issue
   onToggle: () => void
 }) {
-  const [comments, setComments] = React.useState([
+  const [comments, setComments] = React.useState<Array<Comment>>([
     {
       who: 'dana',
       when: '2 hours ago',
@@ -250,6 +337,8 @@ function IssueDetail({
     },
   ])
   const [text, setText] = React.useState('')
+  const attach = useAttachments()
+  const media = mediaForIssue(issue.n)
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 space-y-4">
@@ -283,37 +372,74 @@ function IssueDetail({
           { who: issue.author, when: issue.when, text: issue.body },
           ...comments,
         ].map((c, i) => (
-          <Panel key={i} className="overflow-hidden">
-            <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2 text-sm">
-              <Tile name={c.who} round className="size-6 text-xs" />
-              <b className="font-medium">{c.who}</b>
-              <span className="text-muted-foreground">{c.when}</span>
-            </div>
-            <p className="px-4 py-3 text-sm">{c.text}</p>
-          </Panel>
+          <React.Fragment key={i}>
+            <Panel className="overflow-hidden">
+              <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2 text-sm">
+                <Tile name={c.who} round className="size-6 text-xs" />
+                <b className="font-medium">{c.who}</b>
+                <span className="text-muted-foreground">{c.when}</span>
+              </div>
+              <div className="space-y-3 px-4 py-3">
+                <p className="text-sm">{c.text}</p>
+                {'files' in c && c.files && <AttachmentGrid files={c.files} />}
+              </div>
+            </Panel>
+            {i === 0 && <EvidenceSection title="Attachments" items={media} />}
+          </React.Fragment>
         ))}
-        <Panel className="space-y-3 p-4">
+        <Panel
+          className="space-y-3 p-4"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault()
+            attach.add(e.dataTransfer.files)
+          }}
+        >
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onPaste={(e) => attach.add(e.clipboardData.files)}
             rows={3}
-            placeholder="Leave a comment"
+            placeholder="Leave a comment. Paste or drop images and videos to show what you mean."
             aria-label="Comment"
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <div className="flex justify-end gap-2">
+          {attach.files.length > 0 && (
+            <AttachmentGrid files={attach.files} onRemove={attach.remove} />
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <label className="mr-auto inline-flex cursor-pointer items-center gap-1.5 py-1 text-sm text-muted-foreground hover:text-foreground">
+              <PaperClipIcon className="size-4" />
+              Attach images or video
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="sr-only"
+                onChange={(e) => {
+                  attach.add(e.target.files)
+                  e.target.value = ''
+                }}
+              />
+            </label>
             <Button variant="outline" onClick={onToggle}>
               {issue.state === 'open' ? 'Close issue' : 'Reopen issue'}
             </Button>
             <Button
               variant="brand"
-              disabled={!text.trim()}
+              disabled={!text.trim() && attach.files.length === 0}
               onClick={() => {
                 setComments((c) => [
                   ...c,
-                  { who: 'dana', when: 'just now', text: text.trim() },
+                  {
+                    who: 'dana',
+                    when: 'just now',
+                    text: text.trim(),
+                    files: attach.files,
+                  },
                 ])
                 setText('')
+                attach.release()
               }}
             >
               Comment
@@ -352,139 +478,6 @@ function IssueDetail({
         </div>
       </aside>
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Checks
-// ---------------------------------------------------------------------------
-function CheckIcon({
-  status,
-}: {
-  status: 'pass' | 'fail' | 'pending' | Run['status']
-}) {
-  if (status === 'pass' || status === 'success')
-    return <CheckCircleIcon className="size-4 text-success" />
-  if (status === 'fail' || status === 'failure')
-    return <XCircleIcon className="size-4 text-danger" />
-  if (status === 'queued')
-    return <ClockIcon className="size-4 text-muted-foreground" />
-  return (
-    <ArrowPathIcon className="size-4 animate-spin text-warning motion-reduce:animate-none" />
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Actions
-// ---------------------------------------------------------------------------
-export function ActionsPage() {
-  const [list, setList] = React.useState(runs)
-  const [filter, setFilter] = React.useState<'all' | 'failure' | 'running'>(
-    'all',
-  )
-  const [openId, setOpenId] = React.useState<number | null>(1842)
-  const shown = list.filter(
-    (r) =>
-      filter === 'all' ||
-      r.status === filter ||
-      (filter === 'running' && r.status === 'queued'),
-  )
-  return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Seg
-          value={filter}
-          onChange={setFilter}
-          options={[
-            ['all', 'All runs'],
-            ['running', 'In progress'],
-            ['failure', 'Failed'],
-          ]}
-        />
-        <Button>
-          <PlayIcon className="size-4" />
-          Run workflow
-        </Button>
-      </div>
-      <Panel className="divide-y overflow-hidden">
-        {shown.length === 0 && (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            No runs match.
-          </div>
-        )}
-        {shown.map((r) => (
-          <div key={r.id}>
-            <button
-              type="button"
-              onClick={() => setOpenId(openId === r.id ? null : r.id)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40"
-            >
-              <CheckIcon status={r.status} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{r.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {r.workflow} #{r.id} · {r.branch} · {r.actor}
-                </div>
-              </div>
-              <span className="hidden w-24 text-right text-xs text-muted-foreground md:block">
-                {r.when}
-              </span>
-            </button>
-            {openId === r.id && (
-              <div className="border-t bg-muted/30 px-4 py-3">
-                <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                  {jobs.map((j) => (
-                    <li
-                      key={j.name}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm"
-                    >
-                      <CheckIcon
-                        status={
-                          r.status === 'failure' && j.name.includes('windows')
-                            ? 'failure'
-                            : r.status === 'running'
-                              ? 'running'
-                              : r.status === 'queued'
-                                ? 'queued'
-                                : 'success'
-                        }
-                      />
-                      <span className="flex-1">{j.name}</span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {j.time}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setList((all) =>
-                        all.map((x) =>
-                          x.id === r.id
-                            ? {
-                                ...x,
-                                status: 'running',
-                                duration: '0s',
-                                when: 'just now',
-                              }
-                            : x,
-                        ),
-                      )
-                    }
-                  >
-                    <ArrowPathIcon className="size-3.5" />
-                    Re-run
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </Panel>
-    </>
   )
 }
 

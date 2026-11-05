@@ -52,20 +52,15 @@ const agents: Array<BrandId> = [
   'boat',
   'e2b',
   'daytona',
-  'modal',
   'coderabbit',
   'greptile',
   'blacksmith',
   'namespace',
 ]
 
-/** Apps and media tools with a stable release, most starred first. The first four show on the home page. */
+/** Apps with a stable release, most starred first. The first four show on the home page. */
 const downloadable = repos
-  .filter(
-    (r) =>
-      (r.category === 'Apps' || r.category === 'Audio and media') &&
-      latestStable(r),
-  )
+  .filter((r) => r.category === 'Apps' && latestStable(r))
   .sort((a, b) => b.stars - a.stars)
   .slice(0, 4)
 
@@ -111,7 +106,7 @@ function Landing() {
         <div className="surface rounded-[28px] border bg-muted/40 p-3 md:p-5">
           <div className="grid grid-cols-1 gap-5 rounded-2xl bg-background p-5 md:grid-cols-[1fr_1.1fr] md:p-8">
             <div className="space-y-4 self-center">
-              <p className="font-mono text-xs text-muted-foreground">ch_7f3a</p>
+              <p className="font-mono text-xs text-muted-foreground">#216</p>
               <h2 className="text-2xl font-semibold tracking-tight">
                 Cache negative ref lookups
               </h2>
@@ -120,7 +115,7 @@ function Landing() {
                 People, reviewers and agents all read the same answer, so no one
                 has to ask.
               </p>
-              <CopyField value="sx change view ch_7f3a" />
+              <CopyField value="sx change view 216" />
             </div>
             {/* An illustration of the real screen, so it takes no focus and says nothing twice. */}
             <div inert aria-hidden="true">
@@ -128,7 +123,7 @@ function Landing() {
                 items={preview}
                 landing="idle"
                 canLand={false}
-                changeId="ch_7f3a"
+                changeId="216"
                 note="1 thing in the way."
                 onLand={() => undefined}
               />

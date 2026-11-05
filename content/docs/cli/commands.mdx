@@ -57,7 +57,7 @@ sx change checkout <id>
 {
   "error": {
     "code": "policy_blocked",
-    "message": "ch_7f3a cannot land: ci/test is running; 1 high finding unresolved.",
+    "message": "#216 cannot land: ci/test is running; 1 high finding unresolved.",
     "hint": "sx change view shows each requirement. sx policy explain says which rule asked for it."
   }
 }
@@ -89,8 +89,8 @@ sx env recipients
 ## policy
 
 ```bash
-sx policy check ch_7f3a
-sx policy explain ch_7f3a
+sx policy check 216
+sx policy explain 216
 ```
 
 Both exit `5` when blocked. `explain` lists each requirement.
@@ -108,7 +108,7 @@ sx mirror remove m2
 
 ```bash
 sx agent start #4 --target t3 --runtime claude
-sx agent start ch_7f3a --target boat
+sx agent start 216 --target boat
 ```
 
 See [Agents and the CLI](/docs/cli/agents).

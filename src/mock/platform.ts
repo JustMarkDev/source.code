@@ -1,3 +1,5 @@
+import type { Suggestion } from '~/lib/suggestions'
+
 // Mock data for the developer-platform surface: secrets, policies, changes,
 // agents and integrations. Nothing here talks to a backend.
 
@@ -36,6 +38,10 @@ export type Finding = {
   body: string
   /** Stack member that addresses it, once sent to an agent. */
   fixedIn?: string
+  /** A change the reviewer proposes, applied with one click. */
+  suggestion?: Suggestion
+  /** The same fix as instructions for an agent, to copy or send. */
+  prompt?: string
 }
 
 export type ChangeItem = {
@@ -55,11 +61,18 @@ export type ChangeItem = {
   }>
   ci: 'pass' | 'fail' | 'pending'
   when: string
+  /** The pull request or merge request this change is mirrored to or from. */
+  mirror?: {
+    host: 'github' | 'gitlab' | 'codeberg' | 'gitea'
+    number: number
+    /** Where it was opened first. */
+    origin: 'here' | 'there'
+  }
 }
 
 export const changes: Array<ChangeItem> = [
   {
-    id: 'ch_7f3a',
+    id: '216',
     title: 'Cache negative ref lookups',
     author: { name: 'dana', kind: 'human' },
     state: 'open',
@@ -90,9 +103,10 @@ export const changes: Array<ChangeItem> = [
     ],
     ci: 'pending',
     when: 'updated yesterday',
+    mirror: { host: 'github', number: 231, origin: 'here' },
   },
   {
-    id: 'ch_81b2',
+    id: '217',
     title: 'Bound the negative cache and evict LRU',
     author: { name: 'claude via T3 Code', kind: 'agent' },
     state: 'draft',
@@ -111,9 +125,10 @@ export const changes: Array<ChangeItem> = [
     reviewers: [{ name: 'dana', kind: 'human', state: 'pending' }],
     ci: 'pass',
     when: 'opened 2 hours ago',
+    mirror: { host: 'github', number: 232, origin: 'here' },
   },
   {
-    id: 'ch_92c0',
+    id: '218',
     title: 'Show cache stats in `gitfs doctor`',
     author: { name: 'dana', kind: 'human' },
     state: 'draft',
@@ -127,9 +142,10 @@ export const changes: Array<ChangeItem> = [
     reviewers: [],
     ci: 'pending',
     when: 'opened 1 hour ago',
+    mirror: { host: 'github', number: 233, origin: 'here' },
   },
   {
-    id: 'ch_60de',
+    id: '212',
     title: 'Normalize Windows path separators',
     author: { name: 'ines', kind: 'human' },
     state: 'open',
@@ -148,9 +164,10 @@ export const changes: Array<ChangeItem> = [
     reviewers: [{ name: 'hollis', kind: 'human', state: 'changes' }],
     ci: 'fail',
     when: 'updated 4 days ago',
+    mirror: { host: 'github', number: 226, origin: 'there' },
   },
   {
-    id: 'ch_4a19',
+    id: '215',
     title: 'Bump object-store client to 2.4',
     author: { name: 'dep-bot', kind: 'bot' },
     state: 'open',
@@ -165,7 +182,7 @@ export const changes: Array<ChangeItem> = [
     when: 'opened 6 days ago',
   },
   {
-    id: 'ch_2b77',
+    id: '210',
     title: 'Document the mount flags',
     author: { name: 'tomas', kind: 'human' },
     state: 'landed',
@@ -180,6 +197,23 @@ export const changes: Array<ChangeItem> = [
     when: 'landed 2 weeks ago',
   },
 ]
+
+/**
+ * The changes a repository has. gitfs has them all, a stack and a mirror
+ * included. lumen has two that came from another host, relay has three, and
+ * the rest have none, so each state of the list can be seen.
+ */
+export function changesFor(repo: { name: string }): Array<ChangeItem> {
+  if (repo.name === 'gitfs') return changes
+  if (repo.name === 'lumen')
+    return changes.filter((c) => c.id === '212' || c.id === '215')
+  if (repo.name === 'relay')
+    return changes.filter((c) => ['212', '215', '210'].includes(c.id))
+  return []
+}
+
+export const openChangeCount = (repo: { name: string }) =>
+  changesFor(repo).filter((c) => c.state !== 'landed').length
 
 export const refsPatch = patch('src/refs.rs', 1, [
   ' pub struct Refs {',
@@ -200,7 +234,7 @@ export const refsPatch = patch('src/refs.rs', 1, [
   ' }',
 ])
 
-export const refsTestPatch = patch('tests/refs_test.rs', 38, [
+export const refsTestPatch = patch('tests/refs_test.rs', 1, [
   ' #[test]',
   ' fn lookup_reads_disk_once() {',
   '+    let refs = Refs::with_counter();',
@@ -210,20 +244,104 @@ export const refsTestPatch = patch('tests/refs_test.rs', 38, [
   ' }',
 ])
 
-/** Difference between patch set 2 and 3 of the same change. */
-export const interdiffPatch = patch('src/refs.rs', 5, [
+const refsV1 = patch('src/refs.rs', 1, [
+  ' pub struct Refs {',
+  '     disk: Disk,',
+  '+    neg: NegCache,',
+  ' }',
+  ' ',
   ' impl Refs {',
   '     pub fn lookup(&self, name: &str) -> Option<Oid> {',
-  '         if self.neg.contains(name) {',
-  '             return None;',
-  '         }',
-  '         self.disk',
-  '             .read_ref(name)',
-  '-            .or_else(|| self.neg.remember(name))',
-  '+            .or_else(|| self.neg.put(name))',
+  '-        self.disk.read_ref(name)',
+  '+        if self.neg.hit(name) {',
+  '+            return None;',
+  '+        }',
+  '+        self.disk',
+  '+            .read_ref(name)',
+  '+            .or_else(|| self.neg.remember(name))',
   '     }',
   ' }',
 ])
+
+const refsV2 = patch('src/refs.rs', 1, [
+  ' pub struct Refs {',
+  '     disk: Disk,',
+  '+    neg: NegCache,',
+  ' }',
+  ' ',
+  ' impl Refs {',
+  '     pub fn lookup(&self, name: &str) -> Option<Oid> {',
+  '-        self.disk.read_ref(name)',
+  '+        if self.neg.contains(name) {',
+  '+            return None;',
+  '+        }',
+  '+        self.disk',
+  '+            .read_ref(name)',
+  '+            .or_else(|| self.neg.remember(name))',
+  '     }',
+  ' }',
+])
+
+const testV1 = patch('tests/refs_test.rs', 1, [
+  ' #[test]',
+  ' fn lookup_reads_disk_once() {',
+  '+    let refs = Refs::with_counter();',
+  '+    assert!(refs.lookup("refs/heads/missing").is_none());',
+  '+    assert!(refs.lookup("refs/heads/missing").is_none());',
+  ' }',
+])
+
+/** The two sides of a patch, as whole files. Context and one side's lines. */
+function sidesOf(raw: string) {
+  const body = raw.split('\n').slice(5)
+  const keep = (drop: string) =>
+    body
+      .filter((l) => l !== '' && l[0] !== drop)
+      .map((l) => l.slice(1))
+      .join('\n') + '\n'
+  return { before: keep('+'), after: keep('-') }
+}
+
+export type FileVersions = Record<string, string>
+
+/**
+ * Every file a change touches, whole: how it is on main and how it is at each
+ * patch set. A diff is drawn from two of these, and an edit starts from one.
+ * Only the main sample change has history, the others repeat their one state.
+ */
+export function changeVersions(
+  changeId: string,
+  patchSets: number,
+): { base: FileVersions; versions: Array<FileVersions> } {
+  const ps3 = {
+    'src/refs.rs': sidesOf(refsPatch),
+    'tests/refs_test.rs': sidesOf(refsTestPatch),
+  }
+  const base = {
+    'src/refs.rs': ps3['src/refs.rs'].before,
+    'tests/refs_test.rs': ps3['tests/refs_test.rs'].before,
+  }
+  const at3 = {
+    'src/refs.rs': ps3['src/refs.rs'].after,
+    'tests/refs_test.rs': ps3['tests/refs_test.rs'].after,
+  }
+  if (changeId !== '216')
+    return { base, versions: Array.from({ length: patchSets }, () => at3) }
+  return {
+    base,
+    versions: [
+      {
+        'src/refs.rs': sidesOf(refsV1).after,
+        'tests/refs_test.rs': sidesOf(testV1).after,
+      },
+      {
+        'src/refs.rs': sidesOf(refsV2).after,
+        'tests/refs_test.rs': at3['tests/refs_test.rs'],
+      },
+      at3,
+    ],
+  }
+}
 
 export const findings: Array<Finding> = [
   {
@@ -235,6 +353,14 @@ export const findings: Array<Finding> = [
     line: 8,
     title: 'Lookup takes the cache lock on every call',
     body: 'contains() locks the whole map even for repeat hits. A read-mostly structure would keep lookups lock-free under load.',
+    suggestion: {
+      summary: 'Read a snapshot instead of taking the lock',
+      file: 'src/refs.rs',
+      replace: ['        if self.neg.contains(name) {'],
+      lines: ['        if self.neg.peek(name) {'],
+    },
+    prompt:
+      'In src/refs.rs, lookup() calls self.neg.contains(name), which takes the cache lock on every call even for repeat hits. Read from a lock-free snapshot instead (add peek() to NegCache if it does not exist) and keep the behaviour for misses unchanged. Run `cargo test refs` and confirm lookup_reads_disk_once still passes.',
   },
   {
     id: 'F-2',
@@ -245,6 +371,16 @@ export const findings: Array<Finding> = [
     line: 13,
     title: 'NegCache is unbounded',
     body: 'The positive cache in src/cache.rs evicts at 10,000 entries, but put() here never evicts. A scan of random names grows memory without limit.',
+    suggestion: {
+      summary: 'Cap the cache at the same size as the positive one',
+      file: 'src/refs.rs',
+      replace: ['            .or_else(|| self.neg.put(name))'],
+      lines: [
+        '            .or_else(|| self.neg.put_bounded(name, NEG_CACHE_MAX))',
+      ],
+    },
+    prompt:
+      'NegCache in src/refs.rs never evicts, while the positive cache in src/cache.rs stops at 10,000 entries. Bound it to the same size with LRU eviction: add put_bounded(name, max) and a NEG_CACHE_MAX constant, and use it in lookup(). Add a test that fills the cache past capacity and checks the oldest entry is read from disk again.',
   },
   {
     id: 'F-3',
@@ -252,9 +388,25 @@ export const findings: Array<Finding> = [
     kind: 'reviewer',
     severity: 'low',
     file: 'tests/refs_test.rs',
-    line: 41,
+    line: 6,
     title: 'Test does not cover eviction',
     body: 'The test asserts a single disk read for two misses. Add a case that fills the cache past capacity and checks the oldest entry is read again.',
+    suggestion: {
+      summary:
+        'Fill the cache past capacity, then look the first name up again',
+      file: 'tests/refs_test.rs',
+      replace: [],
+      after: '    assert_eq!(refs.disk_reads(), 1);',
+      lines: [
+        '    for i in 0..=NEG_CACHE_MAX {',
+        '        refs.lookup(&format!("refs/heads/miss-{i}"));',
+        '    }',
+        '    assert!(refs.lookup("refs/heads/missing").is_none());',
+        '    assert_eq!(refs.disk_reads(), NEG_CACHE_MAX + 2);',
+      ],
+    },
+    prompt:
+      'tests/refs_test.rs asserts one disk read for two lookups of a missing ref, but nothing covers eviction. Add a case after lookup_reads_disk_once: fill the negative cache past NEG_CACHE_MAX, look the first missing name up again, and assert it is read from disk. Depends on the cache being bounded.',
   },
   {
     id: 'F-4',
@@ -265,6 +417,15 @@ export const findings: Array<Finding> = [
     line: 3,
     title: 'Name',
     body: 'neg is fine, but add a one-line doc comment saying what it caches.',
+    suggestion: {
+      summary: 'Add the doc comment',
+      file: 'src/refs.rs',
+      replace: [],
+      after: '    disk: Disk,',
+      lines: [
+        '    /// Names known not to exist, so asking again skips the disk.',
+      ],
+    },
   },
 ]
 
@@ -275,7 +436,7 @@ export type PolicyClause = {
   state: 'pass' | 'fail' | 'pending' | 'na'
 }
 
-/** Clauses for ch_7f3a. The findings clause flips once F-2 is addressed. */
+/** Clauses for #216. The findings clause flips once F-2 is addressed. */
 export function clausesFor(
   open: Set<string>,
   ci: ChangeItem['ci'],
@@ -477,19 +638,19 @@ export const dryRunSamples: Array<{
   why: string
 }> = [
   {
-    change: 'ch_60de',
+    change: '212',
     title: 'Normalize Windows path separators',
     outcome: 'would block',
     why: '89 lines changed, needs 2 approvals, has 0 approvals',
   },
   {
-    change: 'ch_7f3a',
+    change: '216',
     title: 'Cache negative ref lookups',
     outcome: 'would pass',
     why: '25 lines changed',
   },
   {
-    change: 'ch_2b77',
+    change: '210',
     title: 'Document the mount flags',
     outcome: 'would pass',
     why: '36 lines changed',
@@ -946,19 +1107,19 @@ export const runs: Array<Run> = [
   {
     id: 'run_912',
     automation: 'Fix high-severity findings',
-    trigger: 'finding.raised F-2 on ch_7f3a',
+    trigger: 'finding.raised F-2 on #216',
     target: 'T3 Code',
     status: 'succeeded',
     duration: '4m 12s',
     cost: '$0.31',
     when: '2 hours ago',
-    result: 'Opened draft ch_81b2',
+    result: 'Opened draft #217',
     log: [
       'Started thread on dana-macbook via T3 Code',
       'Read finding F-2 and src/cache.rs',
       'Wrote src/neg_cache.rs with a bounded LRU',
       'Ran cargo test: 31 passed',
-      'Opened draft change ch_81b2 on top of ch_7f3a',
+      'Opened draft change #217 on top of #216',
     ],
   },
   {
@@ -981,7 +1142,7 @@ export const runs: Array<Run> = [
   {
     id: 'run_908',
     automation: 'Repair red CI',
-    trigger: 'ci.failed on ch_60de',
+    trigger: 'ci.failed on #212',
     target: 'boat.dev',
     status: 'failed',
     duration: '9m 50s',
@@ -990,7 +1151,7 @@ export const runs: Array<Run> = [
     result: 'Could not reproduce on Linux',
     log: [
       'Started boat environment gitfs-ci-908',
-      'Checked out ch_60de',
+      'Checked out #212',
       'Ran the test matrix: passed on Linux',
       'The failure is Windows only. Stopped.',
     ],
@@ -1008,180 +1169,6 @@ export const runs: Array<Run> = [
     log: ['Started sandbox', 'Resolved 38 dependencies', 'Comparing versions'],
   },
 ]
-
-// ---------------------------------------------------------------------------
-// Integrations
-// ---------------------------------------------------------------------------
-
-export type IntegrationGroup =
-  'reviewers' | 'runners' | 'environments' | 'secrets'
-
-export type Integration = {
-  id: string
-  name: string
-  group: IntegrationGroup
-  tagline: string
-  does: Array<string>
-  /** What it needs from the account. */
-  access: Array<string>
-  /** Plain-language note about how it reports back. */
-  reports: string
-  hue: number
-  connected: boolean
-}
-
-export const integrations: Array<Integration> = [
-  {
-    id: 'coderabbit',
-    name: 'CodeRabbit',
-    group: 'reviewers',
-    tagline: 'Reviews the diff of every change.',
-    does: [
-      'Posts findings on diff lines',
-      'Summarizes each change',
-      'Reads a config file in the repo',
-    ],
-    access: ['Read changes and code', 'Comment on changes'],
-    reports: 'Findings on lines',
-    hue: 30,
-    connected: true,
-  },
-  {
-    id: 'greptile',
-    name: 'Greptile',
-    group: 'reviewers',
-    tagline: 'Indexes the whole repository before it reviews.',
-    does: [
-      'Cross-file findings',
-      'Uses repo-wide context',
-      'Flags likely duplicates',
-    ],
-    access: ['Read changes and code', 'Comment on changes'],
-    reports: 'Findings on lines',
-    hue: 150,
-    connected: true,
-  },
-  {
-    id: 'macroscope',
-    name: 'Macroscope',
-    group: 'reviewers',
-    tagline: 'Finds bugs and writes what changed and why.',
-    does: ['Bug findings', 'Change summaries', 'Release notes drafts'],
-    access: ['Read changes and code', 'Comment on changes'],
-    reports: 'Findings and a summary',
-    hue: 255,
-    connected: true,
-  },
-  {
-    id: 'blacksmith',
-    name: 'Blacksmith',
-    group: 'runners',
-    tagline: 'Faster runners for your CI jobs.',
-    does: [
-      'Runs jobs on managed machines',
-      'Cache close to the runner',
-      'Map labels with one setting',
-    ],
-    access: ['Read workflows', 'Report check results'],
-    reports: 'Job logs and checks',
-    hue: 15,
-    connected: false,
-  },
-  {
-    id: 'source-runners',
-    name: 'source.code runners',
-    group: 'runners',
-    tagline: 'Built-in runners, no setup.',
-    does: [
-      'Linux and macOS jobs',
-      'Included minutes each month',
-      'Same workflow files',
-    ],
-    access: ['Built in'],
-    reports: 'Job logs and checks',
-    hue: 125,
-    connected: true,
-  },
-  {
-    id: 't3-code',
-    name: 'T3 Code',
-    group: 'environments',
-    tagline: 'Hand work to an agent on your own machine.',
-    does: [
-      'Start a thread from an issue or change',
-      'Use your own Claude, Codex or other login',
-      'Read-only, supervised or full access',
-    ],
-    access: ['Your environment address', 'An access tier you choose'],
-    reports: 'Threads linked to changes',
-    hue: 280,
-    connected: true,
-  },
-  {
-    id: 'boat',
-    name: 'boat.dev',
-    group: 'environments',
-    tagline: 'Fresh cloud machines for agents.',
-    does: [
-      'Spin up a clean environment per task',
-      'Run an agent inside it',
-      'Tear it down when the task ends',
-    ],
-    access: ['An API key', 'A spending limit'],
-    reports: 'Environment links and logs',
-    hue: 210,
-    connected: false,
-  },
-  {
-    id: 'varlock',
-    name: 'Varlock schema',
-    group: 'secrets',
-    tagline: 'Typed env schema, committed with the code.',
-    does: [
-      'Reads .env.schema',
-      'Validates every environment',
-      'Shows variables without values',
-    ],
-    access: ['Read the schema file'],
-    reports: 'Variables table',
-    hue: 100,
-    connected: true,
-  },
-  {
-    id: 'onepassword',
-    name: '1Password',
-    group: 'secrets',
-    tagline: 'Resolve secrets from a vault at deploy time.',
-    does: [
-      'Reference secrets by vault path',
-      'No values in git',
-      'Per-environment vaults',
-    ],
-    access: ['A service account token'],
-    reports: 'Resolution status',
-    hue: 220,
-    connected: false,
-  },
-]
-
-export const groupMeta: Record<
-  IntegrationGroup,
-  { label: string; blurb: string }
-> = {
-  reviewers: {
-    label: 'Code reviewers',
-    blurb: 'Findings land on the diff next to human comments.',
-  },
-  runners: { label: 'Runners', blurb: 'Where your workflows execute.' },
-  environments: {
-    label: 'Agent environments',
-    blurb: 'Where agents do their work.',
-  },
-  secrets: {
-    label: 'Secrets and config',
-    blurb: 'Schemas and providers for env values.',
-  },
-}
 
 // ---------------------------------------------------------------------------
 // Profile extras

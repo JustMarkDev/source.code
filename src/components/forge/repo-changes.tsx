@@ -1,34 +1,43 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
-import { PatchDiff } from '@pierre/diffs/react'
+import { MultiFileDiff } from '@pierre/diffs/react'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 import {
   CheckIcon,
+  ClipboardDocumentIcon,
   CpuChipIcon,
   MagnifyingGlassIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
-import { Chip, Panel, Seg, Tile } from './bits'
-import { CopyField, slugOf } from './repo-shell'
+import { Chip, EmptyState, Panel, Seg, Tile } from './bits'
+import { MirrorCard, StackCard } from './change-mirror'
+import { EditingProvider, useEditorFactory } from './diff-editing'
+import { Timeline } from './change-timeline'
+import { EvidenceSection, TestReport } from './evidence'
+import { slugOf } from './repo-shell'
 import { StateIcon, StatusCard } from './status-card'
 import { WorkWithAgent } from './work-with-agent'
+import type { TimelineEvent } from './change-timeline'
 import type { StatusItem } from './status-card'
 import type { Repo } from '~/mock/data'
-import type { Author, ChangeItem, Finding } from '~/mock/platform'
+import type {
+  Author,
+  ChangeItem,
+  FileVersions,
+  Finding,
+  PatchSet,
+} from '~/mock/platform'
+import { branchFor, hostName, hostTerms } from '~/lib/change-sync'
+import { mediaForChange, testRunFor } from '~/mock/evidence'
 import { codeTheme, useCodeOverflow } from '~/lib/highlight'
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Switch } from '~/components/ui/switch'
 import { StateTabs } from '~/components/ui/tabs'
 import { Select, SelectItem } from '~/components/ui/select'
 import { useIsDark } from '~/lib/theme'
-import {
-  changes,
-  findings,
-  interdiffPatch,
-  refsPatch,
-  refsTestPatch,
-} from '~/mock/platform'
+import { changeVersions, changesFor, findings } from '~/mock/platform'
+import { applySuggestion, canApply, lineOf } from '~/lib/suggestions'
 
 function AuthorMark({ author }: { author: Author }) {
   if (author.kind === 'human')
@@ -78,7 +87,7 @@ function standing(c: ChangeItem) {
   if (c.stack && c.stack.index > 1)
     return { tone: 'muted', text: 'Waits for parent' } as const
   if (c.ci === 'fail') return { tone: 'danger', text: 'Blocked: CI' } as const
-  if (c.id === 'ch_7f3a')
+  if (c.id === '216')
     return { tone: 'danger', text: 'Blocked: 1 finding' } as const
   if (c.reviewers.some((r) => r.state === 'changes'))
     return { tone: 'warning', text: 'Changes requested' } as const
@@ -101,9 +110,20 @@ function Row({ c, repo, index }: { c: ChangeItem; repo: Repo; index: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{c.title}</span>
             {c.state === 'draft' && <Chip>Draft</Chip>}
+            {c.mirror && (
+              <Chip>
+                {hostName[c.mirror.host]}{' '}
+                {hostTerms[c.mirror.host].ref(c.mirror.number)}
+              </Chip>
+            )}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span className="font-mono">{c.id}</span>
+            <span className="font-mono">#{c.id}</span>
+            {c.stack && (
+              <span>
+                {c.stack.index} of {c.stack.of} in the stack
+              </span>
+            )}
             <span className="inline-flex items-center gap-1">
               <AuthorMark author={c.author} />
               {c.author.name}
@@ -135,7 +155,17 @@ function ChangeList({ repo }: { repo: Repo }) {
   )
   const show = (c: ChangeItem) =>
     filter === 'open' ? c.state === 'open' : c.state === filter
-  const rows = changes.filter(show)
+  const all = changesFor(repo)
+  const rows = all.filter(show)
+  if (all.length === 0)
+    return (
+      <EmptyState title="No changes yet">
+        Push a branch and run{' '}
+        <code className="font-mono text-xs">sx change create</code> to open one.
+        With a two-way mirror, a pull request opened on another host shows up
+        here as a change too.
+      </EmptyState>
+    )
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -154,8 +184,18 @@ function ChangeList({ repo }: { repo: Repo }) {
       </div>
       <Panel className="overflow-hidden">
         <ul className="divide-y">
-          {rows.map((c) => (
-            <Row key={c.id} c={c} repo={repo} index={changes.indexOf(c)} />
+          {rows.map((c, i) => (
+            <React.Fragment key={c.id}>
+              {c.stack && !rows.slice(0, i).some((r) => r.stack) && (
+                <li className="bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+                  <b className="font-medium text-foreground">
+                    Stack of {c.stack.of}
+                  </b>{' '}
+                  · lands in order, bottom first
+                </li>
+              )}
+              <Row c={c} repo={repo} index={all.indexOf(c)} />
+            </React.Fragment>
           ))}
           {rows.length === 0 && (
             <li className="px-4 py-10 text-center text-sm text-muted-foreground">
@@ -174,25 +214,96 @@ type FindingState =
   | { s: 'fixed'; in: string }
   | { s: 'dismissed'; reason: string }
   | { s: 'resolved' }
+  /** A reviewer's suggestion, applied. Without a patch set it is only in the draft. */
+  | { s: 'applied'; ps?: number }
 
 const sevTone = { high: 'danger', medium: 'warning', low: 'muted' } as const
+
+/** The proposed change as a small diff: what goes, what comes. */
+function SuggestedChange({ f }: { f: Finding }) {
+  const s = f.suggestion
+  if (!s) return null
+  return (
+    <div className="overflow-hidden rounded-lg border bg-background">
+      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+        Suggested change: {s.summary}
+      </div>
+      <pre className="overflow-x-auto py-1 font-mono text-xs leading-relaxed">
+        {s.replace.length === 0 && s.after && (
+          <div className="px-3 text-muted-foreground">{`  ${s.after}`}</div>
+        )}
+        {s.replace.map((l, i) => (
+          <div
+            key={`d${i}`}
+            className="bg-danger/10 px-3 text-danger"
+          >{`- ${l}`}</div>
+        ))}
+        {s.lines.map((l, i) => (
+          <div
+            key={`a${i}`}
+            className="bg-success/10 px-3 text-success"
+          >{`+ ${l}`}</div>
+        ))}
+      </pre>
+    </div>
+  )
+}
+
+function CopyPrompt({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = React.useState(false)
+  return (
+    <details className="group rounded-lg border bg-background">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground marker:hidden [&::-webkit-details-marker]:hidden">
+        <CpuChipIcon className="size-3.5" />
+        Prompt for an agent
+        <span className="ml-auto transition-transform group-open:rotate-90">
+          ›
+        </span>
+      </summary>
+      <div className="space-y-2 border-t px-3 py-2">
+        <p className="text-xs leading-relaxed">{prompt}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void navigator.clipboard.writeText(prompt)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+          }}
+        >
+          {copied ? <CheckIcon /> : <ClipboardDocumentIcon />}
+          {copied ? 'Copied' : 'Copy prompt'}
+        </Button>
+      </div>
+    </details>
+  )
+}
 
 function FindingCard({
   f,
   st,
+  applicable,
   onSend,
+  onApply,
   onDismiss,
   onResolve,
 }: {
   f: Finding
   st: FindingState
+  /** Whether the suggestion still fits the code as it is now. */
+  applicable: boolean
   onSend: () => void
+  onApply: () => void
   onDismiss: (reason: string) => void
   onResolve: () => void
 }) {
   const [dismissing, setDismissing] = React.useState(false)
   const [reason, setReason] = React.useState('Not a problem here')
-  const closed = st.s === 'dismissed' || st.s === 'resolved' || st.s === 'fixed'
+  const closed =
+    st.s === 'dismissed' ||
+    st.s === 'resolved' ||
+    st.s === 'fixed' ||
+    (st.s === 'applied' && st.ps !== undefined)
   return (
     <div
       className={cn(
@@ -215,10 +326,28 @@ function FindingCard({
       </div>
       <div className="font-medium">{f.title}</div>
       <p className="text-muted-foreground">{f.body}</p>
+      {(st.s === 'open' || st.s === 'sending') && <SuggestedChange f={f} />}
+      {(st.s === 'open' || st.s === 'sending') && f.prompt && (
+        <CopyPrompt prompt={f.prompt} />
+      )}
+      {st.s === 'applied' && (
+        <Chip tone={st.ps ? 'success' : 'warning'}>
+          <CheckIcon className="size-3" />
+          {st.ps
+            ? `Applied in patch set ${st.ps}`
+            : 'Applied to your draft. Save it as a patch set to share it.'}
+        </Chip>
+      )}
+      {st.s === 'open' && f.suggestion && !applicable && (
+        <p className="text-xs text-muted-foreground">
+          The code this points at has changed, so the suggestion no longer fits.
+          Send it to an agent instead.
+        </p>
+      )}
       {st.s === 'fixed' && (
         <Chip tone="success">
           <CheckIcon className="size-3" />
-          Addressed in {st.in}
+          Addressed in #{st.in}
         </Chip>
       )}
       {st.s === 'dismissed' && <Chip>Dismissed: {st.reason}</Chip>}
@@ -226,8 +355,23 @@ function FindingCard({
       {st.s === 'sending' && <Chip tone="warning">Agent is writing a fix</Chip>}
       {st.s === 'open' && !dismissing && (
         <div className="flex flex-wrap gap-2">
+          {f.suggestion && (
+            <Button
+              size="sm"
+              variant="brand"
+              disabled={!applicable}
+              onClick={onApply}
+            >
+              <CheckIcon className="size-3.5" />
+              Accept suggestion
+            </Button>
+          )}
           {f.kind === 'reviewer' && (
-            <Button size="sm" variant="brand" onClick={onSend}>
+            <Button
+              size="sm"
+              variant={f.suggestion ? 'outline' : 'brand'}
+              onClick={onSend}
+            >
               <CpuChipIcon className="size-3.5" />
               Send to agent
             </Button>
@@ -281,59 +425,7 @@ function FindingCard({
  * `sx change view --json` or the MCP `get_change` tool.
  * ------------------------------------------------------------------------- */
 
-type Tab = 'summary' | 'guide' | 'timeline' | 'code'
-
-type TimelineEvent = {
-  who: string
-  kind: 'human' | 'agent' | 'bot'
-  what: string
-  when: string
-}
-
-const baseTimeline: Array<TimelineEvent> = [
-  {
-    who: 'dana',
-    kind: 'human',
-    what: 'pushed patch set 1',
-    when: '3 days ago',
-  },
-  {
-    who: 'coderabbit',
-    kind: 'bot',
-    what: 'left 1 medium finding (F-1)',
-    when: '3 days ago',
-  },
-  {
-    who: 'greptile',
-    kind: 'bot',
-    what: 'left 1 high finding (F-2): NegCache is unbounded',
-    when: '3 days ago',
-  },
-  {
-    who: 'hollis',
-    kind: 'human',
-    what: 'asked for a rename',
-    when: '2 days ago',
-  },
-  {
-    who: 'dana',
-    kind: 'human',
-    what: 'pushed patch set 2',
-    when: '2 days ago',
-  },
-  {
-    who: 'hollis',
-    kind: 'human',
-    what: 'approved patch set 2',
-    when: '2 days ago',
-  },
-  {
-    who: 'dana',
-    kind: 'human',
-    what: 'rebased onto main: patch set 3. The approval carried over because only one call was renamed.',
-    when: 'yesterday',
-  },
-]
+type Tab = 'summary' | 'timeline' | 'code'
 
 const guide = [
   {
@@ -356,8 +448,28 @@ const guide = [
   },
 ]
 
+/** A short stand-in for a tree id, from the text itself. */
+function treeOf(text: string) {
+  let h = 5381
+  for (const c of text) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0
+  return h.toString(16).padStart(7, '0').slice(-7)
+}
+
 function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
-  const latest = change.patchSets.length
+  const history = React.useMemo(
+    () => changeVersions(change.id, change.patchSets.length),
+    [change],
+  )
+  // Patch sets saved from the browser join the ones the change came with.
+  const [added, setAdded] = React.useState<
+    Array<{ patchSet: PatchSet; files: FileVersions }>
+  >([])
+  // Edits on top of the newest patch set, not shared until they are saved.
+  const [draft, setDraft] = React.useState<FileVersions>({})
+  const patchSets = [...change.patchSets, ...added.map((a) => a.patchSet)]
+  const latest = patchSets.length
+  const saved = [...history.versions, ...added.map((a) => a.files)]
+  const working: FileVersions = { ...saved[latest - 1], ...draft }
   const [tab, setTab] = React.useState<Tab>('summary')
   const [ps, setPs] = React.useState(latest)
   const [compare, setCompare] = React.useState(false)
@@ -370,7 +482,6 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
     change.state === 'landed' ? 'landed' : 'idle',
   )
   const [events, setEvents] = React.useState<Array<TimelineEvent>>([])
-  const [agentView, setAgentView] = React.useState<'sx' | 'mcp'>('sx')
 
   React.useEffect(() => {
     if (change.ci !== 'pending') return
@@ -379,21 +490,31 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
       setEvents((e) => [
         ...e,
         {
+          kind: 'ci',
           who: 'ci/test',
-          kind: 'bot',
+          actor: 'bot',
           what: 'passed on tree 9c4d7e1',
-          when: 'just now',
+          hoursAgo: 0,
+          tone: 'success',
         },
       ])
     }, 4000)
     return () => clearTimeout(t)
   }, [change.ci])
 
-  const isMain = change.id === 'ch_7f3a'
+  const isMain = change.id === '216'
+  const media = mediaForChange(change.id)
+  const testRun = testRunFor(change.id)
   const list = isMain ? findings : []
-  const openFindings = list.filter(
-    (f) => state[f.id].s === 'open' || state[f.id].s === 'sending',
-  )
+  // A suggestion applied only to the draft has not fixed anything yet.
+  const openFindings = list.filter((f) => {
+    const st = state[f.id]
+    return (
+      st.s === 'open' ||
+      st.s === 'sending' ||
+      (st.s === 'applied' && st.ps === undefined)
+    )
+  })
   const highOpen = openFindings.filter((f) => f.severity === 'high')
   const approved = change.reviewers.filter((r) => r.state === 'approved')
   const parentWaiting = Boolean(change.stack && change.stack.index > 1)
@@ -407,7 +528,7 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
           : ci === 'fail'
             ? 'Checks failed'
             : 'Checks are running',
-      detail: `ci/test on tree ${change.patchSets.at(-1)?.tree ?? ''}, the tree that will land`,
+      detail: `ci/test on tree ${patchSets.at(-1)?.tree ?? ''}, the tree that will land`,
       state: ci,
     },
     {
@@ -440,7 +561,7 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
           {
             id: 'stack',
             label: parentWaiting
-              ? 'Lands after ch_7f3a'
+              ? 'Lands after #216'
               : `Lands first in a stack of ${change.stack.of}`,
             detail: parentWaiting
               ? 'Changes in a stack land in order. This one waits for its parent.'
@@ -466,32 +587,116 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
   const send = (id: string) => {
     set(id, { s: 'sending' })
     log({
+      kind: 'finding',
       who: 'you',
-      kind: 'human',
+      actor: 'human',
       what: `sent ${id} to an agent`,
-      when: 'just now',
+      hoursAgo: 0,
     })
     setTimeout(() => {
-      set(id, { s: 'fixed', in: 'ch_81b2' })
+      set(id, { s: 'fixed', in: '217' })
       log({
-        who: 'claude via T3 Code',
         kind: 'agent',
-        what: `opened draft ch_81b2 to address ${id}`,
-        when: 'just now',
+        who: 'claude via T3 Code',
+        actor: 'agent',
+        what: `opened draft #217 to address ${id}`,
+        hoursAgo: 0,
       })
     }, 1400)
   }
 
-  const asJson = JSON.stringify(
-    {
-      id: change.id,
-      state: landing === 'landed' ? 'landed' : change.state,
-      canLand,
-      blockers: blockers.map((b) => ({ code: b.id, detail: b.label })),
-      patchSets: latest,
-    },
-    null,
-    2,
+  const apply = (id: string) => {
+    const f = findings.find((x) => x.id === id)
+    const sug = f?.suggestion
+    if (!sug) return
+    const r = applySuggestion(working[sug.file] ?? '', sug)
+    if (!r.ok) return
+    setDraft((d) => ({ ...d, [sug.file]: r.contents }))
+    set(id, { s: 'applied' })
+    setPs(latest)
+    setCompare(false)
+  }
+  const edited = (file: string, contents: string) =>
+    setDraft((d) => ({ ...d, [file]: contents }))
+  const discard = () => {
+    setDraft({})
+    setState((all) =>
+      Object.fromEntries(
+        Object.entries(all).map(([k, v]) => [
+          k,
+          v.s === 'applied' && v.ps === undefined ? { s: 'open' } : v,
+        ]),
+      ),
+    )
+  }
+  const saveDraft = () => {
+    const n = latest + 1
+    const ids = Object.entries(state)
+      .filter(([, v]) => v.s === 'applied' && v.ps === undefined)
+      .map(([k]) => k)
+    const summary = ids.length
+      ? `Applied ${ids.join(', ')}`
+      : 'Edited in the browser'
+    const tree = treeOf(Object.values(working).join('\n'))
+    setAdded((a) => [
+      ...a,
+      {
+        patchSet: { n, when: 'just now', note: summary, tree },
+        files: working,
+      },
+    ])
+    setDraft({})
+    setState((all) =>
+      Object.fromEntries(
+        Object.entries(all).map(([k, v]) => [
+          k,
+          v.s === 'applied' && v.ps === undefined ? { s: 'applied', ps: n } : v,
+        ]),
+      ),
+    )
+    setPs(n)
+    setCompare(false)
+    setCi('pending')
+    log({
+      kind: 'patchset',
+      who: 'you',
+      actor: 'human',
+      what: `pushed patch set ${n}`,
+      detail: summary,
+      hoursAgo: 0,
+      patchSet: n,
+    })
+    if (change.mirror)
+      log({
+        kind: 'mirror',
+        who: 'source.code',
+        actor: 'bot',
+        what: `updated ${hostName[change.mirror.host]} ${hostTerms[change.mirror.host].ref(change.mirror.number)}`,
+        detail: `Pushed to ${branchFor(Number(change.id), change.title)}`,
+        hoursAgo: 0,
+      })
+    setTimeout(() => {
+      setCi('pass')
+      log({
+        kind: 'ci',
+        who: 'ci/test',
+        actor: 'bot',
+        what: `passed on tree ${tree}`,
+        hoursAgo: 0,
+        tone: 'success',
+      })
+    }, 3500)
+  }
+  const anchors = React.useMemo(
+    () =>
+      Object.fromEntries(
+        findings.map((f) => [
+          f.id,
+          (history.versions.at(-1)?.[f.file] ?? '').split('\n')[f.line - 1] ??
+            '',
+        ]),
+      ),
+    [history],
   )
 
   return (
@@ -515,9 +720,9 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
                 <span className="text-foreground">{change.author.name}</span>
               </span>
               <span>{change.when}</span>
-              <span className="font-mono text-xs">{change.id}</span>
+              <span className="font-mono text-xs">#{change.id}</span>
               <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs">
-                main ← {change.id === 'ch_7f3a' ? 'neg-cache' : 'topic'}
+                main ← {change.id === '216' ? 'neg-cache' : 'topic'}
               </span>
               {change.stack && (
                 <span>
@@ -540,12 +745,7 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
         onChange={setTab}
         options={[
           { id: 'summary', label: 'Summary' },
-          { id: 'guide', label: 'Guide' },
-          {
-            id: 'timeline',
-            label: 'Timeline',
-            count: baseTimeline.length + events.length,
-          },
+          { id: 'timeline', label: 'Timeline' },
           { id: 'code', label: 'Code', count: change.files },
         ]}
       />
@@ -565,14 +765,17 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
                 setTimeout(() => {
                   setLanding('landed')
                   log({
+                    kind: 'land',
                     who: 'you',
-                    kind: 'human',
-                    what: `landed ${change.id}`,
-                    when: 'just now',
+                    actor: 'human',
+                    what: `landed #${change.id}`,
+                    hoursAgo: 0,
+                    tone: 'success',
                   })
                 }, 1100)
               }}
             />
+            <StackCard repo={repo} change={change} all={changesFor(repo)} />
             <section className="space-y-2">
               <h3 className="text-sm font-medium">Description</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
@@ -584,110 +787,73 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
                 bounds the cache.
               </p>
             </section>
+            {media.length > 0 ? (
+              <EvidenceSection items={media} />
+            ) : (
+              <section className="space-y-2">
+                <h3 className="text-sm font-medium">
+                  What changed, to look at
+                </h3>
+                <p className="rounded-xl border border-dashed px-4 py-5 text-sm text-muted-foreground">
+                  No images or recordings yet. An agent or a test can attach a
+                  before and after, or add them to the description.
+                </p>
+              </section>
+            )}
+            {testRun && <TestReport run={testRun} />}
+            {isMain && (
+              <section className="space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium">Where to start</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A reading order written by an agent from the diff and the
+                      findings.
+                    </p>
+                  </div>
+                  <Button size="sm">Regenerate</Button>
+                </div>
+                <ol className="space-y-2">
+                  {guide.map((g, i) => (
+                    <li key={g.title} className="flex gap-3 text-sm">
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-xs">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="font-medium">{g.title}</div>
+                        <p className="text-muted-foreground">{g.body}</p>
+                        <button
+                          type="button"
+                          onClick={() => setTab('code')}
+                          className="py-0.5 font-mono text-xs underline decoration-border underline-offset-4 hover:decoration-foreground"
+                        >
+                          {g.file}, lines {g.lines}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
           </div>
 
           <aside className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">
-                The same status, for agents
-              </h3>
-              <Seg
-                value={agentView}
-                onChange={setAgentView}
-                options={[
-                  ['sx', 'CLI'],
-                  ['mcp', 'MCP'],
-                ]}
-              />
-            </div>
-            <Panel className="space-y-3 p-4">
-              <CopyField
-                value={
-                  agentView === 'sx'
-                    ? `sx change view ${change.id} --json`
-                    : `get_change { "id": "${change.id}" }`
-                }
-              />
-              <pre
-                tabIndex={0}
-                className="well overflow-x-auto rounded-xl bg-muted/60 p-3 font-mono text-xs leading-relaxed"
-              >
-                {asJson}
-              </pre>
-              <p className="text-xs text-muted-foreground">
-                An agent reads this, fixes what is in the way, and pushes a new
-                patch set. The id and the reviews survive.
-              </p>
-            </Panel>
+            <h3 className="text-sm font-medium">On other hosts</h3>
+            <MirrorCard repo={repo} change={change} />
           </aside>
         </div>
       )}
 
-      {tab === 'guide' && (
-        <div className="max-w-3xl space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              A reading order for this change, written by an agent from the diff
-              and the findings. Follow it instead of reading files
-              alphabetically.
-            </p>
-            <Button size="sm">Regenerate</Button>
-          </div>
-          <ol className="space-y-3">
-            {guide.map((g, i) => (
-              <li key={g.title}>
-                <Panel className="flex gap-4 p-5">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-xs">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="font-medium">{g.title}</div>
-                    <p className="text-sm text-muted-foreground">{g.body}</p>
-                    <button
-                      type="button"
-                      onClick={() => setTab('code')}
-                      className="font-mono text-xs underline decoration-border underline-offset-4 hover:decoration-foreground"
-                    >
-                      {g.file}, lines {g.lines}
-                    </button>
-                  </div>
-                </Panel>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
       {tab === 'timeline' && (
-        <ol className="max-w-3xl space-y-4">
-          {[...baseTimeline, ...events].map((e, i) => (
-            <li key={i} className="flex items-start gap-3 text-sm">
-              {e.kind === 'human' ? (
-                <Tile name={e.who} round className="mt-0.5 size-6 text-xs" />
-              ) : (
-                <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-muted">
-                  {e.kind === 'agent' ? (
-                    <CpuChipIcon className="size-3.5" />
-                  ) : (
-                    <MagnifyingGlassIcon className="size-3.5" />
-                  )}
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <b className="font-medium">{e.who}</b>{' '}
-                <span className="text-muted-foreground">{e.what}</span>
-                {e.kind !== 'human' && (
-                  <Badge className="ml-2">
-                    {e.kind === 'agent' ? 'agent' : 'reviewer'}
-                  </Badge>
-                )}
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {e.when}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <Timeline
+          change={change}
+          live={events}
+          onOpenPatchSet={(n, sinceLast) => {
+            setPs(n)
+            setCompare(sinceLast)
+            setTab('code')
+          }}
+        />
       )}
 
       {tab === 'code' && (
@@ -703,6 +869,16 @@ function ChangeDetail({ repo, change }: { repo: Repo; change: ChangeItem }) {
           setStyle={setStyle}
           send={send}
           set={set}
+          patchSets={patchSets}
+          base={history.base}
+          saved={saved}
+          working={working}
+          draftCount={Object.keys(draft).length}
+          anchors={anchors}
+          onApply={apply}
+          onEdited={edited}
+          onSave={saveDraft}
+          onDiscard={discard}
         />
       )}
     </div>
@@ -721,6 +897,16 @@ function CodeReview({
   setStyle,
   send,
   set,
+  patchSets,
+  base,
+  saved,
+  working,
+  draftCount,
+  anchors,
+  onApply,
+  onEdited,
+  onSave,
+  onDiscard,
 }: {
   change: ChangeItem
   list: Array<Finding>
@@ -733,15 +919,31 @@ function CodeReview({
   setStyle: (s: 'split' | 'unified') => void
   send: (id: string) => void
   set: (id: string, s: FindingState) => void
+  patchSets: Array<PatchSet>
+  base: FileVersions
+  saved: Array<FileVersions>
+  working: FileVersions
+  draftCount: number
+  anchors: Record<string, string>
+  onApply: (id: string) => void
+  onEdited: (file: string, contents: string) => void
+  onSave: () => void
+  onDiscard: () => void
 }) {
   const dark = useIsDark()
   const overflow = useCodeOverflow()
-  const latest = change.patchSets.length
-  const files = ['src/refs.rs', 'tests/refs_test.rs']
+  const latest = patchSets.length
+  const names = Object.keys(base)
+  const [editing, setEditing] = React.useState(false)
+  const factory = useEditorFactory(editing)
+  const canEdit = ps === latest && !compare
+  React.useEffect(() => {
+    if (!canEdit) setEditing(false)
+  }, [canEdit])
   const { model } = useFileTree({
-    paths: files,
+    paths: names,
     initialExpansion: 'open',
-    gitStatus: files.map((path) => ({ path, status: 'modified' as const })),
+    gitStatus: names.map((path) => ({ path, status: 'modified' as const })),
     onSelectionChange: ([path]) => {
       if (path)
         document
@@ -749,20 +951,34 @@ function CodeReview({
           ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
   })
-  const annotations = (file: string) =>
+
+  const contentsAt = (n: number) => (n === latest ? working : saved[n - 1])
+  const sets = names
+    .map((name) => ({
+      name,
+      before: compare && ps > 1 ? contentsAt(ps - 1)[name] : base[name],
+      after: contentsAt(ps)[name],
+    }))
+    .filter((f) => !compare || f.before !== f.after)
+
+  // Findings sit on the newest patch set. Older ones show the code as it was.
+  const showFindings = !compare && ps === latest
+  const lineFor = (f: Finding, contents: string) => {
+    const there = lineOf(contents, anchors[f.id] ?? '', -1)
+    if (there > 0) return there
+    const first = f.suggestion?.lines[0]
+    return first ? lineOf(contents, first, f.line) : f.line
+  }
+  const annotations = (file: string, contents: string) =>
     list
       .filter((f) => f.file === file)
       .map((f) => ({
         side: 'additions' as const,
-        lineNumber: f.line,
+        lineNumber: lineFor(f, contents),
         metadata: f,
       }))
-  const patches: Array<[string, string]> = compare
-    ? [['src/refs.rs', interdiffPatch]]
-    : [
-        ['src/refs.rs', refsPatch],
-        ['tests/refs_test.rs', refsTestPatch],
-      ]
+  const current = patchSets.find((p) => p.n === ps)
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -770,74 +986,163 @@ function CodeReview({
           <Seg
             value={String(ps)}
             onChange={(v) => {
-              setPs(Number(v))
-              setCompare(false)
+              const n = Number(v)
+              setPs(n)
+              if (n === 1) setCompare(false)
             }}
-            options={change.patchSets.map((p): [string, string] => [
+            options={patchSets.map((p): [string, string] => [
               String(p.n),
               `Patch set ${p.n}`,
             ])}
           />
           {latest > 1 && (
-            <label className="inline-flex items-center gap-2 text-sm">
+            <label
+              className={cn(
+                'inline-flex items-center gap-2 text-sm',
+                ps === 1 && 'text-muted-foreground',
+              )}
+            >
               <Switch
-                checked={compare}
-                onCheckedChange={(v) => {
-                  setCompare(v)
-                  setPs(latest)
-                }}
-                aria-label="Only what changed since the last patch set"
+                checked={compare && ps > 1}
+                disabled={ps === 1}
+                onCheckedChange={setCompare}
+                aria-label="Only what changed since the previous patch set"
               />
-              Only what changed since patch set {latest - 1}
+              {ps === 1
+                ? 'Patch set 1 has nothing before it'
+                : `Only what changed since patch set ${ps - 1}`}
             </label>
           )}
         </div>
-        <Seg
-          value={style}
-          onChange={setStyle}
-          options={[
-            ['unified', 'Unified'],
-            ['split', 'Split'],
-          ]}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={editing ? 'brand' : 'outline'}
+            disabled={!canEdit}
+            title={canEdit ? undefined : 'Open the newest patch set to edit it'}
+            onClick={() => setEditing((e) => !e)}
+          >
+            {editing ? <CheckIcon /> : <PencilSquareIcon />}
+            {editing ? 'Done editing' : 'Edit'}
+          </Button>
+          <Seg
+            value={style}
+            onChange={setStyle}
+            options={[
+              ['unified', 'Unified'],
+              ['split', 'Split'],
+            ]}
+          />
+        </div>
       </div>
+
+      {editing && (
+        <p className="rounded-xl border bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground">
+          Click into the new version and type. Undo with ⌘Z or Ctrl+Z. Nothing
+          is shared until you save it as a patch set.
+        </p>
+      )}
+      {draftCount > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          <span className="mr-auto">
+            You have unsaved edits in {draftCount} file
+            {draftCount > 1 ? 's' : ''}. They are not part of the change yet.
+          </span>
+          <Button size="sm" variant="ghost" onClick={onDiscard}>
+            Discard
+          </Button>
+          <Button size="sm" variant="brand" disabled={editing} onClick={onSave}>
+            {editing
+              ? 'Finish editing first'
+              : `Save as patch set ${latest + 1}`}
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
         <div className="pierre surface h-fit overflow-hidden rounded-2xl border bg-card p-1 md:sticky md:top-20">
           <FileTree model={model} className="block h-36" />
         </div>
         <div className="min-w-0 space-y-4">
-          {patches.map(([path, raw]) => (
-            <div
-              key={path}
-              id={`file-${path}`}
-              className="pierre surface scroll-mt-20 overflow-hidden rounded-2xl border bg-card"
-            >
-              <PatchDiff
-                patch={raw}
-                lineAnnotations={compare ? [] : annotations(path)}
-                renderAnnotation={(a) => {
-                  const f = a.metadata
-                  return (
-                    <FindingCard
-                      f={f}
-                      st={state[f.id] ?? { s: 'open' }}
-                      onSend={() => send(f.id)}
-                      onDismiss={(reason) =>
-                        set(f.id, { s: 'dismissed', reason })
-                      }
-                      onResolve={() => set(f.id, { s: 'resolved' })}
-                    />
-                  )
-                }}
-                options={{
-                  theme: codeTheme(dark),
-                  overflow,
-                  diffStyle: style,
-                }}
-              />
-            </div>
-          ))}
+          {current && (
+            <p className="text-sm text-muted-foreground">
+              <b className="font-medium text-foreground">
+                Patch set {current.n}
+              </b>
+              {compare && ps > 1 && ` against patch set ${ps - 1}`}
+              {': '}
+              {current.note}
+              <span className="ml-2 font-mono text-xs">{current.tree}</span>
+              <span className="ml-2 text-xs">{current.when}</span>
+              {!showFindings && !compare && (
+                <span className="block text-xs">
+                  Findings are shown on the newest patch set.
+                </span>
+              )}
+            </p>
+          )}
+          <EditingProvider factory={factory}>
+            {sets.map(({ name, before, after }) => (
+              <div
+                key={`${ps}-${compare}-${name}`}
+                id={`file-${name}`}
+                className="pierre surface scroll-mt-20 overflow-hidden rounded-2xl border bg-card"
+              >
+                <MultiFileDiff
+                  oldFile={{
+                    name,
+                    contents: before,
+                    cacheKey: `${change.id}:${ps}:${compare}:old:${name}:${treeOf(before)}`,
+                  }}
+                  newFile={{
+                    name,
+                    contents: after,
+                    cacheKey: `${change.id}:${ps}:${compare}:new:${name}:${treeOf(after)}`,
+                  }}
+                  lineAnnotations={showFindings ? annotations(name, after) : []}
+                  renderAnnotation={(a) => {
+                    const f = a.metadata
+                    const sug = f.suggestion
+                    return (
+                      <FindingCard
+                        f={f}
+                        st={state[f.id] ?? { s: 'open' }}
+                        applicable={
+                          sug ? canApply(working[sug.file] ?? '', sug) : false
+                        }
+                        onSend={() => send(f.id)}
+                        onApply={() => {
+                          setEditing(false)
+                          onApply(f.id)
+                        }}
+                        onDismiss={(reason) =>
+                          set(f.id, { s: 'dismissed', reason })
+                        }
+                        onResolve={() => set(f.id, { s: 'resolved' })}
+                      />
+                    )
+                  }}
+                  edit={editing && canEdit && Boolean(factory)}
+                  editStateKey={`${change.id}:${name}`}
+                  onEditComplete={(e) => {
+                    if (e.newFile && e.newFile.contents !== after)
+                      onEdited(name, e.newFile.contents)
+                    return 'accept'
+                  }}
+                  options={{
+                    theme: codeTheme(dark),
+                    overflow,
+                    diffStyle: style,
+                  }}
+                />
+              </div>
+            ))}
+            {sets.length === 0 && (
+              <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+                Nothing changed between these two patch sets.
+              </p>
+            )}
+          </EditingProvider>
         </div>
       </div>
     </div>
@@ -845,7 +1150,7 @@ function CodeReview({
 }
 
 export function ChangesPage({ repo, n }: { repo: Repo; n?: number }) {
-  const change = n ? changes.at(n - 1) : undefined
+  const change = n ? changesFor(repo).at(n - 1) : undefined
   return (
     <>
       {change ? (

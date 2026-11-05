@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import { cn } from 'cn'
 import { File } from '@pierre/diffs/react'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 import {
@@ -62,6 +63,7 @@ function filesFor(repo: Repo): Record<string, string> {
   const ext = repo.language === 'Rust' ? 'rs' : 'ts'
   return {
     'README.md': `# ${repo.name}\n\n${repo.description}\n\n## Install\n\nDownload the build for your machine from the Releases tab.\n`,
+    'SECURITY.md': `# Security policy\n\nReport vulnerabilities privately to security@${repo.owner}.dev. Do not open a public issue.\n`,
     'CONTRIBUTING.md': `# Contributing to ${repo.name}\n\nBug reports and small fixes are welcome. For anything larger, open an issue first.\n`,
     'CHANGELOG.md':
       '## 0.9.0\n\n- Faster ref lookups\n- Fix mount on empty directories\n',
@@ -258,67 +260,52 @@ export function CodeBrowser({
 
       {!isFile && (
         <>
-          <div className="surface overflow-hidden rounded-2xl border bg-card">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-5 py-3 text-sm">
-              <Who who={latest.author} className="size-6 text-xs" />
-              <b className="font-medium">{latest.author.name}</b>
-              <Link
-                to="/$handle/$repo/commit/$sha"
-                params={{
-                  handle: repo.owner,
-                  repo: repo.name,
-                  sha: latest.sha,
-                }}
-                className="min-w-0 flex-1 py-0.5 text-muted-foreground hover:text-foreground hover:underline max-sm:basis-full sm:truncate"
-              >
-                {latest.message}
-              </Link>
-              {latest.checks === 'pass' ? (
-                <span className="inline-flex items-center gap-1 text-success">
-                  <CheckBadgeIcon className="size-4" /> checks passed
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-8',
+              !dir && 'lg:grid-cols-[minmax(0,1fr)_300px]',
+            )}
+          >
+            <div className="surface flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-card">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-5 py-3 text-sm">
+                <Who who={latest.author} className="size-6 text-xs" />
+                <b className="font-medium">{latest.author.name}</b>
+                <Link
+                  to="/$handle/$repo/commit/$sha"
+                  params={{
+                    handle: repo.owner,
+                    repo: repo.name,
+                    sha: latest.sha,
+                  }}
+                  className="min-w-0 flex-1 py-0.5 text-muted-foreground hover:text-foreground hover:underline max-sm:basis-full sm:truncate"
+                >
+                  {latest.message}
+                </Link>
+                {latest.checks === 'pass' ? (
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <CheckBadgeIcon className="size-4" /> checks passed
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-danger">
+                    <XCircleIcon className="size-4" /> checks failed
+                  </span>
+                )}
+                <span className="font-mono text-xs text-muted-foreground">
+                  {latest.sha}
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-danger">
-                  <XCircleIcon className="size-4" /> checks failed
-                </span>
-              )}
-              <span className="font-mono text-xs text-muted-foreground">
-                {latest.sha}
-              </span>
-              <Link
-                to="/$handle/$repo/$tab"
-                params={{ handle: repo.owner, repo: repo.name, tab: 'code' }}
-                search={{ view: 'history' }}
-                className="inline-flex items-center gap-1.5 py-0.5 font-medium hover:underline"
-              >
-                <ClockIcon className="size-4 text-muted-foreground" />
-                214 commits
-              </Link>
-            </div>
-            <ul className="divide-y">
-              {dir && (
-                <li>
-                  <Link
-                    to="/$handle/$repo/$tab"
-                    params={{
-                      handle: repo.owner,
-                      repo: repo.name,
-                      tab: 'code',
-                    }}
-                    search={{
-                      path: dir.split('/').slice(0, -1).join('/') || undefined,
-                    }}
-                    className="flex items-center gap-3 px-5 py-2.5 text-sm text-muted-foreground hover:bg-muted/50"
-                  >
-                    <ArrowUpIcon className="size-4" /> Up one folder
-                  </Link>
-                </li>
-              )}
-              {entriesIn(paths, dir).map((e) => {
-                const Icon = iconFor(e)
-                const n = pick(e.name)
-                return (
-                  <li key={e.path}>
+                <Link
+                  to="/$handle/$repo/$tab"
+                  params={{ handle: repo.owner, repo: repo.name, tab: 'code' }}
+                  search={{ view: 'history' }}
+                  className="inline-flex items-center gap-1.5 py-0.5 font-medium hover:underline"
+                >
+                  <ClockIcon className="size-4 text-muted-foreground" />
+                  214 commits
+                </Link>
+              </div>
+              <ul className="flex flex-1 flex-col divide-y">
+                {dir && (
+                  <li>
                     <Link
                       to="/$handle/$repo/$tab"
                       params={{
@@ -326,43 +313,65 @@ export function CodeBrowser({
                         repo: repo.name,
                         tab: 'code',
                       }}
-                      search={{ path: e.path }}
-                      className="flex items-center gap-3 px-5 py-2.5 text-sm hover:bg-muted/50"
+                      search={{
+                        path:
+                          dir.split('/').slice(0, -1).join('/') || undefined,
+                      }}
+                      className="flex items-center gap-3 px-5 py-2.5 text-sm text-muted-foreground hover:bg-muted/50"
                     >
-                      <Icon
-                        className={
-                          e.kind === 'dir'
-                            ? 'size-4 shrink-0 text-info'
-                            : 'size-4 shrink-0 text-muted-foreground'
-                        }
-                      />
-                      <span className="w-44 shrink-0 truncate font-medium">
-                        {e.name}
-                      </span>
-                      <span className="hidden min-w-0 flex-1 truncate text-muted-foreground md:block">
-                        {e.kind === 'dir' && folderNotes[e.name]
-                          ? folderNotes[e.name]
-                          : messages[n]}
-                      </span>
-                      {touched.includes(e.path) && (
-                        <Badge tone="info">in ch_7f3a</Badge>
-                      )}
-                      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                        {ages[n]}
-                      </span>
+                      <ArrowUpIcon className="size-4" /> Up one folder
                     </Link>
                   </li>
-                )
-              })}
-            </ul>
+                )}
+                {entriesIn(paths, dir).map((e) => {
+                  const Icon = iconFor(e)
+                  const n = pick(e.name)
+                  return (
+                    <li key={e.path} className="flex-1">
+                      <Link
+                        to="/$handle/$repo/$tab"
+                        params={{
+                          handle: repo.owner,
+                          repo: repo.name,
+                          tab: 'code',
+                        }}
+                        search={{ path: e.path }}
+                        className="flex h-full items-center gap-3 px-5 py-2.5 text-sm hover:bg-muted/50"
+                      >
+                        <Icon
+                          className={
+                            e.kind === 'dir'
+                              ? 'size-4 shrink-0 text-info'
+                              : 'size-4 shrink-0 text-muted-foreground'
+                          }
+                        />
+                        <span className="w-44 shrink-0 truncate font-medium">
+                          {e.name}
+                        </span>
+                        <span className="hidden min-w-0 flex-1 truncate text-muted-foreground md:block">
+                          {e.kind === 'dir' && folderNotes[e.name]
+                            ? folderNotes[e.name]
+                            : messages[n]}
+                        </span>
+                        {touched.includes(e.path) && (
+                          <Badge tone="info">in #216</Badge>
+                        )}
+                        <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+                          {ages[n]}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+
+            {!dir && (
+              <AboutPanel repo={repo} onOpenLicense={() => setDoc('license')} />
+            )}
           </div>
 
-          {!dir && (
-            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-              <ReadmeCard repo={repo} doc={doc} onDoc={setDoc} />
-              <AboutPanel repo={repo} onOpenLicense={() => setDoc('license')} />
-            </div>
-          )}
+          {!dir && <ReadmeCard repo={repo} doc={doc} onDoc={setDoc} />}
         </>
       )}
 
@@ -373,7 +382,7 @@ export function CodeBrowser({
               {path.split('/').at(-1)}
             </span>
             {touched.includes(path) && (
-              <Badge tone="info">changed in ch_7f3a</Badge>
+              <Badge tone="info">changed in #216</Badge>
             )}
             <span className="text-xs text-muted-foreground">
               {files[path].split('\n').length} lines

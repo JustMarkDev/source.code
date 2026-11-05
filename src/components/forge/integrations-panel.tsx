@@ -9,28 +9,48 @@ import {
 import { cn } from 'cn'
 import { Modal } from './bits'
 import type { Integration, IntegrationGroup } from '~/mock/hub'
-import { BrandLogo, brandName } from '~/components/brand'
+import { BrandTile, brandName } from '~/components/brand'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Field, Input } from '~/components/ui/input'
 import { Switch } from '~/components/ui/switch'
 import { StateTabs } from '~/components/ui/tabs'
 import { Select, SelectItem } from '~/components/ui/select'
-import { catalog, connections, groups, useConnections } from '~/mock/hub'
+import {
+  catalog,
+  connections,
+  groups,
+  sortIntegrations,
+  useConnections,
+} from '~/mock/hub'
 
 const nameOf = (i: Integration) =>
-  i.id === 'selfhosted' ? 'Self-hosted runners' : brandName(i.id)
+  i.id === 'selfhosted'
+    ? 'Self-hosted runners'
+    : i.id === 'selfhostedreviewer'
+      ? 'Self-hosted reviewer'
+      : brandName(i.id)
 
-function Logo({ i }: { i: Integration }) {
-  return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card">
-      {i.id === 'selfhosted' ? (
+function Logo({ i, muted }: { i: Integration; muted?: boolean }) {
+  // A planned service is faded and drained of colour, so it reads as not there yet.
+  const fade = muted ? 'opacity-50 grayscale' : undefined
+  if (i.id === 'selfhosted' || i.id === 'selfhostedreviewer')
+    return (
+      <span
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card',
+          fade,
+        )}
+      >
         <ServerIcon className="size-5 text-muted-foreground" />
-      ) : (
-        <BrandLogo id={i.id} />
-      )}
-    </span>
-  )
+      </span>
+    )
+  return <BrandTile id={i.id} className={fade} />
+}
+
+/** Tells a person a service is on the roadmap and cannot be connected yet. */
+function Planned() {
+  return <Badge>Planned</Badge>
 }
 
 /** Per-kind settings. Kept short: a setting only appears if it changes behaviour. */
@@ -204,14 +224,20 @@ export function IntegrationsPanel({ repo }: { repo?: string }) {
   const [picker, setPicker] = React.useState(false)
   const [open, setOpen] = React.useState<string | null>(null)
 
-  const visible = catalog.filter(
-    (i) =>
-      (tab === 'all' || i.group === tab) &&
-      nameOf(i).toLowerCase().includes(query.toLowerCase()),
+  const visible = sortIntegrations(
+    catalog.filter(
+      (i) =>
+        (tab === 'all' || i.group === tab) &&
+        nameOf(i).toLowerCase().includes(query.toLowerCase()),
+    ),
+    connected,
   )
 
   if (repo) {
-    const used = catalog.filter((i) => connected.has(i.id))
+    const used = sortIntegrations(
+      catalog.filter((i) => connected.has(i.id)),
+      connected,
+    )
     const on = enabled[repo] ?? new Set<string>()
     return (
       <div className="space-y-4">
@@ -279,28 +305,31 @@ export function IntegrationsPanel({ repo }: { repo?: string }) {
           wide
         >
           <ul className="divide-y">
-            {catalog
-              .filter((i) => !connected.has(i.id))
-              .map((i) => (
-                <li key={i.id} className="flex items-center gap-3 py-2.5">
-                  <Logo i={i} />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">{nameOf(i)}</div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {groups[i.group].title} · {i.tagline}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setPicker(false)
-                      setConnecting(i)
-                    }}
-                  >
-                    Connect
-                  </Button>
-                </li>
-              ))}
+            {sortIntegrations(
+              catalog.filter(
+                (i) => !connected.has(i.id) && i.status === 'available',
+              ),
+              connected,
+            ).map((i) => (
+              <li key={i.id} className="flex items-center gap-3 py-2.5">
+                <Logo i={i} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{nameOf(i)}</div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {groups[i.group].title} · {i.tagline}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setPicker(false)
+                    setConnecting(i)
+                  }}
+                >
+                  Connect
+                </Button>
+              </li>
+            ))}
           </ul>
         </Modal>
         <ConnectDialog
@@ -356,15 +385,27 @@ export function IntegrationsPanel({ repo }: { repo?: string }) {
             <ul className="divide-y rounded-xl border bg-card">
               {rows.map((i) => {
                 const isOn = connected.has(i.id)
+                const planned = i.status === 'planned'
                 return (
                   <li key={i.id} className="flex items-center gap-3 p-4">
-                    <Logo i={i} />
+                    <Logo i={i} muted={planned} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-sm font-medium">
+                      <div
+                        className={cn(
+                          'flex items-center gap-2 text-sm font-medium',
+                          planned && 'text-muted-foreground',
+                        )}
+                      >
                         {nameOf(i)}
                         {isOn && <Badge tone="success">Connected</Badge>}
+                        {i.status === 'planned' && <Planned />}
                       </div>
-                      <p className="truncate text-sm text-muted-foreground">
+                      <p
+                        className={cn(
+                          'truncate text-sm text-muted-foreground',
+                          planned && 'opacity-60',
+                        )}
+                      >
                         {i.tagline}
                       </p>
                     </div>
@@ -376,7 +417,16 @@ export function IntegrationsPanel({ repo }: { repo?: string }) {
                         Disconnect
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => setConnecting(i)}>
+                      <Button
+                        size="sm"
+                        disabled={i.status === 'planned'}
+                        title={
+                          i.status === 'planned'
+                            ? 'Planned. Not available yet.'
+                            : undefined
+                        }
+                        onClick={() => setConnecting(i)}
+                      >
                         Connect
                       </Button>
                     )}

@@ -100,7 +100,7 @@ export function commitsFor(repo: Repo, count = 60): Array<Commit> {
       day: fmt(ms),
       when: ago(hours),
       checks: rand() > 0.94 ? 'fail' : 'pass',
-      change: rand() > 0.55 ? `ch_${hex(seed + i * 3, 4)}` : undefined,
+      change: rand() > 0.55 ? String(100 + ((seed + i * 3) % 110)) : undefined,
       files: 1 + Math.floor(rand() * 6),
       additions: 3 + Math.floor(rand() * 90),
       deletions: Math.floor(rand() * 30),
