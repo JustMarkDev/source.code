@@ -77,10 +77,23 @@ export function isBlockedAddress(ip: string): boolean {
       const n = (parseInt(hex[1], 16) << 16) | parseInt(hex[2], 16)
       return isBlockedAddress(`${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`)
     }
+    // 6to4 embeds an IPv4 address in the first two groups after 2002::.
+    if (v.startsWith('2002:')) {
+      const groups = v.split(':')
+      const g1 = parseInt(groups[1] ?? '', 16)
+      const g2 = parseInt(groups[2] ?? '', 16)
+      if (Number.isFinite(g1) && Number.isFinite(g2)) {
+        const embedded = `${(g1 >>> 8) & 255}.${g1 & 255}.${(g2 >>> 8) & 255}.${g2 & 255}`
+        if (isBlockedAddress(embedded)) return true
+      }
+    }
     return (
       v === '::' || v === '::1' ||
       /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || /^ff/.test(v) ||
-      v.startsWith('64:ff9b:') || v.startsWith('2001:db8')
+      v.startsWith('64:ff9b:') || v.startsWith('2001:db8') ||
+      // Teredo tunnels carry an obfuscated client IPv4 address; treat the
+      // whole 2001:0000::/32 range as private.
+      v === '2001::' || v.startsWith('2001::') || v.startsWith('2001:0:')
     )
   }
   return false
@@ -399,9 +412,11 @@ export class WebhookService {
 
   /** Re-send every matching event after a sequence, for a receiver that was down. */
   replay(hook: Hook, after: number, limit: number) {
-    const { events } = this.o.events.since(after, limit, (e) => e.repo === hook.repo && matchesType(hook.events, e.type))
+    const { events, scannedTo } = this.o.events.since(after, limit, (e) => e.repo === hook.repo && matchesType(hook.events, e.type))
     for (const e of events) this.enqueue(hook, parseEvent(e), null)
-    return { count: events.length, last: events.at(-1)?.sequence ?? after }
+    // Report how far the scan got, so a page with no matching events still
+    // advances the caller instead of replaying the same window forever.
+    return { count: events.length, last: scannedTo }
   }
 
   private async slot() {
@@ -441,9 +456,18 @@ export class WebhookService {
       'sx-event': d.event.type,
     }
     await this.slot()
+    const sentAt = performance.now()
     let result: SendResult
     try {
       result = await this.o.transport.send({ url: hook.url, headers, body, timeoutMs: TIMEOUT_MS })
+    } catch (e) {
+      // A transport that rejects is a failed attempt, not a delivery that
+      // stays pending forever and not an unhandled rejection.
+      result = {
+        status: null,
+        error: e instanceof Error ? e.message.slice(0, 200) : 'The send failed.',
+        ms: Math.round(performance.now() - sentAt),
+      }
     } finally {
       this.release()
     }

@@ -110,11 +110,27 @@ export const streamEvents = defineOp({
       const repo = ctx.query.repo
       const encoder = new TextEncoder()
       let open = true
+      const send = (text: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
+        if (!open || ctx.signal.aborted) return false
+        try {
+          controller.enqueue(encoder.encode(text))
+          return true
+        } catch {
+          // The client went away between the check and the enqueue.
+          open = false
+          return false
+        }
+      }
       const body = new ReadableStream<Uint8Array>({
         async start(controller) {
-          controller.enqueue(encoder.encode(': connected\n\n'))
+          if (!send(': connected\n\n', controller)) {
+            try {
+              controller.close()
+            } catch {}
+            return
+          }
           while (open && !ctx.signal.aborted) {
-            const { events: batch } = events.since(after, 100, (e) => {
+            const { events: batch, scannedTo } = events.since(after, 100, (e) => {
               if (repo && e.repo !== repo) return false
               if (!can(e.repo)) return false
               return (
@@ -122,20 +138,21 @@ export const streamEvents = defineOp({
                 types.some((t) => (t.endsWith('.*') ? e.type.startsWith(t.slice(0, -1)) : t === e.type))
               )
             })
-            for (const e of batch)
-              controller.enqueue(
-                encoder.encode(`id: ${e.sequence}\nevent: ${e.type}\ndata: ${e.json}\n\n`),
-              )
+            for (const e of batch) {
+              if (!send(`id: ${e.sequence}\nevent: ${e.type}\ndata: ${e.json}\n\n`, controller)) break
+            }
+            if (!open) break
             // Move past events that did not match, so they are not scanned again.
-            after = Math.max(after, batch.at(-1)?.sequence ?? after)
+            after = Math.max(after, scannedTo)
             if (batch.length === 0) after = Math.max(after, events.head)
             if (batch.length === 100) continue
             const before = events.head
             await events.wait(repo ? `repo:${repo}` : '*', 15_000, ctx.signal)
-            if (events.head === before && open && !ctx.signal.aborted)
-              controller.enqueue(encoder.encode(': keepalive\n\n'))
+            if (events.head === before && open && !ctx.signal.aborted) send(': keepalive\n\n', controller)
           }
-          controller.close()
+          try {
+            controller.close()
+          } catch {}
         },
         cancel() {
           open = false

@@ -77,7 +77,11 @@ export function parseQuery(q: string): ParsedQuery {
     if (qual) {
       const k = qual[1].toLowerCase()
       const v = qual[2].replace(/^"|"$/g, '')
-      if (k === 'type' || k === 'is') out.types.push(v.toLowerCase())
+      // `is:open` is a state, while `is:issue` is a type. Keep the shorthand
+      // useful instead of treating every `is:` value as a document type.
+      if (k === 'is' && ['open', 'closed', 'merged', 'draft'].includes(v.toLowerCase()))
+        out.state.push(v)
+      else if (k === 'type' || k === 'is') out.types.push(v.toLowerCase())
       else out[k as 'repo' | 'state' | 'author' | 'label'].push(v)
     } else out.terms.push(...words(tok.replace(/^#/, '')))
   }

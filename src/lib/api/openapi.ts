@@ -20,13 +20,16 @@ function jsonSchema(schema: z.ZodType, io: 'input' | 'output', defs: Json): Json
     reused: 'inline',
   }) as Json
   const found = (out.$defs ?? {}) as Json
-  Object.assign(defs, relax(found))
+  // Responses may grow members in a minor version, so their schemas must not
+  // forbid them. Requests are strict: the server rejects unknown members, and
+  // the document should say so.
+  Object.assign(defs, io === 'output' ? relax(found) : found)
   delete out.$defs
   delete out.$schema
-  return relax(out) as Json
+  return (io === 'output' ? relax(out) : out) as Json
 }
 
-/** Clients must ignore unknown members, so the document does not forbid them. */
+/** Removes `additionalProperties: false`, for response schemas only. */
 function relax(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(relax)
   if (value && typeof value === 'object') {
@@ -92,8 +95,38 @@ function parameters(op: Op, defs: Json): Array<Json> {
   return out
 }
 
+/** Every code this operation can answer with, not just the ones its handler names. */
+function operationErrors(op: Op): Array<string> {
+  const out = new Set<string>([
+    ...(op.errors ?? []),
+    'rate_limited',
+    'concurrency_limited',
+    'internal',
+    'backend_unavailable',
+    'unsupported_version',
+  ])
+  if (op.auth !== 'none')
+    for (const code of ['token_invalid', 'token_expired', 'token_revoked']) out.add(code)
+  if (op.auth === 'required') out.add('unauthenticated')
+  if (op.scopes?.length) out.add('insufficient_scope')
+  if (op.params || op.query || op.body) out.add('invalid_request')
+  if (op.body) {
+    out.add('unsupported_media_type')
+    out.add('payload_too_large')
+  }
+  if (op.rawBody) out.add('payload_too_large')
+  if (op.method !== 'GET') {
+    out.add('idempotency_key_reused')
+    out.add('request_in_progress')
+  }
+  return [...out].sort()
+}
+
 export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.code/v1'): Json {
-  const defs: Json = {}
+  // Input and output schemas relax differently, so their definitions are
+  // collected separately and only then combined.
+  const inputDefs: Json = {}
+  const outputDefs: Json = {}
   const paths: Json = {}
   const problemRef = { $ref: '#/components/schemas/Problem' }
   for (const op of [...ops].sort((a, b) => (a.path + a.method).localeCompare(b.path + b.method))) {
@@ -102,12 +135,12 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
       summary: op.summary,
       ...(op.description ? { description: op.description } : {}),
       tags: op.tags,
-      parameters: parameters(op, defs),
+      parameters: parameters(op, inputDefs),
       ...(op.body
         ? {
             requestBody: {
               required: true,
-              content: { 'application/json': { schema: jsonSchema(op.body, 'input', defs) } },
+              content: { 'application/json': { schema: jsonSchema(op.body, 'input', inputDefs) } },
             },
           }
         : {}),
@@ -120,7 +153,7 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
           },
           content: {
             [op.id === 'events.stream' ? 'text/event-stream' : 'application/json']: {
-              schema: jsonSchema(op.response, 'output', defs),
+              schema: jsonSchema(op.response, 'output', outputDefs),
             },
             ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),
           },
@@ -138,13 +171,14 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
       'x-sx-pool': op.pool,
       'x-sx-cost': op.pool === 'none' ? 0 : (op.cost ?? 1),
       'x-sx-scopes': op.scopes ?? [],
-      'x-sx-errors': [...new Set([...(op.errors ?? []), 'rate_limited', 'internal', ...(op.auth === 'required' ? ['unauthenticated', 'insufficient_scope'] : []), ...(op.query || op.body ? ['invalid_request'] : [])])].sort(),
+      'x-sx-errors': operationErrors(op),
       'x-sx-async': !!op.mayBeAsync,
     }
     const item = (paths[op.path] ??= {}) as Json
     item[op.method.toLowerCase()] = entry
   }
-  const schemas: Json = { ...(defs), Problem: jsonSchema(Problem, 'output', defs) }
+  const problem = jsonSchema(Problem, 'output', outputDefs)
+  const schemas: Json = { ...inputDefs, ...outputDefs, Problem: problem }
   const doc = {
     openapi: '3.1.0',
     info: {

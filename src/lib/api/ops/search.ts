@@ -36,7 +36,9 @@ export const searchOp = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const q = ctx.query
-      const f = fp('search', q.q)
+      // The cursor belongs to one viewer: a different caller may see a
+      // different list, so its cursor must not silently continue this one.
+      const f = fp('search', q.q, ctx.principal?.capabilityKey ?? 'anon')
       const out = yield* run(async (d) => {
         const parsed = parseQuery(q.q)
         if (!parsed.terms.length && !parsed.phrases.length && !parsed.repo.length && !parsed.types.length && !parsed.state.length && !parsed.author.length && !parsed.label.length)

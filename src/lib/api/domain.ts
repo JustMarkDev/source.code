@@ -1048,7 +1048,10 @@ export class MemoryDomain {
   async listEvidence(owner: string, name: string, ref: string, p: Viewer, find: (id: string) => UploadRec | null) {
     const repo = this.resolve(owner, name, p)
     const c = this.getChangeRec(repo, ref)
-    return (c.evidence ?? []).map((e) => this.presentEvidence(c, e, find(e.uploadId)!))
+    return (c.evidence ?? []).flatMap((e) => {
+      const u = find(e.uploadId)
+      return u ? [this.presentEvidence(c, e, u)] : []
+    })
   }
 
   private presentEvidence(c: ChangeRec, e: EvidenceRec, u: UploadRec): z.infer<typeof S.Evidence> {
@@ -1351,6 +1354,7 @@ export class MemoryDomain {
     if (dry) return
     for (const m of t.members) this.unindexMember(m, `${org}/${slug}`)
     this.teams.delete(`${org}/${slug}`)
+    this.svc.search?.reset()
   }
 
   private unindexMember(handle: string, key: string) {
@@ -1373,6 +1377,7 @@ export class MemoryDomain {
       set.add(`${org}/${slug}`)
       t.updated = this.now()
       t.version++
+      this.svc.search?.reset()
     }
     return this.presentTeam(t)
   }
@@ -1386,6 +1391,7 @@ export class MemoryDomain {
     this.unindexMember(login, `${org}/${slug}`)
     t.updated = this.now()
     t.version++
+    this.svc.search?.reset()
   }
 
   async setTeamRepo(org: string, slug: string, owner: string, name: string, permission: 'read' | 'write', p: Principal, dry: boolean) {
@@ -1398,6 +1404,8 @@ export class MemoryDomain {
       t.repos.set(`${repo.owner}/${repo.name}`, permission)
       t.updated = this.now()
       t.version++
+      // Visibility changed, so cached search results may be stale.
+      this.svc.search?.reset()
     }
     return this.presentTeam(t)
   }
@@ -1411,6 +1419,7 @@ export class MemoryDomain {
     t.repos.delete(full)
     t.updated = this.now()
     t.version++
+    this.svc.search?.reset()
   }
 
   /** Who may rename, hide or delete a repository: the owner of its account, or an admin of the organization. */
@@ -2523,17 +2532,26 @@ export class MemoryDomain {
     const after = Number(ev[1])
     if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
     const full = `${repo.owner}/${repo.name}`
-    const { events: stored, exhausted } = this.events.since(after, q.limit, (e) => e.repo === full)
-    const events = stored.map(parseEvent).filter((e) => !!e.data)
-    // Keep only the newest state of each object.
+    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repo === full)
+    // Keep only the newest state of each object, and remember what was deleted
+    // after the cursor so a local copy can remove it.
     const latest = new Map<string, Record<string, unknown>>()
-    for (const e of events) latest.set(e.subject.id, e.data!)
-    const last = events.at(-1)?.sequence ?? after
+    const deleted = new Map<string, { object: string; id: string }>()
+    for (const s of stored) {
+      const e = parseEvent(s)
+      if (e.data) {
+        latest.set(e.subject.id, e.data)
+        deleted.delete(e.subject.id)
+      } else if (e.type.endsWith('.deleted')) {
+        latest.delete(e.subject.id)
+        deleted.set(e.subject.id, { object: e.subject.object, id: e.subject.id })
+      }
+    }
     return {
       object: 'sync',
-      cursor: `e_${exhausted ? Math.max(last, this.events.head) : last}`,
+      cursor: `e_${exhausted ? Math.max(scannedTo, this.events.head) : scannedTo}`,
       objects: [...latest.values()],
-      deleted: [],
+      deleted: [...deleted.values()],
       has_more: !exhausted,
       reset: false,
     }

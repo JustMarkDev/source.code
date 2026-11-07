@@ -144,10 +144,19 @@ export function createApi(options: ApiOptions) {
   const now = options.now ?? Date.now
   const pools = options.pools ?? defaultPools
   const router = new Router(options.ops)
-  const limiter = new Limiter(options.limitStore ?? new MemoryLimitStore(), { now })
+  const limitStore = options.limitStore ?? new MemoryLimitStore()
+  const limiter = new Limiter(limitStore, { now })
   const concurrency = new Concurrency(options.concurrencyPerToken ?? 20)
   const idem = options.idempotency ?? new MemoryIdempotencyStore(undefined, now)
   const cache = new BodyCache(options.bodyCache ?? 5_000)
+  // Leases, windows and idempotency records all expire. Nothing else calls
+  // these sweeps in the running app, so without this the maps only grow.
+  const sweeper = setInterval(() => {
+    limiter.sweep()
+    if (limitStore instanceof MemoryLimitStore) limitStore.sweep(now())
+    if (idem instanceof MemoryIdempotencyStore) idem.sweep()
+  }, 5 * 60_000)
+  ;(sweeper as { unref?: () => void }).unref?.()
   const domain = options.domain
   const policyHeaders: Record<string, string> = {}
   const variants = new Map<string, string>()
@@ -158,7 +167,10 @@ export function createApi(options: ApiOptions) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
-    return chain.at(Math.max(-chain.length, -hops)) ?? 'unknown'
+    // A chain shorter than the trusted proxies cannot name a client: the
+    // entries present may all be client-supplied. Refuse to trust any of them.
+    if (chain.length === 0 || chain.length < hops) return 'unknown'
+    return chain[chain.length - hops] ?? 'unknown'
   }
 
   const runtime = ManagedRuntime.make(
@@ -174,7 +186,10 @@ export function createApi(options: ApiOptions) {
                   extra: { from: e.from, to: e.to },
                 })
               if (e instanceof Error && e.name === 'ApiError') return e as ApiError
-              return apiError('internal', e instanceof Error ? e.message : 'Unexpected failure.')
+              // An unexpected failure is a bug. Its message may name internals,
+              // so it goes to the log, never into the client's problem body.
+              console.error('[api] domain failure', e)
+              return apiError('internal', 'Unexpected failure.')
             },
           }),
       }),
@@ -423,8 +438,13 @@ export function createApi(options: ApiOptions) {
       const type = req.headers.get('content-type') ?? ''
       if (!type.includes('application/json'))
         return fail(apiError('unsupported_media_type', 'Send Content-Type: application/json.'))
+      const declared = Number(req.headers.get('content-length') ?? '0')
+      if (Number.isFinite(declared) && declared > BODY_LIMIT)
+        return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
       bodyText = await req.text()
-      if (bodyText.length > BODY_LIMIT)
+      // The limit is bytes, not UTF-16 code units: one emoji is four bytes but
+      // two characters, and a body must not grow past the limit by encoding.
+      if (Buffer.byteLength(bodyText, 'utf8') > BODY_LIMIT)
         return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
       let json: unknown = {}
       if (bodyText.trim() !== '')
@@ -479,20 +499,27 @@ export function createApi(options: ApiOptions) {
       base,
       htmlBase,
       now,
-      dispatch: (method, p, b) =>
-        depth > 0
-          ? Promise.reject(apiError('invalid_request', 'Batches cannot nest.'))
-          : handle(
-              new Request(new URL(`${mount}${p}`, url.origin), {
-                method,
-                headers: {
-                  ...(req.headers.get('authorization') ? { authorization: req.headers.get('authorization')! } : {}),
-                  ...(b !== undefined ? { 'content-type': 'application/json' } : {}),
-                },
-                body: b === undefined ? undefined : JSON.stringify(b),
-              }),
-              depth + 1,
-            ),
+      dispatch: (method, p, b) => {
+        if (depth > 0) return Promise.reject(apiError('invalid_request', 'Batches cannot nest.'))
+        // A sub-request runs with the same identity, including the account the
+        // caller acts as. Dropping Sx-Account would silently change its view.
+        const inherited: Record<string, string> = {}
+        for (const name of ['authorization', 'sx-account', 'sx-version']) {
+          const value = req.headers.get(name)
+          if (value) inherited[name] = value
+        }
+        return handle(
+          new Request(new URL(`${mount}${p}`, url.origin), {
+            method,
+            headers: {
+              ...inherited,
+              ...(b !== undefined ? { 'content-type': 'application/json' } : {}),
+            },
+            body: b === undefined ? undefined : JSON.stringify(b),
+          }),
+          depth + 1,
+        )
+      },
     }
 
     const exec = async <TValue>(
@@ -652,7 +679,12 @@ export function createApi(options: ApiOptions) {
           lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
           return new Response(`${lines.join('\n')}\n`, {
             status,
-            headers: { 'content-type': 'application/x-ndjson; charset=utf-8', ...headers },
+            headers: {
+              'content-type': 'application/x-ndjson; charset=utf-8',
+              ...headers,
+              // The same URL answers JSON or NDJSON depending on Accept.
+              vary: 'accept, authorization',
+            },
           })
         }
         json = ready ?? JSON.stringify(out)
@@ -742,7 +774,10 @@ export function createApi(options: ApiOptions) {
     idempotency: idem,
     domain,
     events: options.events,
-    dispose: () => runtime.dispose(),
+    dispose: () => {
+      clearInterval(sweeper)
+      return runtime.dispose()
+    },
     errorCatalog,
   }
 }

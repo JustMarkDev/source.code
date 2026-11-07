@@ -283,6 +283,7 @@ describe('webhooks: where a delivery may go', () => {
     ['127.0.0.1', true], ['10.1.2.3', true], ['172.16.0.1', true], ['172.32.0.1', false], ['192.168.0.1', true],
     ['169.254.169.254', true], ['100.64.0.1', true], ['0.0.0.0', true], ['224.0.0.1', true], ['8.8.8.8', false], ['93.184.216.34', false],
     ['::1', true], ['::', true], ['fe80::1', true], ['fd12:3456::1', true], ['::ffff:127.0.0.1', true], ['::ffff:7f00:1', true], ['2606:4700::1111', false],
+    ['2002:7f00:1::', true], ['2002:808:808::', false], ['2001:0:4136:e378::', true],
   ])('%s blocked: %s', (ip, blocked) => {
     expect(isBlockedAddress(ip)).toBe(blocked)
   })
@@ -339,6 +340,11 @@ describe('search', () => {
     expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('type:issue state:open')}`)).sort()).toEqual(['Document the cache flags', 'Panic on trailing-dot ref names'])
     expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('author:ines')}`))).toEqual(['Normalize Windows path separators'])
     expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('label:bug type:issue')}`))).toEqual(['Panic on trailing-dot ref names'])
+    // `is:` is a state shorthand where the value is a state, and a type
+    // shorthand otherwise.
+    expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('type:issue is:open')}`)).sort()).toEqual(['Document the cache flags', 'Panic on trailing-dot ref names'])
+    expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('is:draft cache')}`)).sort()).toEqual(['Bound the negative cache and evict LRU', 'Show cache stats in `gitfs doctor`'])
+    expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('is:issue is:closed')}`))).toEqual(['Support read-only mounts'])
     const repos = await h.call('GET', `/search?q=${encodeURIComponent('type:repo queue')}`)
     expect(repos.json.data.map((r: { repo: string }) => r.repo)).toEqual(['dana/tinyqueue'])
   })
@@ -517,6 +523,9 @@ describe('uploads', () => {
     expect(got.headers.get('content-security-policy')).toContain('sandbox')
     const again = await h.call('GET', `/uploads/${made.id}/content`, { headers: { 'if-none-match': got.headers.get('etag')! } })
     expect(again.status).toBe(304)
+    // A list and `*` are the same question, and both get the same answer.
+    expect((await h.call('GET', `/uploads/${made.id}/content`, { headers: { 'if-none-match': `"other", ${got.headers.get('etag')!}` } })).status).toBe(304)
+    expect((await h.call('GET', `/uploads/${made.id}/content`, { headers: { 'if-none-match': '*' } })).status).toBe(304)
   })
 })
 

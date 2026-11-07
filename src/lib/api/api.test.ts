@@ -150,6 +150,13 @@ describe('errors', () => {
     expect(r.json.request_id).toBe(r.headers.get('sx-request-id'))
   })
 
+  test('a malformed escape is a miss, not a crash', async () => {
+    const h = harness()
+    const r = await h.call('GET', `${REPO}/changes/%E0%A4%A`, { token: null })
+    expect(r.status).toBe(404)
+    expect(r.json.code).toBe('not_found')
+  })
+
   test('a wrong method names the allowed ones', async () => {
     const h = harness()
     const r = await h.call('DELETE', '/limits', { token: null })
@@ -373,6 +380,10 @@ describe('lists', () => {
     const lines = r.text.trim().split('\n').map((l) => JSON.parse(l))
     expect(lines.length).toBe(7)
     expect(lines.at(-1)).toEqual({ object: 'page', has_more: false, next_cursor: null })
+    // The same address answers JSON and markdown too, so caches must vary on
+    // what was asked for, not only on the identity in the URL.
+    expect(r.headers.get('vary')).toContain('accept')
+    expect(r.headers.get('vary')).toContain('authorization')
   })
 })
 
@@ -826,6 +837,16 @@ describe('batch', () => {
     const tooMany = await h.call('POST', '/batch', { body: { requests: Array.from({ length: 26 }, (_, i) => ({ id: String(i), method: 'GET', path: '/limits' })) } })
     expect(tooMany.status).toBe(400)
   })
+
+  test('a sub-request keeps the account the caller acts as', async () => {
+    const h = harness()
+    const r = await h.call('POST', '/batch', {
+      headers: { 'sx-account': 'northwind' },
+      body: { requests: [{ id: 'who', method: 'GET', path: '/auth/principal' }] },
+    })
+    expect(r.status).toBe(200)
+    expect(r.json.results[0].body.acting_as).toBe('northwind')
+  })
 })
 
 describe('OpenAPI', () => {
@@ -865,8 +886,14 @@ describe('OpenAPI', () => {
       if (item.get) expect(item.get['x-sx-safety']).toBe('read')
   })
 
-  test('does not forbid members clients do not know yet', () => {
-    expect(JSON.stringify(doc)).not.toContain('"additionalProperties":false')
+  test('responses do not forbid members clients do not know yet', () => {
+    for (const item of Object.values<any>(doc.paths))
+      for (const op of Object.values<any>(item))
+        for (const response of Object.values<any>(op.responses ?? {}))
+          expect(JSON.stringify(response)).not.toContain('"additionalProperties":false')
+    // Requests are strict, and the document says so: the server rejects
+    // unknown members, so a generated client must not be told they are fine.
+    expect(JSON.stringify(doc.paths['/repos'].post.requestBody)).toContain('"additionalProperties":false')
   })
 
   test('v1 only adds: the committed snapshot is still satisfied', () => {

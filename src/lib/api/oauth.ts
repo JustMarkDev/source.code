@@ -33,8 +33,11 @@ export interface SessionResolver {
   csrf: (req: Request) => string | null
 }
 
+const SESSION_TTL = 28_800_000
+const MAX_SESSIONS = 10_000
+
 export class MemorySessions implements SessionResolver {
-  private readonly sessions = new Map<string, { user: SessionUser; csrf: string }>()
+  private readonly sessions = new Map<string, { user: SessionUser; csrf: string; expires: number }>()
   constructor(
     private readonly users: ReadonlyArray<SessionUser>,
     private readonly secure: boolean,
@@ -44,14 +47,23 @@ export class MemorySessions implements SessionResolver {
     return /(?:^|;\s*)sx_session=([A-Za-z0-9_-]+)/.exec(req.headers.get('cookie') ?? '')?.[1]
   }
 
+  private live(sid: string | undefined) {
+    if (!sid) return null
+    const session = this.sessions.get(sid)
+    if (!session) return null
+    if (session.expires <= Date.now()) {
+      this.sessions.delete(sid)
+      return null
+    }
+    return session
+  }
+
   current(req: Request) {
-    const sid = this.sid(req)
-    return (sid && this.sessions.get(sid)?.user) || null
+    return this.live(this.sid(req))?.user ?? null
   }
 
   csrf(req: Request) {
-    const sid = this.sid(req)
-    return (sid && this.sessions.get(sid)?.csrf) || null
+    return this.live(this.sid(req))?.csrf ?? null
   }
 
   logins() {
@@ -61,11 +73,18 @@ export class MemorySessions implements SessionResolver {
   start(handle: string) {
     const user = this.users.find((u) => u.handle === handle)
     if (!user) return null
+    if (this.sessions.size >= MAX_SESSIONS) {
+      // Drop expired sessions first; if none are, drop the oldest.
+      for (const [sid, session] of this.sessions)
+        if (session.expires <= Date.now()) this.sessions.delete(sid)
+      while (this.sessions.size >= MAX_SESSIONS)
+        this.sessions.delete(this.sessions.keys().next().value as string)
+    }
     const sid = randomBytes(24).toString('base64url')
     const csrf = randomBytes(18).toString('base64url')
-    this.sessions.set(sid, { user, csrf })
+    this.sessions.set(sid, { user, csrf, expires: Date.now() + SESSION_TTL })
     return {
-      cookie: `sx_session=${sid}; Path=/; HttpOnly; SameSite=Lax${this.secure ? '; Secure' : ''}; Max-Age=28800`,
+      cookie: `sx_session=${sid}; Path=/; HttpOnly; SameSite=Lax${this.secure ? '; Secure' : ''}; Max-Age=${SESSION_TTL / 1000}`,
       csrf,
     }
   }
@@ -145,6 +164,34 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
     status,
     headers: { 'content-type': 'application/json', ...noStore, ...headers },
   })
+
+/** OAuth requests are small. Read no more than this, with or without a Content-Length. */
+const MAX_FORM_BYTES = 64 * 1024
+async function readText(req: Request): Promise<string | null> {
+  const declared = Number(req.headers.get('content-length') ?? '0')
+  if (Number.isFinite(declared) && declared > MAX_FORM_BYTES) return null
+  const text = await req.text()
+  return Buffer.byteLength(text, 'utf8') > MAX_FORM_BYTES ? null : text
+}
+
+async function formOf(req: Request): Promise<URLSearchParams | null> {
+  const text = await readText(req)
+  return text === null ? null : new URLSearchParams(text)
+}
+
+/** A `return_to` must stay on this origin. Backslashes and control bytes are not paths. */
+function localReturn(to: string): boolean {
+  if (!to.startsWith('/') || to.startsWith('//') || to.includes('\\')) return false
+  for (const ch of to) {
+    const code = ch.charCodeAt(0)
+    if (code <= 0x1f || code === 0x7f) return false
+  }
+  try {
+    return new URL(to, 'https://example.invalid').origin === 'https://example.invalid'
+  } catch {
+    return false
+  }
+}
 
 const oauthError = (error: string, description: string, status = 400, headers: Record<string, string> = {}) =>
   json({ error, error_description: description }, status, headers)
@@ -287,7 +334,9 @@ export class OAuthServer {
     if (limited) return limited
     let body: Record<string, unknown>
     try {
-      body = (await req.json()) as Record<string, unknown>
+      const text = await readText(req)
+      if (text === null) return oauthError('invalid_client_metadata', 'The body is too large.', 413)
+      body = JSON.parse(text) as Record<string, unknown>
     } catch {
       return oauthError('invalid_client_metadata', 'The body is not JSON.')
     }
@@ -395,11 +444,12 @@ export class OAuthServer {
   }
 
   private async signIn(req: Request) {
-    const form = await req.formData().catch(() => null)
+    if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
+    const form = await formOf(req)
     const handle = String(form?.get('handle') ?? '')
     const returnTo = String(form?.get('return_to') ?? '/')
     const started = this.o.sessions.start(handle)
-    if (!started || !returnTo.startsWith('/') || returnTo.startsWith('//'))
+    if (!started || !localReturn(returnTo))
       return page('Sign in', '<h1>That did not work</h1>', 400)
     return new Response(null, {
       status: 303,
@@ -415,6 +465,8 @@ export class OAuthServer {
   // ----- authorization code (RFC 6749, 7636, 8707, 9207) ----------------------
 
   private async authorize(req: Request): Promise<Response> {
+    const limited = await this.guard(req, 'oauth-authorize', 120, 60_000)
+    if (limited) return limited
     const url = new URL(req.url)
     if (req.method === 'POST') return this.decide(req)
     const p = url.searchParams
@@ -442,6 +494,11 @@ export class OAuthServer {
     const scopeParse = this.parseScopes(p.get('scope'), user ? this.maxScopes(user.handle) : oauthScopes)
     if ('error' in scopeParse) return fail('invalid_scope', scopeParse.error)
 
+    if (this.pending.size >= 10_000) {
+      this.sweep()
+      if (this.pending.size >= 10_000)
+        return page('Error', '<h1>Too many sign-in attempts</h1><p>Try again later.</p>', 503, { 'retry-after': '60' })
+    }
     const pending: Pending = {
       id: `oar_${randomBytes(18).toString('base64url')}`,
       client,
@@ -472,7 +529,7 @@ export class OAuthServer {
   private async decide(req: Request): Promise<Response> {
     if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
     const user = await this.o.sessions.current(req)
-    const form = await req.formData().catch(() => null)
+    const form = await formOf(req)
     const pending = this.pending.get(String(form?.get('request_id') ?? ''))
     if (!user || !form || !pending || pending.expires < this.now())
       return page('Error', '<h1>This request expired</h1><p>Go back to the application and start again.</p>', 400)
@@ -529,7 +586,8 @@ export class OAuthServer {
     const type = req.headers.get('content-type') ?? ''
     if (!type.includes('application/x-www-form-urlencoded'))
       return oauthError('invalid_request', 'Send application/x-www-form-urlencoded.')
-    const f = new URLSearchParams(await req.text())
+    const f = await formOf(req)
+    if (!f) return oauthError('invalid_request', 'The body is too large.', 413)
     const grant = f.get('grant_type')
     if (grant === 'authorization_code') return this.codeGrant(f)
     if (grant === 'refresh_token') return this.refreshGrant(f)
@@ -594,7 +652,10 @@ export class OAuthServer {
   // ----- revocation (RFC 7009) ----------------------------------------------------
 
   private async revoke(req: Request): Promise<Response> {
-    const f = new URLSearchParams(await req.text())
+    const limited = await this.guard(req, 'oauth-revoke', 120, 60_000)
+    if (limited) return limited
+    const f = await formOf(req)
+    if (!f) return oauthError('invalid_request', 'The body is too large.', 413)
     const token = f.get('token') ?? ''
     const hash = createHash('sha256').update(token).digest('hex')
     const r = this.refresh.get(hash)
@@ -613,7 +674,8 @@ export class OAuthServer {
   private async deviceAuthorization(req: Request): Promise<Response> {
     const limited = await this.guard(req, 'oauth-device', 30, 60_000)
     if (limited) return limited
-    const f = new URLSearchParams(await req.text())
+    const f = await formOf(req)
+    if (!f) return oauthError('invalid_request', 'The body is too large.', 413)
     const client = this.clients.get(f.get('client_id') ?? '')
     if (!client) return oauthError('invalid_client', 'Unknown client_id. Register one at the registration endpoint.', 401)
     const audience = this.audienceOf(f.getAll('resource'))
@@ -692,7 +754,7 @@ export class OAuthServer {
     }
     if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
     if (!user) return this.signInPage(req, url.pathname)
-    const form = await req.formData().catch(() => null)
+    const form = await formOf(req)
     if (!form || !form.get('csrf') || form.get('csrf') !== this.o.sessions.csrf(req))
       return page('Error', '<h1>Request refused</h1>', 403)
     // Guessing codes is the attack here: slow it down per address.

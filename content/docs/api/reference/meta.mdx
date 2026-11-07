@@ -28,6 +28,8 @@ Links to every top-level collection, the OpenAPI document and the limits.
 
 **Errors**
 
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
 **Example**
 
 ```bash
@@ -81,7 +83,7 @@ The account, actor class, scopes, repositories and expiry of the token. Never ra
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -145,7 +147,7 @@ Up to 25 requests. They run in parallel, each is authorised, rate limited and me
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -232,6 +234,8 @@ The whole table, so a client or an agent can read it once.
 
 **Errors**
 
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
 **Example**
 
 ```bash
@@ -287,6 +291,8 @@ Rate-limit pools, page sizes and the other numbers a client needs. Nothing is li
 | Success    | `200`, a `limits`      |
 
 **Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -347,6 +353,8 @@ Generated from the same definitions the server runs. Every operation carries x-s
 
 **Errors**
 
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
 **Example**
 
 ```bash
@@ -355,7 +363,7 @@ curl "https://api.source.code/v1/openapi.json"
 
 ```http
 HTTP/1.1 200
-etag: W/"hA_Pm7WXyfo3RgO7"
+etag: W/"waInTbGQLPAKS3dx"
 ```
 
 ```json

@@ -201,7 +201,9 @@ const presentGrant = (d: MemoryDomain, full: string, g: GrantRec, now: number): 
   object: 'grant',
   id: g.id,
   environment: g.environment,
-  state: g.state === 'active' && (g.expires === null || g.expires <= now || g.uses >= g.maxRuns) ? 'expired' : g.state,
+  // A grant with no expiry yet (a pending request) is not expired; an active
+  // grant is expired only once its deadline has passed or its uses are gone.
+  state: g.state === 'active' && ((g.expires !== null && g.expires <= now) || g.uses >= g.maxRuns) ? 'expired' : g.state,
   variables: g.variables,
   reason: g.reason,
   requested_by: g.requestedBy,
@@ -476,7 +478,7 @@ export const envAudit = defineOp({
   ...schemaRead,
   id: 'env.audit',
   summary: 'Who did what with values',
-  description: 'Newest first, the last 1,000 entries.',
+  description: 'Newest first, the last 200 entries.',
   method: 'GET',
   path: '/repos/{owner}/{repo}/env/audit',
   params: repoParams,

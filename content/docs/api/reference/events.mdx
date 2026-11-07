@@ -41,7 +41,7 @@ Everything that happened in repositories you can see. Pass the last `next_cursor
 
 **Errors**
 
-[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -185,7 +185,7 @@ A text/event-stream. Each event carries its sequence as the SSE id, so a reconne
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 ### `operations.get`
 
@@ -218,7 +218,7 @@ Poll it, or add ?wait=20 with If-None-Match to hold the request until it changes
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -283,7 +283,7 @@ Call without a cursor for a snapshot of the repository, its changes and its issu
 
 **Errors**
 
-[`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 

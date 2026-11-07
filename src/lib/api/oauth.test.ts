@@ -240,6 +240,18 @@ describe('authorization code with PKCE', () => {
     expect(wrong.json.error).toBe('invalid_grant')
   })
 
+  test('sign-in only returns to a local path', async () => {
+    const h = setup()
+    for (const to of ['//evil.example', '/\\evil.example', '/\tevil', 'https://evil.example']) {
+      const res = await h.fetchRaw('/oauth/session', h.form({ handle: 'dana', return_to: to }))
+      expect(res.status, to).toBe(400)
+      expect(res.headers.get('set-cookie'), to).toBeNull()
+    }
+    const ok = await h.fetchRaw('/oauth/session', h.form({ handle: 'dana', return_to: '/' }))
+    expect(ok.status).toBe(303)
+    expect(ok.headers.get('location')).toBe('/')
+  })
+
   test('the consent page needs a session, a CSRF token and the same origin', async () => {
     const h = setup()
     const client = (await h.register()).json.client_id

@@ -49,7 +49,7 @@ Open by default, newest number first.
 
 **Errors**
 
-[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -168,7 +168,7 @@ Naturally idempotent: an open issue with the same title is returned instead of a
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -250,7 +250,7 @@ ratelimit: "write";r=109;t=60
 
 **Errors**
 
-[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -337,7 +337,7 @@ Send If-Match with the ETag you read. `state: closed` closes.
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated), [`version_mismatch`](/docs/api/errors#version_mismatch)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version), [`version_mismatch`](/docs/api/errors#version_mismatch)
 
 **Example**
 

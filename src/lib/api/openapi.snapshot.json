@@ -105,12 +105,21 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -204,13 +213,22 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "limit_reached",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -314,12 +332,21 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -394,7 +421,8 @@
                 },
                 "required": [
                   "permission"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -444,13 +472,23 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -537,12 +575,21 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -622,11 +669,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -682,7 +736,8 @@
                     "type": "string",
                     "maxLength": 500
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -732,13 +787,23 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",
+          "payload_too_large",
           "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
           "version_mismatch"
         ],
         "x-sx-async": false
@@ -838,11 +903,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -896,7 +968,8 @@
                 },
                 "required": [
                   "slug"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -946,13 +1019,23 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1034,9 +1117,16 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1121,10 +1211,15 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
-          "insufficient_scope",
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1184,10 +1279,15 @@
         "x-sx-cost": 0,
         "x-sx-scopes": [],
         "x-sx-errors": [
-          "insufficient_scope",
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1265,11 +1365,20 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1360,10 +1469,16 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1416,13 +1531,15 @@
                         "id",
                         "method",
                         "path"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   }
                 },
                 "required": [
                   "requests"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -1468,11 +1585,20 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
-          "insufficient_scope",
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "internal",
           "invalid_request",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1528,8 +1654,11 @@
         "x-sx-cost": 0,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
-          "rate_limited"
+          "rate_limited",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1608,11 +1737,16 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
-          "insufficient_scope",
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1762,12 +1896,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
-          "insufficient_scope",
           "internal",
           "invalid_request",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1823,8 +1962,11 @@
         "x-sx-cost": 0,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
-          "rate_limited"
+          "rate_limited",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1880,8 +2022,11 @@
         "x-sx-cost": 0,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
-          "rate_limited"
+          "rate_limited",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -1941,8 +2086,11 @@
         "x-sx-cost": 0,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
-          "rate_limited"
+          "rate_limited",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -2026,11 +2174,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
-          "insufficient_scope",
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -2125,14 +2279,23 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -2248,10 +2411,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -2337,7 +2507,8 @@
                   "key",
                   "state",
                   "tree"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -2387,14 +2558,24 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -2505,11 +2686,17 @@
         "x-sx-cost": 2,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -2625,10 +2812,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -2707,7 +2901,8 @@
                 "required": [
                   "upload",
                   "kind"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -2757,14 +2952,24 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
           "upload_incomplete"
         ],
         "x-sx-async": false
@@ -2839,7 +3044,8 @@
                 },
                 "required": [
                   "reason"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -2889,14 +3095,24 @@
           "pulls:comment"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3000,13 +3216,22 @@
           "pulls:comment"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3136,11 +3361,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3205,7 +3436,8 @@
                 },
                 "required": [
                   "expected_tree"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -3255,7 +3487,10 @@
           "pulls:merge"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
@@ -3263,10 +3498,17 @@
           "moved",
           "not_found",
           "parent_not_landed",
+          "payload_too_large",
           "policy_blocked",
           "rate_limited",
+          "request_in_progress",
           "stale_head",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3365,10 +3607,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3483,10 +3732,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -3561,7 +3817,8 @@
                 },
                 "required": [
                   "sha"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -3611,15 +3868,25 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3697,7 +3964,8 @@
                       "type": "string"
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -3747,13 +4015,23 @@
           "pulls:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3856,10 +4134,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -3954,14 +4239,23 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -4056,14 +4350,23 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -4141,7 +4444,8 @@
                 },
                 "required": [
                   "state"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -4191,16 +4495,26 @@
           "pulls:comment"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "human_required",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -4325,11 +4639,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -4402,7 +4722,8 @@
                       "maxLength": 50
                     }
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -4452,14 +4773,24 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
           "version_mismatch"
         ],
         "x-sx-async": false
@@ -4670,12 +5001,18 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -4747,7 +5084,8 @@
                 },
                 "required": [
                   "branch"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -4797,14 +5135,24 @@
           "pulls:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -4913,10 +5261,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5021,6 +5376,8 @@
           "secrets:decrypt"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "grant_required",
           "human_required",
@@ -5030,7 +5387,11 @@
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5109,7 +5470,8 @@
                 },
                 "required": [
                   "ciphertext"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -5159,14 +5521,24 @@
           "secrets:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5175,7 +5547,7 @@
       "get": {
         "operationId": "env.audit",
         "summary": "Who did what with values",
-        "description": "Newest first, the last 1,000 entries.",
+        "description": "Newest first, the last 200 entries.",
         "tags": [
           "secrets"
         ],
@@ -5276,12 +5648,19 @@
           "secrets:schema"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5345,7 +5724,8 @@
                     "minimum": 1,
                     "maximum": 480
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -5395,16 +5775,26 @@
           "secrets:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "human_required",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5499,13 +5889,22 @@
           "secrets:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5614,12 +6013,19 @@
           "secrets:schema"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -5687,7 +6093,8 @@
                 },
                 "required": [
                   "environment"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -5737,15 +6144,25 @@
           "secrets:schema"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "human_required",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5854,12 +6271,19 @@
           "secrets:schema"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -5983,13 +6407,19 @@
           "secrets:schema"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6093,12 +6523,19 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
           "payload_too_large",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6192,10 +6629,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6288,10 +6733,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6423,12 +6876,19 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6532,11 +6992,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6641,11 +7108,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -6763,10 +7237,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -6848,7 +7329,8 @@
                       "closed"
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -6898,14 +7380,24 @@
           "issues:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
           "version_mismatch"
         ],
         "x-sx-async": false
@@ -7089,12 +7581,18 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -7161,7 +7659,8 @@
                 },
                 "required": [
                   "title"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -7211,14 +7710,24 @@
           "issues:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7313,13 +7822,22 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7415,13 +7933,22 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7530,12 +8057,19 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -7611,7 +8145,8 @@
                 "required": [
                   "host",
                   "slug"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -7661,14 +8196,24 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7759,10 +8304,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7858,14 +8410,23 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -7937,7 +8498,8 @@
                 },
                 "required": [
                   "state"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -7987,15 +8549,25 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -8061,7 +8633,8 @@
                 },
                 "required": [
                   "text"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -8111,15 +8684,25 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -8211,10 +8794,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -8360,12 +8951,19 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -8458,7 +9056,8 @@
                 },
                 "required": [
                   "task"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -8510,15 +9109,25 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "limit_reached",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -8588,7 +9197,8 @@
                 },
                 "required": [
                   "expected_trees"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -8638,17 +9248,27 @@
           "pulls:merge"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "policy_blocked",
           "rate_limited",
+          "request_in_progress",
           "stale_head",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": true
       }
@@ -8744,13 +9364,22 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -8850,13 +9479,20 @@
           "webhooks:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9009,6 +9645,8 @@
           "webhooks:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
           "forbidden",
           "insufficient_scope",
@@ -9017,7 +9655,11 @@
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9104,13 +9746,22 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9173,7 +9824,8 @@
                 },
                 "required": [
                   "after_sequence"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -9244,14 +9896,24 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9338,13 +10000,22 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9440,13 +10111,22 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -9535,13 +10215,20 @@
           "webhooks:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -9618,7 +10305,8 @@
                   "active": {
                     "type": "boolean"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -9668,14 +10356,24 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -9784,13 +10482,20 @@
           "webhooks:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -9859,7 +10564,8 @@
                 "required": [
                   "endpoint",
                   "events"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -9909,15 +10615,25 @@
           "webhooks:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "limit_reached",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -10013,14 +10729,22 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -10120,10 +10844,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -10190,7 +10921,8 @@
                     "minLength": 1,
                     "maxLength": 200
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -10240,15 +10972,25 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "invalid_state",
           "moved",
           "not_found",
+          "payload_too_large",
           "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
           "version_mismatch"
         ],
         "x-sx-async": false
@@ -10376,9 +11118,15 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -10430,7 +11178,8 @@
                 },
                 "required": [
                   "name"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -10480,13 +11229,23 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "forbidden",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -10616,10 +11375,16 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "cursor_mismatch",
           "internal",
           "invalid_request",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -10727,11 +11492,17 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "invalid_request",
           "moved",
           "not_found",
-          "rate_limited"
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -10809,11 +11580,20 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -10884,11 +11664,18 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -10979,10 +11766,16 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       },
@@ -11075,7 +11868,8 @@
                 "required": [
                   "name",
                   "scopes"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -11125,13 +11919,23 @@
           "tokens:manage"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "limit_reached",
           "not_found",
+          "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -11202,9 +12006,16 @@
         "x-sx-cost": 1,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version",
           "upload_incomplete"
         ],
         "x-sx-async": false
@@ -11288,13 +12099,18 @@
         "x-sx-cost": 2,
         "x-sx-scopes": [],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "internal",
           "invalid_request",
           "limit_reached",
           "payload_too_large",
           "rate_limited",
+          "request_in_progress",
           "signature_invalid",
-          "unsupported_media_type"
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -11367,11 +12183,18 @@
           "repo:read"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
           "insufficient_scope",
           "internal",
+          "invalid_request",
           "not_found",
           "rate_limited",
-          "unauthenticated"
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }
@@ -11438,7 +12261,8 @@
                   "filename",
                   "content_type",
                   "size"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -11488,13 +12312,22 @@
           "repo:write"
         ],
         "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
           "insufficient_scope",
           "internal",
           "invalid_request",
           "limit_reached",
           "payload_too_large",
           "rate_limited",
-          "unauthenticated"
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
         ],
         "x-sx-async": false
       }

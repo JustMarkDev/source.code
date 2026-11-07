@@ -174,7 +174,10 @@ export class Limiter {
   /** Give units back, for a request that turned out to cost nothing (a 304). */
   refund(key: string, policy: Policy, cost: number) {
     const lease = this.leases.get(`${key}@${policy.windowMs}`)
-    if (lease) lease.left += cost
+    const now = this.now()
+    // Never refund into a window that has already rolled over: those units
+    // belong to the old window and would inflate the new one.
+    if (lease && lease.start === now - (now % policy.windowMs)) lease.left += cost
   }
 
   /** Forget leases from finished windows. */

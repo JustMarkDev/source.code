@@ -33,7 +33,7 @@ description: Create an endpoint, watch deliveries, send one again, replay what w
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -115,7 +115,7 @@ The URL must be https and must not point at a private, loopback or link-local ad
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -185,7 +185,7 @@ Pending deliveries are dropped.
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -223,7 +223,7 @@ ratelimit: "write";r=97;t=60
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -300,7 +300,7 @@ Set `active: true` to turn a disabled endpoint back on. That also clears the fai
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -370,7 +370,7 @@ Kept for 30 days, up to 1,000 per webhook.
 
 **Errors**
 
-[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -456,7 +456,7 @@ ratelimit: "read";r=1170;t=60
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -573,7 +573,7 @@ Creates a new delivery of the same event. `webhook-id` is unchanged, so a receiv
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -635,7 +635,7 @@ Sends a `webhook.ping` event so you can check the endpoint and your signature ch
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -704,7 +704,7 @@ Sends every event after `after_sequence` that this webhook subscribes to, oldest
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -754,7 +754,7 @@ Returns the new secret once. Deliveries are signed with both the new and the old
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 

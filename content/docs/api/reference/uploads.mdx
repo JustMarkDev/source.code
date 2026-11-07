@@ -34,7 +34,7 @@ description: Announce a file, send it to a signed address, attach it to a change
 
 **Errors**
 
-[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -121,7 +121,7 @@ Evidence shows what a change does: before and after images, a recording, an inte
 
 **Errors**
 
-[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
 
 **Example**
 
@@ -195,7 +195,7 @@ Say what the file is. The response has an `upload_url`: PUT the bytes there with
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -252,7 +252,7 @@ ratelimit: "write";r=96;t=60
 
 **Errors**
 
-[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -309,7 +309,7 @@ You can read your own uploads. Once a file is attached to a change, anyone who c
 
 **Errors**
 
-[`not_found`](/docs/api/errors#not_found), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
 
 **Example**
 
@@ -355,7 +355,7 @@ The address comes from `uploads.create`. It carries its own signature in `exp` a
 
 **Errors**
 
-[`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`signature_invalid`](/docs/api/errors#signature_invalid), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`signature_invalid`](/docs/api/errors#signature_invalid), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 

@@ -54,6 +54,8 @@ export interface BlobStore {
   put: (id: string, bytes: Uint8Array) => void
   get: (id: string) => Uint8Array | null
   readonly bytes: number
+  /** Total capacity, when the store has one. A store without it never fills. */
+  readonly capacity?: number
 }
 
 export class MemoryBlobStore implements BlobStore {
@@ -185,7 +187,7 @@ export class UploadService {
     if (bytes.byteLength !== rec.size) return `Expected ${rec.size} bytes, got ${bytes.byteLength}.`
     const rule = ALLOWED[rec.contentType]
     if (!rule.check(bytes)) return `The file is not a valid ${rec.contentType}.`
-    if (this.blobs.bytes + bytes.byteLength > (this.blobs as MemoryBlobStore).capacity) return 'full'
+    if (this.blobs.capacity !== undefined && this.blobs.bytes + bytes.byteLength > this.blobs.capacity) return 'full'
     this.blobs.put(rec.id, bytes)
     rec.sha256 = createHash('sha256').update(bytes).digest('hex')
     this.settle(rec)

@@ -151,11 +151,15 @@ export class EventLog {
   since(after: number, limit: number, keep?: (e: StoredEvent) => boolean) {
     const out: Array<StoredEvent> = []
     let i = Math.max(0, after + 1 - this.firstSequence)
+    // The last sequence actually looked at, not just the last one that
+    // matched. A reader can move its cursor past events it filtered out.
+    let scannedTo = after
     for (; i < this.events.length && out.length < limit; i++) {
       const e = this.events[i]
+      scannedTo = e.sequence
       if (!keep || keep(e)) out.push(e)
     }
-    return { events: out, exhausted: i >= this.events.length }
+    return { events: out, exhausted: i >= this.events.length, scannedTo }
   }
 
   all() {

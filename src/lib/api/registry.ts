@@ -255,7 +255,14 @@ export class Router {
       const next = at.statics.get(seg)
       if (next) at = next
       else if (at.param) {
-        values.push(decodeURIComponent(seg))
+        let value: string
+        try {
+          value = decodeURIComponent(seg)
+        } catch {
+          // A malformed escape is a request that names no endpoint, not a crash.
+          return { kind: 'miss' }
+        }
+        values.push(value)
         at = at.param
       } else return { kind: 'miss' }
     }

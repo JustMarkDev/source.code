@@ -179,7 +179,9 @@ export const uploadContent = defineOp({
           'x-content-type-options': 'nosniff',
           'content-security-policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
         }
-        if (ctx.header('if-none-match') === etag) return new Raw(new Response(null, { status: 304, headers: common }))
+        const sent = ctx.header('if-none-match')
+        if (sent && sent.split(',').some((t) => t.trim() === etag || t.trim() === '*'))
+          return new Raw(new Response(null, { status: 304, headers: common }))
         const inline = ALLOWED[rec.contentType].inline
         return new Raw(
           new Response(d.svc.uploads.blobs.get(rec.id) as BodyInit, {
