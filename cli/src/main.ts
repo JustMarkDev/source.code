@@ -15,6 +15,8 @@ import { mirror } from './commands/mirror'
 import { policy } from './commands/policy'
 import { repo } from './commands/repo'
 import { commandsList, skill } from './commands/skill'
+import { makeClient } from './client'
+import type { ApiClient } from './client'
 import type { Ctx } from './output'
 import type { Command } from './commands/types'
 
@@ -68,9 +70,15 @@ export async function run(
     out: (s) => console.log(s),
     err: (s) => console.error(s),
   },
+  options: { client?: ApiClient } = {},
 ): Promise<number> {
   const { positionals, flags } = parse(argv)
-  const ctx: Ctx = { json: wantsJson(flags), ...io }
+  let client = options.client
+  const ctx: Ctx = {
+    json: wantsJson(flags),
+    ...io,
+    api: () => (client ??= makeClient()),
+  }
   const name = positionals.at(0)
   const rest = positionals.slice(1)
   try {

@@ -1,26 +1,46 @@
 import { resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
-import { nextGrantId, store } from '../fixtures'
-import { audit, isAgent, parseTtl, runWithEnv } from '../secrets'
+import { parseTtl, runWithEnv, seal } from '../secrets'
 import type { Command } from './types'
+
+type Var = {
+  name: string
+  kind: string
+  secret: boolean
+  environments: Array<string>
+  set: boolean | null
+}
+type Grant = {
+  id: string
+  state: string
+  environment: string
+  variables: Array<string>
+  expires_at: string | null
+}
 
 export const env: Command = async (
   { rest: [sub = 'list', ...rest], flags },
   ctx,
 ) => {
-  resolveRepo(str(flags, 'repo'))
+  const repo = resolveRepo(str(flags, 'repo'))
+  const api = ctx.api()
   const environment = str(flags, 'env') ?? 'development'
   const dry = has(flags, 'dry-run')
 
   if (sub === 'list') {
-    // Names, types and which environments have a value. Never a value.
-    print(ctx, store.env, () =>
+    // Names, kinds and which environments have a value. Never a value.
+    const rows = (
+      await api.get(`${repo.path}/env`, {
+        query: { environment: environment as 'development' },
+      })
+    ).json.data as Array<Var>
+    print(ctx, rows, () =>
       table(
-        store.env.map((v) => [
+        rows.map((v) => [
           v.name,
           v.secret ? 'secret' : 'public',
-          v.set.includes(environment) ? 'set' : 'missing',
+          v.set ? 'set' : 'missing',
         ]),
         ['NAME', 'KIND', environment.toUpperCase()],
       ),
@@ -30,7 +50,7 @@ export const env: Command = async (
 
   if (sub === 'set') {
     const name = rest.at(0)
-    const value = rest.at(1)
+    let value = rest.at(1)
     if (!name)
       throw new SxError(
         'missing_argument',
@@ -38,16 +58,6 @@ export const env: Command = async (
         'Example: sx env set STRIPE_KEY - --env production  (reads the value from stdin)',
         exit.usage,
       )
-    const v = store.env.find((x) => x.name === name)
-    if (!v)
-      throw new SxError(
-        'not_in_schema',
-        `${name} is not in .env.schema.`,
-        'Add it to the schema first so reviewers can see it exists.',
-        exit.usage,
-      )
-    // The value is encrypted on this machine. A plaintext value in a secret
-    // key never reaches the server, and the push guard rejects it if it tries.
     if (value === undefined)
       throw new SxError(
         'missing_argument',
@@ -55,34 +65,44 @@ export const env: Command = async (
         'Example: echo $VALUE | sx env set STRIPE_KEY - --env production',
         exit.usage,
       )
-    if (!dry && !v.set.includes(environment)) v.set.push(environment)
+    if (value === '-') value = (await Bun.stdin.text()).replace(/\n$/, '')
+    // The value is sealed on this machine. The server only ever receives ciphertext.
+    const v = (
+      await api.put(`${repo.path}/env/${name}/${environment}`, {
+        body: { ciphertext: seal(value) },
+        dryRun: dry,
+      })
+    ).json as Var
     print(
       ctx,
-      { name, env: environment, encrypted: true, dryRun: dry },
+      { name: v.name, env: environment, encrypted: true, dryRun: dry },
       () => `${dry ? 'would encrypt' : 'encrypted'} ${name} for ${environment}`,
     )
     return
   }
 
   if (sub === 'pull') {
-    const missing = store.env.filter((v) => !v.set.includes(environment))
+    const vars = (
+      await api.get(`${repo.path}/env`, {
+        query: { environment: environment as 'development' },
+      })
+    ).json.data as Array<Var>
+    const missing = vars.filter((v) => !v.set).map((v) => v.name)
     print(
       ctx,
-      {
-        env: environment,
-        written: '.env.local',
-        missing: missing.map((m) => m.name),
-      },
+      { env: environment, written: '.env.local', missing },
       () =>
-        `wrote .env.local for ${environment}${missing.length ? `\nmissing: ${missing.map((m) => m.name).join(', ')}` : ''}`,
+        `wrote .env.local for ${environment}${missing.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
     )
     return
   }
 
   if (sub === 'recipients') {
-    print(ctx, store.recipients, () =>
+    const rows = (await api.get(`${repo.path}/env/recipients`)).json
+      .data as Array<{ id: string; kind: string }>
+    print(ctx, rows, () =>
       table(
-        store.recipients.map((r) => [r.id, r.kind]),
+        rows.map((r) => [r.id, r.kind]),
         ['RECIPIENT', 'KIND'],
       ),
     )
@@ -99,6 +119,8 @@ export const env: Command = async (
         exit.usage,
       )
     const result = await runWithEnv({
+      ctx,
+      repo,
       env: environment,
       only: str(flags, 'only')?.split(','),
       command,
@@ -120,14 +142,16 @@ export const env: Command = async (
     const action = rest.at(0) ?? 'list'
     const id = rest.at(1)
     if (action === 'list') {
-      print(ctx, store.grants, () =>
+      const rows = (await api.get(`${repo.path}/env/grants`)).json
+        .data as Array<Grant>
+      print(ctx, rows, () =>
         table(
-          store.grants.map((g) => [
+          rows.map((g) => [
             g.id,
             g.state,
-            g.env,
-            g.vars.join(','),
-            g.expires ?? 'awaiting approval',
+            g.environment,
+            g.variables.join(','),
+            g.expires_at ?? 'awaiting approval',
           ]),
           ['GRANT', 'STATE', 'ENV', 'VARIABLES', 'EXPIRES'],
         ),
@@ -135,78 +159,47 @@ export const env: Command = async (
       return
     }
     if (action === 'request') {
-      if (environment === 'production')
-        throw new SxError(
-          'production_needs_human',
-          'Agents cannot be granted production values.',
-          'Use development, or ask a person to run the command.',
-          exit.needsHuman,
-        )
-      const existing = store.grants.find(
-        (g) => g.state === 'pending' && g.env === environment,
-      )
-      const req =
-        existing ??
-        ({
-          id: nextGrantId(),
-          bot: isAgent() ? 'agent' : 'you',
-          env: environment as 'development' | 'preview',
-          vars: store.env
-            .filter((v) => v.set.includes(environment))
-            .map((v) => v.name),
-          state: 'pending',
-          uses: 0,
-          maxUses: Number(str(flags, 'max-runs') ?? 20),
-          reason: str(flags, 'reason'),
-        } as const)
-      if (!existing && !dry) {
-        store.grants.push({ ...req, vars: [...req.vars] })
-        audit(
-          req.bot,
-          `requested ${environment} access: ${req.reason ?? 'no reason given'}`,
-        )
-      }
+      const g = (
+        await api.post(`${repo.path}/env/grants`, {
+          body: {
+            environment,
+            ...(str(flags, 'reason') ? { reason: str(flags, 'reason') } : {}),
+            ...(str(flags, 'max-runs')
+              ? { max_runs: Number(str(flags, 'max-runs')) }
+              : {}),
+          },
+          dryRun: dry,
+        })
+      ).json as Grant
       // A request is not access. Someone has to approve it, so this is a stop.
       throw new SxError(
         'needs_human',
-        `Requested ${req.id}. A person must approve it in Settings, Secrets, Agent access, or run: sx env grant approve ${req.id}.`,
+        `Requested ${g.id}. A person must approve it in Settings, Secrets, Agent access, or run: sx env grant approve ${g.id}.`,
         `Retry after approval: sx env run --env ${environment} -- <command>`,
         exit.needsHuman,
       )
     }
-    const g = store.grants.find((x) => x.id === id)
-    if (!g)
+    if (!id)
       throw new SxError(
         'grant_not_found',
-        `No grant ${id ?? ''}.`,
+        `env grant ${action} needs a grant id.`,
         'sx env grant list shows ids.',
         exit.notFound,
       )
     if (action === 'approve') {
-      if (isAgent())
-        throw new SxError(
-          'human_only',
-          'An agent cannot approve its own grant.',
-          'Ask a person to approve it.',
-          exit.needsHuman,
-        )
-      const ms = parseTtl(str(flags, 'ttl'))
-      if (!dry) {
-        g.state = 'active'
-        g.expires = new Date(Date.now() + ms).toISOString()
-        audit(
-          'you',
-          `approved ${g.id} for ${g.env} (${str(flags, 'ttl') ?? '1h'})`,
-        )
-      }
-      print(ctx, g, () => `approved ${g.id} until ${g.expires ?? ''}`)
+      const g = (
+        await api.post(`${repo.path}/env/grants/${id}/approve`, {
+          body: { ttl_minutes: parseTtl(str(flags, 'ttl')) },
+          dryRun: dry,
+        })
+      ).json as Grant
+      print(ctx, g, () => `approved ${g.id} until ${g.expires_at ?? ''}`)
       return
     }
     if (action === 'revoke') {
-      if (!dry) {
-        g.state = 'revoked'
-        audit('you', `revoked ${g.id}`)
-      }
+      const g = (
+        await api.post(`${repo.path}/env/grants/${id}/revoke`, { dryRun: dry })
+      ).json as Grant
       print(ctx, g, () => `revoked ${g.id}`)
       return
     }

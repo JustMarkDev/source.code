@@ -1,0 +1,757 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition --
+   Reads of maps, records and arrays are checked at run time here; the repo does
+   not turn on noUncheckedIndexedAccess, so the rule cannot tell they may be missing. */
+import { createHash } from 'node:crypto'
+import { Duration, Effect, Layer, ManagedRuntime } from 'effect'
+import { Concurrency, Limiter, MemoryLimitStore, pools as defaultPools } from './limiter'
+import { MemoryIdempotencyStore, requestFingerprint } from './idempotency'
+import { hashToken, internCapability, principalOf, tokenShape } from './auth'
+import { Moved } from './domain'
+import { ApiError, apiError, errorCatalog, toProblem } from './problem'
+import { newId } from './ids'
+import { Domain, Pre, Raw, Reply, Router, cyrb53 } from './registry'
+import type { OAuthServer } from './oauth'
+import type { Audience, Principal, TokenStore  } from './auth'
+import type { z } from 'zod'
+import type { LimitStore, Policy  } from './limiter'
+import type { MemoryDomain } from './domain'
+import type { EventLog } from './events'
+import type { Ctx, Op } from './registry'
+import type { IdempotencyStore } from './idempotency'
+
+/**
+ * The request pipeline. Everything that is the same for every operation lives
+ * here, so no handler has to remember it: request id, version, authentication,
+ * rate limits, validation, idempotency, conditional requests, field selection,
+ * waiting, the headers and the error shape.
+ */
+export const API_VERSION = '2026-11-07'
+export const SUPPORTED_VERSIONS = [API_VERSION]
+export const PAGE = { default: 50, max: 200 }
+export const BODY_LIMIT = 1_048_576
+export const BATCH_LIMIT = 25
+export const WAIT_MAX = 30
+const SERVER_BUDGET_MS = 5_000
+// Parsed once. Parsing '5000 millis' on every request showed up in the profile.
+const BUDGET = Duration.millis(SERVER_BUDGET_MS)
+
+export type ApiOptions = {
+  ops: ReadonlyArray<Op>
+  domain: MemoryDomain
+  events: EventLog
+  tokens: TokenStore
+  /** The OAuth server, when this API runs one. Its routes live under `{mount}/oauth`. */
+  oauth?: OAuthServer
+  /** Where `WWW-Authenticate` points clients to find the authorization server (RFC 9728). */
+  resourceMetadataUrl?: string
+  /** Where the API is mounted: `/v1` on its own host, `/api/v1` inside the app. */
+  mount?: string
+  base?: string
+  htmlBase?: string
+  limitStore?: LimitStore
+  idempotency?: IdempotencyStore
+  now?: () => number
+  concurrencyPerToken?: number
+  /**
+   * How many proxies in front of this node append to X-Forwarded-For. The
+   * client address is the entry that many from the end, because a client can
+   * put anything at the start. Default 1.
+   */
+  trustedProxyHops?: number
+  /** Entries in the body cache. 0 turns it off. */
+  bodyCache?: number
+  /** Replace the rate-limit pools. Tests use it to hit a limit quickly. */
+  pools?: Record<string, Policy>
+}
+
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers':
+    'authorization, content-type, idempotency-key, if-match, if-none-match, sx-version, sx-account, sx-agent',
+  'access-control-allow-methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
+  'access-control-expose-headers':
+    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, server-timing',
+  'access-control-max-age': '86400',
+}
+
+const hash = (text: string) =>
+  createHash('sha1').update(text).digest('base64url').slice(0, 16)
+
+/** A small least-recently-used cache of serialized bodies. */
+class BodyCache {
+  private readonly map = new Map<string, string>()
+  constructor(private readonly max: number) {}
+  get(key: string) {
+    const v = this.map.get(key)
+    if (v !== undefined) {
+      this.map.delete(key)
+      this.map.set(key, v)
+    }
+    return v
+  }
+  set(key: string, value: string) {
+    if (this.max <= 0) return
+    this.map.set(key, value)
+    if (this.map.size > this.max)
+      this.map.delete(this.map.keys().next().value as string)
+  }
+  get size() {
+    return this.map.size
+  }
+}
+
+function pointerIssues(where: 'params' | 'query' | 'body', error: z.ZodError) {
+  return error.issues.map((i) => ({
+    pointer: `/${where}${i.path.map((p) => `/${String(p)}`).join('')}`,
+    code: i.code,
+    message:
+      i.code === 'unrecognized_keys' && where === 'query'
+        ? `Unknown query parameter ${i.keys.join(', ')}.`
+        : i.message,
+  }))
+}
+
+function keysOf(schema: z.ZodType | undefined): Array<string> {
+  if (!schema) return []
+  const def = (schema as { shape?: Record<string, unknown> }).shape
+  return def ? Object.keys(def) : []
+}
+
+/** Keeps only the listed dotted paths of an object. */
+function project(value: unknown, paths: ReadonlyArray<string>): unknown {
+  if (Array.isArray(value)) return value.map((v) => project(v, paths))
+  if (value === null || typeof value !== 'object') return value
+  const src = value as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  const byHead = new Map<string, Array<string>>()
+  for (const p of paths) {
+    const [head, ...rest] = p.split('.')
+    const list = byHead.get(head) ?? []
+    if (rest.length) list.push(rest.join('.'))
+    byHead.set(head, list)
+  }
+  // Identity always stays, so a projected object can still be recognised.
+  for (const k of ['object', 'id']) if (k in src) out[k] = src[k]
+  for (const [head, rest] of byHead)
+    if (head in src) out[head] = rest.length ? project(src[head], rest) : src[head]
+  return out
+}
+
+export function createApi(options: ApiOptions) {
+  const mount = options.mount ?? '/v1'
+  const base = options.base ?? 'https://api.source.code/v1'
+  const htmlBase = options.htmlBase ?? 'https://source.code'
+  const now = options.now ?? Date.now
+  const pools = options.pools ?? defaultPools
+  const router = new Router(options.ops)
+  const limiter = new Limiter(options.limitStore ?? new MemoryLimitStore(), { now })
+  const concurrency = new Concurrency(options.concurrencyPerToken ?? 20)
+  const idem = options.idempotency ?? new MemoryIdempotencyStore(undefined, now)
+  const cache = new BodyCache(options.bodyCache ?? 5_000)
+  const domain = options.domain
+  const policyHeaders: Record<string, string> = {}
+  const variants = new Map<string, string>()
+  const hops = options.trustedProxyHops ?? 1
+  /** The caller's address as our own proxy saw it, never as the caller claims it. */
+  const clientAddress = (req: Request) => {
+    const chain = (req.headers.get('x-forwarded-for') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    return chain.at(Math.max(-chain.length, -hops)) ?? 'unknown'
+  }
+
+  const runtime = ManagedRuntime.make(
+    Layer.succeed(Domain)(
+      Domain.of({
+        run: (f) =>
+          Effect.tryPromise({
+            try: () => f(domain),
+            catch: (e) => {
+              if (e instanceof ApiError) return e
+              if (e instanceof Moved)
+                return apiError('moved', `${e.from} is now ${e.to}.`, {
+                  extra: { from: e.from, to: e.to },
+                })
+              if (e instanceof Error && e.name === 'ApiError') return e as ApiError
+              return apiError('internal', e instanceof Error ? e.message : 'Unexpected failure.')
+            },
+          }),
+      }),
+    ),
+  )
+
+  const problemResponse = (
+    error: ApiError,
+    requestId: string,
+    extra: Record<string, string> = {},
+  ) => {
+    const problem = toProblem(error, requestId)
+    const headers: Record<string, string> = {
+      'content-type': 'application/problem+json; charset=utf-8',
+      ...error.headers,
+      ...extra,
+    }
+    if (error.retryAfter !== undefined) headers['retry-after'] = String(error.retryAfter)
+    return new Response(JSON.stringify(problem), { status: problem.status, headers })
+  }
+
+  const authChallenge = (extra = '') =>
+    `Bearer realm="source.code"${options.resourceMetadataUrl ? `, resource_metadata="${options.resourceMetadataUrl}"` : ''}${extra}`
+
+  /** Checks a bearer token for an audience. Used by the API itself and by the MCP endpoint. */
+  async function verifyToken(token: string, audience: Audience) {
+    if (!tokenShape.test(token)) return { ok: false as const, reason: 'unknown' as const }
+    const t = now()
+    const store = options.tokens
+    const looked = store.findToken ? store.findToken(token, audience, t) : store.find(hashToken(token), audience, t)
+    const found = looked instanceof Promise ? await looked : looked
+    if (found.ok) options.tokens.touch?.(found.record, now())
+    return found
+  }
+
+  async function authenticate(
+    req: Request,
+    requestId: string,
+  ): Promise<{ principal: Principal | null; error?: Response }> {
+    const header = req.headers.get('authorization')
+    if (!header) return { principal: null }
+    const [scheme, token] = header.split(' ')
+    const refuse = (code: 'token_invalid' | 'token_expired' | 'token_revoked', detail: string) => ({
+      principal: null,
+      error: problemResponse(apiError(code, detail), requestId, {
+        'www-authenticate': authChallenge(', error="invalid_token"'),
+      }),
+    })
+    if (scheme?.toLowerCase() !== 'bearer' || !token)
+      return refuse('token_invalid', 'The Authorization header is not a bearer token.')
+    const found = await verifyToken(token, 'api')
+    if (!found.ok)
+      return found.reason === 'expired'
+        ? refuse('token_expired', 'This token expired.')
+        : found.reason === 'revoked'
+          ? refuse('token_revoked', 'This token was revoked.')
+          : found.reason === 'audience'
+            ? refuse('token_invalid', 'This token is not valid for the API.')
+            : refuse('token_invalid', 'No such token.')
+    let principal = principalOf(found.record)
+    const as = req.headers.get('sx-account')
+    if (as && as !== principal.actingAs) {
+      if (!(await domain.canActAs(principal.handle, as)))
+        return { principal, error: problemResponse(apiError('forbidden', `You cannot act as ${as}.`), requestId) }
+      const key = `${principal.capabilityKey}@${as}`
+      principal = { ...principal, actingAs: as, capabilityKey: key, capId: internCapability(key) }
+    }
+    return { principal }
+  }
+
+  async function handle(req: Request, depth = 0): Promise<Response> {
+    const started = performance.now()
+    const requestId = newId('request', now())
+    const url = new URL(req.url)
+    // CORS headers are for browsers. Scripts and agents send no Origin and do not need them.
+    const common: Record<string, string> = req.headers.has('origin')
+      ? { 'sx-request-id': requestId, 'sx-version': API_VERSION, ...CORS }
+      : { 'sx-request-id': requestId, 'sx-version': API_VERSION }
+    const finish = (res: Response, timing: Record<string, string | number> = {}) => {
+      const t = [`total;dur=${(performance.now() - started).toFixed(2)}`]
+      for (const [k, v] of Object.entries(timing))
+        t.push(typeof v === 'number' ? `${k};dur=${v.toFixed(2)}` : `${k};desc="${v}"`)
+      res.headers.set('server-timing', t.join(', '))
+      return res
+    }
+    const fail = (e: ApiError, extra?: Record<string, string>) => {
+      const res = problemResponse(e, requestId, { ...common, ...extra })
+      return finish(res)
+    }
+
+    if (req.method === 'OPTIONS')
+      return new Response(null, { status: 204, headers: { ...CORS, 'sx-request-id': requestId } })
+
+    // The path under the mount. `/v1/repos/rep_x/changes` is the id form of a
+    // repository address, read as owner `rep_x` and name `~`.
+    if (!url.pathname.startsWith(mount))
+      return fail(apiError('not_found', `This API lives under ${mount}.`))
+    let path = url.pathname.slice(mount.length) || '/'
+    path = path.replace(/^\/repos\/(rep_[0-9a-z]{18})(?=\/|$)/, '/repos/$1/~')
+
+    const version = req.headers.get('sx-version')
+    if (version && !SUPPORTED_VERSIONS.includes(version))
+      return fail(apiError('unsupported_version', `Version ${version} is not supported.`, { extra: { supported: SUPPORTED_VERSIONS } }))
+
+    const match = router.match(req.method === 'HEAD' ? 'GET' : req.method, path)
+    if (match.kind === 'miss')
+      return fail(apiError('not_found', `No endpoint at ${req.method} ${path}.`, { hint: `GET ${mount} lists the collections. GET ${mount}/openapi.json describes every operation.` }))
+    if (match.kind === 'method')
+      return fail(apiError('method_not_allowed', `${req.method} is not allowed on ${path}.`), { allow: match.allow.join(', ') })
+    const { op, params } = match
+
+    const auth = await authenticate(req, requestId)
+    if (auth.error) {
+      for (const [k, v] of Object.entries(common)) if (!auth.error.headers.has(k)) auth.error.headers.set(k, v)
+      return finish(auth.error)
+    }
+    const principal = auth.principal
+    if (op.auth === 'required' && !principal)
+      return fail(apiError('unauthenticated', 'This needs a token.'), { 'www-authenticate': authChallenge() })
+    // Anonymous callers may read public things; what they can see is decided by the data.
+    if (principal || op.auth === 'required')
+      for (const scope of op.scopes ?? [])
+        if (!principal?.scopes.has(scope))
+        return fail(
+          apiError('insufficient_scope', `This needs the ${scope} scope.`, {
+            extra: { required_scopes: op.scopes, token_scopes: principal ? [...principal.scopes] : [] },
+          }),
+          { 'www-authenticate': authChallenge(`, error="insufficient_scope", scope="${(op.scopes ?? []).join(' ')}"`) },
+        )
+
+    // Rate limit. The key is the token, or the client address when anonymous.
+    const poolName = principal ? (op.pool === 'none' ? 'none' : op.pool) : op.pool === 'none' ? 'none' : 'anonymous'
+    const limitKey = principal ? principal.tokenId : `ip:${clientAddress(req)}`
+    const cost = op.cost ?? 1
+    let rate: { header: string; policy: string } | null = null
+    let refund: (() => void) | null = null
+    if (poolName !== 'none') {
+      const policy = pools[poolName] ?? defaultPools[poolName]
+      const lk = `${poolName}:${limitKey}`
+      // Almost always the node already holds units for this token: no promise, no store.
+      const d = limiter.tryLocal(lk, policy, cost) ?? (await limiter.check(lk, policy, cost))
+      rate = {
+        policy: (policyHeaders[poolName] ??= `"${poolName}";q=${policy.limit};w=${policy.windowMs / 1000}`),
+        header: `"${poolName}";r=${d.remaining};t=${d.resetSeconds}`,
+      }
+      if (!d.allowed)
+        return fail(
+          apiError('rate_limited', `The ${poolName} pool is used up.`, {
+            retryAfter: d.resetSeconds,
+            extra: { pool: poolName, limit: policy.limit, window_seconds: policy.windowMs / 1000, retry_after_seconds: d.resetSeconds },
+          }),
+          { ratelimit: rate.header, 'ratelimit-policy': rate.policy },
+        )
+      refund = () => limiter.refund(`${poolName}:${limitKey}`, policy, cost)
+    }
+    if (!concurrency.enter(limitKey))
+      return fail(apiError('concurrency_limited', 'Too many requests are running for this token.', { retryAfter: 1 }), rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
+
+    try {
+      const res = await run(req, url, path, op, params, principal, requestId, depth, refund, started)
+      for (const [k, v] of Object.entries(common)) if (!res.headers.has(k)) res.headers.set(k, v)
+      if (rate) {
+        res.headers.set('ratelimit-policy', rate.policy)
+        res.headers.set('ratelimit', rate.header)
+      }
+      return res
+    } catch (e) {
+      const error = e instanceof ApiError ? e : apiError('internal', 'Unexpected failure.')
+      if (!(e instanceof ApiError)) console.error(`[api] ${requestId}`, e)
+      return fail(error, rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
+    } finally {
+      concurrency.leave(limitKey)
+    }
+  }
+
+  async function run(
+    req: Request,
+    url: URL,
+    path: string,
+    op: Op,
+    params: Record<string, string>,
+    principal: Principal | null,
+    requestId: string,
+    depth: number,
+    refund: (() => void) | null,
+    started: number,
+  ): Promise<Response> {
+    const fail = (e: ApiError, extra?: Record<string, string>) =>
+      problemResponse(e, requestId, extra)
+    const timing: Record<string, string | number> = {}
+
+    // Query: the parameters every operation shares come off first.
+    const raw: Record<string, string> = {}
+    for (const [k, v] of url.searchParams) raw[k] = v
+    const fields = raw.fields
+    const wait = raw.wait
+    const dryRunRaw = raw.dry_run
+    delete raw.fields
+    delete raw.wait
+    delete raw.dry_run
+    const queryErrors: Array<{ pointer: string; code: string; message: string }> = []
+    if (fields !== undefined && !op.shapeable)
+      queryErrors.push({ pointer: '/query/fields', code: 'unsupported', message: 'This operation does not support fields.' })
+    if (dryRunRaw !== undefined && !op.dryRun)
+      queryErrors.push({ pointer: '/query/dry_run', code: 'unsupported', message: 'This operation has no dry run.' })
+    if (wait !== undefined && !op.waitOn)
+      queryErrors.push({ pointer: '/query/wait', code: 'unsupported', message: 'This operation cannot wait.' })
+    if (wait !== undefined && op.waitOn && req.headers.get('if-none-match') === null)
+      queryErrors.push({
+        pointer: '/query/wait',
+        code: 'needs_if_none_match',
+        message: 'wait holds the request until the ETag changes. Send If-None-Match with the ETag you have.',
+      })
+    const waitSeconds = wait === undefined ? 0 : Number(wait)
+    if (wait !== undefined && !(Number.isInteger(waitSeconds) && waitSeconds >= 0 && waitSeconds <= WAIT_MAX))
+      queryErrors.push({ pointer: '/query/wait', code: 'out_of_range', message: `A whole number of seconds, 0 to ${WAIT_MAX}.` })
+    if (dryRunRaw !== undefined && dryRunRaw !== 'true' && dryRunRaw !== 'false')
+      queryErrors.push({ pointer: '/query/dry_run', code: 'invalid_value', message: 'true or false.' })
+    const dryRun = dryRunRaw === 'true'
+
+    const extraHeaders: Record<string, string> = {}
+    if (raw.limit !== undefined && Number(raw.limit) > PAGE.max) {
+      raw.limit = String(PAGE.max)
+      extraHeaders['sx-limit-applied'] = String(PAGE.max)
+    }
+    let query: unknown = {}
+    if (op.query) {
+      const parsed = op.query.safeParse(raw)
+      if (!parsed.success) queryErrors.push(...pointerIssues('query', parsed.error))
+      else query = parsed.data
+    } else if (Object.keys(raw).length)
+      for (const k of Object.keys(raw))
+        queryErrors.push({ pointer: `/query/${k}`, code: 'unrecognized_keys', message: `Unknown query parameter ${k}.` })
+
+    let parsedParams: unknown = params
+    if (op.params) {
+      const p = op.params.safeParse(params)
+      if (!p.success) queryErrors.push(...pointerIssues('params', p.error))
+      else parsedParams = p.data
+    }
+
+    // Body.
+    let body: unknown = undefined
+    let bodyText = ''
+    if (op.body) {
+      const type = req.headers.get('content-type') ?? ''
+      if (!type.includes('application/json'))
+        return fail(apiError('unsupported_media_type', 'Send Content-Type: application/json.'))
+      bodyText = await req.text()
+      if (bodyText.length > BODY_LIMIT)
+        return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
+      let json: unknown = {}
+      if (bodyText.trim() !== '')
+        try {
+          json = JSON.parse(bodyText)
+        } catch {
+          return fail(apiError('invalid_request', 'The body is not valid JSON.', { errors: [{ pointer: '/body', code: 'invalid_json', message: 'Not valid JSON.' }] }))
+        }
+      const parsed = op.body.safeParse(json)
+      if (!parsed.success) queryErrors.push(...pointerIssues('body', parsed.error))
+      else body = parsed.data
+    }
+    let bytes: Uint8Array | null = null
+    if (op.rawBody) {
+      const declared = Number(req.headers.get('content-length') ?? '0')
+      if (declared > op.rawBody.maxBytes)
+        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
+      const buf = new Uint8Array(await req.arrayBuffer())
+      if (buf.byteLength > op.rawBody.maxBytes)
+        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
+      bytes = buf
+    }
+
+    if (queryErrors.length)
+      return fail(apiError('invalid_request', `${queryErrors.length} problem${queryErrors.length === 1 ? '' : 's'} with the request.`, { errors: queryErrors }))
+
+    // Unknown `fields` names are an error, not a silently empty answer.
+    const fieldPaths = fields ? fields.split(',').map((s) => s.trim()).filter(Boolean) : null
+    if (fieldPaths) {
+      const known = keysOf(
+        (op.response as { shape?: { data?: { element?: z.ZodType } } }).shape?.data?.element ?? op.response,
+      )
+      const bad = known.length ? fieldPaths.filter((f) => !known.includes(f.split('.')[0])) : []
+      if (bad.length)
+        return fail(apiError('invalid_request', `Unknown field ${bad.join(', ')}.`, { errors: bad.map((f) => ({ pointer: '/query/fields', code: 'unknown_field', message: `${f} is not a field. Known: ${known.join(', ')}.` })), }))
+    }
+
+    const ifMatch = req.headers.get('if-match')
+    const ifNoneMatch = req.headers.get('if-none-match')
+    const ctx: Ctx<unknown, unknown, unknown> = {
+      params: parsedParams,
+      query,
+      body,
+      principal,
+      requestId,
+      dryRun,
+      ifMatch,
+      url,
+      bytes,
+      signal: req.signal,
+      header: (name) => req.headers.get(name),
+      base,
+      htmlBase,
+      now,
+      dispatch: (method, p, b) =>
+        depth > 0
+          ? Promise.reject(apiError('invalid_request', 'Batches cannot nest.'))
+          : handle(
+              new Request(new URL(`${mount}${p}`, url.origin), {
+                method,
+                headers: {
+                  ...(req.headers.get('authorization') ? { authorization: req.headers.get('authorization')! } : {}),
+                  ...(b !== undefined ? { 'content-type': 'application/json' } : {}),
+                },
+                body: b === undefined ? undefined : JSON.stringify(b),
+              }),
+              depth + 1,
+            ),
+    }
+
+    const exec = async <TValue>(
+      program: Effect.Effect<TValue, ApiError, Domain>,
+    ) => {
+      const t0 = performance.now()
+      const settled = await runtime.runPromise(
+        program.pipe(
+          Effect.timeout(BUDGET),
+          Effect.catchTag('TimeoutError', () =>
+            Effect.fail(apiError('backend_unavailable', 'The request took too long.', { retryAfter: 1 })),
+          ),
+          Effect.match({
+            onSuccess: (value) => ({ ok: true as const, value }),
+            onFailure: (error) => ({ ok: false as const, error }),
+          }),
+        ),
+      )
+      timing.handler = (timing.handler as number | undefined ?? 0) + (performance.now() - t0)
+      if (!settled.ok) throw settled.error
+      return settled.value
+    }
+
+    const isRead = op.method === 'GET'
+    // What the body depends on. `wait` and `dry_run` do not change it.
+    const canonical = [...Object.entries(raw), ...(fields ? [['fields', fields]] : [])]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&')
+    const wantsMarkdown = isRead && !!op.markdown && (req.headers.get('accept') ?? '').includes('text/markdown')
+    const variantKey = `${canonical}|${principal?.capId ?? 'a'}${wantsMarkdown ? '|md' : ''}`
+    let variant = variants.get(variantKey)
+    if (variant === undefined) {
+      variant = hash(variantKey)
+      if (variants.size > 20_000) variants.clear()
+      variants.set(variantKey, variant)
+    }
+    const cacheKey = (v: string) => `${op.id}|${url.pathname}|${variant}|${v}`
+
+    // Idempotency for writes.
+    const key = req.headers.get('idempotency-key')
+    let scope = ''
+    if (!isRead && key) {
+      if (key.length > 64)
+        return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
+      scope = principal ? principal.actingAs : 'anonymous'
+      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, bodyText))
+      if (begun.state === 'conflict')
+        return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
+      if (begun.state === 'in_progress')
+        return fail(apiError('request_in_progress', 'A request with this key is still running.', { retryAfter: 1 }))
+      if (begun.state === 'replay') {
+        return new Response(begun.response.body, {
+          status: begun.response.status,
+          headers: { ...begun.response.headers, 'sx-replayed': 'true' },
+        })
+      }
+    }
+
+    try {
+      // Conditional reads and the body cache, before any body is built.
+      let versionKey: string | null = null
+      const etagOf = (v: string) => `W/"${v}-${variant}"`
+      const wantsWait = waitSeconds > 0 && op.waitOn && ifNoneMatch !== null
+
+      type Step =
+        | { kind: 'not_modified'; etag: string }
+        | { kind: 'hit'; json: string; etag: string; status: number }
+        | { kind: 'built'; out: unknown; versionKey: string | null }
+      const compute = async (): Promise<Step> => {
+        if (isRead && op.probe) {
+          const t0 = performance.now()
+          try {
+            versionKey = await op.probe(ctx, domain)
+          } catch (e) {
+            // A renamed repository answers at its old address with a redirect, on reads too.
+            if (e instanceof Moved) throw apiError('moved', `${e.from} is now ${e.to}.`, { extra: { from: e.from, to: e.to } })
+            throw e
+          }
+          timing.handler = (timing.handler as number | undefined ?? 0) + (performance.now() - t0)
+        }
+        if (versionKey !== null) {
+          const etag = etagOf(versionKey)
+          if (ifNoneMatch && matches(ifNoneMatch, etag)) return { kind: 'not_modified', etag }
+          const hit = cache.get(cacheKey(versionKey))
+          if (hit !== undefined) return { kind: 'hit', json: hit, etag, status: op.status ?? 200 }
+        }
+        const out = await exec(op.handler(ctx as never))
+        return { kind: 'built', out, versionKey }
+      }
+
+      let step = await compute()
+      if (wantsWait && step.kind === 'not_modified') {
+        // Real elapsed time, not the injectable clock: waiting is physical.
+        const deadline = performance.now() + waitSeconds * 1000
+        const topic = op.waitOn!(parsedParams)
+        while (step.kind === 'not_modified' && performance.now() < deadline) {
+          await options.events.wait(topic, deadline - performance.now(), req.signal)
+          if (req.signal.aborted) break
+          step = await compute()
+        }
+      }
+      if (step.kind === 'not_modified') {
+        refund?.()
+        return new Response(null, { status: 304, headers: { etag: step.etag, ...extraHeaders } })
+      }
+
+      let status = op.status ?? 200
+      const headers: Record<string, string> = { ...extraHeaders }
+      let json: string
+      let etag = ''
+      if (step.kind === 'hit') {
+        json = step.json
+        etag = step.etag
+        timing.cache = 'hit'
+        status = step.status
+      } else {
+        let out = step.out
+        if (out instanceof Raw) return out.response
+        if (out instanceof Reply) {
+          status = out.init.status ?? status
+          Object.assign(headers, out.init.headers)
+          out = out.body
+        }
+        const wantsNdjson = isRead && (req.headers.get('accept') ?? '').includes('application/x-ndjson') && (out as { object?: string })?.object === 'list'
+        // Objects that arrive already serialized are sent as they are, unless the
+        // caller wants a shape that needs the object. `seed` stands in for the
+        // body when an ETag is made, so a long body is not hashed.
+        let ready: string | null = null
+        let seed: string | null = null
+        if (out instanceof Pre) {
+          if (!fieldPaths) {
+            ready = out.json
+            seed = out.key
+          }
+          out = out.obj
+        } else {
+          const list = out as { object?: string; data?: Array<unknown>; has_more?: boolean; next_cursor?: string | null }
+          if (list?.object === 'list' && Array.isArray(list.data) && list.data[0] instanceof Pre) {
+            if (!fieldPaths && !wantsNdjson) {
+              const items = list.data as Array<Pre>
+              ready = `{"object":"list","data":[${items.map((i) => i.json).join(',')}],"has_more":${list.has_more === true},"next_cursor":${JSON.stringify(list.next_cursor ?? null)}}`
+              seed = `${items.map((i) => i.tag).join('')}|${list.has_more === true}|${list.next_cursor ?? ''}`
+            } else out = { ...list, data: list.data.map((d) => (d instanceof Pre ? d.obj : d)) }
+          }
+        }
+        if (fieldPaths) {
+          const list = out as { object?: string; data?: Array<unknown> }
+          out =
+            list?.object === 'list' && Array.isArray(list.data)
+              ? { ...list, data: list.data.map((d) => project(d, fieldPaths)) }
+              : project(out, fieldPaths)
+        }
+        if (wantsNdjson) {
+          const list = out as { data: Array<unknown>; has_more: boolean; next_cursor: string | null }
+          const lines = list.data.map((d) => JSON.stringify(d))
+          lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
+          return new Response(`${lines.join('\n')}\n`, {
+            status,
+            headers: { 'content-type': 'application/x-ndjson; charset=utf-8', ...headers },
+          })
+        }
+        json = ready ?? JSON.stringify(out)
+        // The readable form is made from the JSON, so the two cannot disagree.
+        if (wantsMarkdown && status < 300) json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
+        if (isRead) {
+          etag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
+          if (step.versionKey !== null && step.versionKey !== undefined)
+            cache.set(cacheKey(step.versionKey), json)
+          if (ifNoneMatch && matches(ifNoneMatch, etag)) {
+            refund?.()
+            return new Response(null, { status: 304, headers: { etag, ...extraHeaders } })
+          }
+        }
+      }
+      headers['content-type'] = wantsMarkdown && status < 300 ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8'
+      if (isRead && op.markdown) headers.vary = 'accept, authorization'
+      if (dryRun) {
+        headers['sx-dry-run'] = 'true'
+        if (status === 201 || status === 202) status = 200
+      }
+      if (etag !== '') headers.etag = etag
+      if (isRead && !headers['cache-control'])
+        headers['cache-control'] = principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate'
+      if (status === 202 && headers.location === undefined) {
+        const loc = (JSON.parse(json) as { url?: string }).url
+        if (loc) headers.location = loc
+      }
+      const res = new Response(req.method === 'HEAD' || status === 204 ? null : json, { status, headers })
+      if (!isRead && key) {
+        await idem.complete(scope, key, { status, headers, body: json })
+      }
+      const t = [`handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`]
+      if (timing.cache) t.push(`cache;desc="hit"`)
+      t.push(`total;dur=${(performance.now() - started).toFixed(2)}`)
+      res.headers.set('server-timing', t.join(', '))
+      return res
+    } catch (e) {
+      if (!isRead && key) await idem.abort(scope, key)
+      if (e instanceof ApiError && e.code === 'moved') {
+        const to = (e.extra as { to: string }).to
+        const from = (e.extra as { from: string }).from
+        const location = `${url.origin}${mount}${path.replace(`/repos/${from}`, `/repos/${to}`)}${url.search}`
+        return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
+      }
+      throw e
+    }
+  }
+
+  const oauth = options.oauth
+  const guardOf = async (req: Request, bucket: string, limit: number, windowMs: number) => {
+    const d = await limiter.check(`${bucket}:${clientAddress(req)}`, { limit, windowMs }, 1)
+    return d.allowed
+      ? null
+      : new Response(
+          JSON.stringify({ error: 'rate_limited', error_description: `Try again in ${d.resetSeconds} seconds.` }),
+          { status: 429, headers: { 'content-type': 'application/json', 'retry-after': String(d.resetSeconds), 'cache-control': 'no-store' } },
+        )
+  }
+
+  if (oauth) oauth.guardWith = guardOf
+
+  async function fetchAll(req: Request): Promise<Response> {
+    if (oauth) {
+      const path = new URL(req.url).pathname
+      if (path.startsWith(`${mount}/oauth/`)) {
+        if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
+        const res = await oauth.handle(req, path.slice(`${mount}/oauth`.length))
+        if (res) {
+          res.headers.set('access-control-allow-origin', '*')
+          return res
+        }
+      }
+    }
+    return handle(req)
+  }
+
+  return {
+    fetch: fetchAll,
+    oauth,
+    verifyToken,
+    guard: guardOf,
+    ops: options.ops,
+    router,
+    cache,
+    limiter,
+    idempotency: idem,
+    domain,
+    events: options.events,
+    dispose: () => runtime.dispose(),
+    errorCatalog,
+  }
+}
+
+function matches(ifNoneMatch: string, etag: string): boolean {
+  if (ifNoneMatch.trim() === '*') return true
+  const weak = (t: string) => t.trim().replace(/^W\//, '')
+  const want = weak(etag)
+  return ifNoneMatch.split(',').some((t) => weak(t) === want)
+}
+
+export type Api = ReturnType<typeof createApi>

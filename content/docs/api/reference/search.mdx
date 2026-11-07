@@ -1,0 +1,90 @@
+---
+icon: ListBulletIcon
+title: Search
+description: One query across repositories, changes and issues.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `search.query`
+
+`GET /search`
+
+**Search repositories, changes and issues**
+
+Words must all match; the last is a prefix. "Quoted phrases" match exactly. Qualifiers narrow the result: `type:change` `repo:dana/gitfs` `state:open` `author:ines` `label:bug`. Results are one ordered list with no cap: title matches first, then newest. Only repositories you can read are searched.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `search` pool, 1 unit                      |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a list of `search_result`           |
+
+**Query parameters**
+
+| Name     | Type                                      | Notes                                                                             |
+| -------- | ----------------------------------------- | --------------------------------------------------------------------------------- |
+| `limit`  | integer (min 1, max 200)                  | Default `50`. Items per page, 1 to 200. Larger values are clamped.                |
+| `cursor` | string                                    | `next_cursor` from the previous page, exactly as returned                         |
+| `q`      | string (up to 256 characters, at least 1) | Required. The query                                                               |
+| `fields` | string                                    | Comma list of fields to return, dotted for nested. `object` and `id` always stay. |
+
+**Errors**
+
+[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/search?q=negative+cache&limit=2" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"172dokt5ozl"
+ratelimit: "search";r=59;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "search_result",
+      "type": "change",
+      "id": "chg_01m6dqs9m0g7q74420",
+      "number": 216,
+      "repo": "dana/gitfs",
+      "title": "Cache negative ref lookups",
+      "state": "open",
+      "snippet": null,
+      "score": 3,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216",
+      "updated_at": "2026-11-07T10:00:00.002Z"
+    },
+    {
+      "object": "search_result",
+      "type": "change",
+      "id": "chg_01m6dqs9m036wkthe9",
+      "number": 217,
+      "repo": "dana/gitfs",
+      "title": "Bound the negative cache and evict LRU",
+      "state": "draft",
+      "snippet": null,
+      "score": 3,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/changes/217",
+      "updated_at": "2026-11-07T07:00:00.000Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```

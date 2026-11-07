@@ -1,0 +1,77 @@
+---
+icon: ListBulletIcon
+title: Search
+description: One query across repositories, changes and issues, with no cap on results and nothing from repositories you cannot read.
+---
+
+```bash
+curl "$SX/search?q=negative+cache+state:open&limit=20" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "search_result",
+      "type": "change",
+      "id": "chg_01m6dqs9m036wkthe9",
+      "number": 217,
+      "repo": "dana/gitfs",
+      "title": "Bound the negative cache and evict LRU",
+      "state": "draft",
+      "snippet": null,
+      "score": 3,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/changes/217",
+      "updated_at": "2026-11-07T07:00:00Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+Anonymous callers can search too; they see public repositories. A result is a pointer: follow `url` for the object.
+
+## The query
+
+| You write                 | It means                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `negative cache`          | Both words must match. The **last** word also matches as a prefix (`cach`)       |
+| `"negative cache"`        | The exact phrase, in the title or the body                                       |
+| `#216` or `216`           | The number                                                                       |
+| `type:change`             | `change`, `issue` or `repo`. Repeatable                                          |
+| `repo:dana/gitfs`         | Only this repository. With no words, lists everything in it                      |
+| `state:open`              | The state: `open`, `draft`, `landed`, `abandoned`, `closed`, or a repository's visibility |
+| `author:ines`             | Written by this handle                                                           |
+| `label:bug`               | Has this label. Repeat for all of several                                        |
+
+Words are matched whole except the last. Case is ignored. A query with nothing to look for (`!!`) is a `400` with `empty_query`.
+
+## Order
+
+Best first, then newest:
+
+| `score` | When                                               |
+| ------: | -------------------------------------------------- |
+| 3       | Every word is in the title                         |
+| 2       | Some words are in the title                        |
+| 1       | The words are only in the body. `snippet` shows where |
+
+Among equal scores the most recently updated comes first.
+
+## No cap
+
+Results are one ordered list and a cursor walks it. You can read all 50,000 matches, 200 at a time, with no duplicates, where GitHub stops at 1,000. A cursor belongs to its query: change the query and it is `cursor_mismatch`.
+
+## What it can see
+
+Only repositories you can read. A private repository's titles are never in the index you search, whoever you are: visibility is applied to every result, and the answer is not cached across people with different access. A token limited to some repositories sees public repositories and nothing private.
+
+## Fresh
+
+The index follows the [event log](/docs/api/events-and-sync#the-event-log): every write that produces an event updates the index in the same process, so a title you just changed is searchable by the next request, and the old words stop matching.
+
+## Limits
+
+The `search` rate-limit pool: 60 a minute per token. Query length up to 256 characters.

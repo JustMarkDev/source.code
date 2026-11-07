@@ -4,11 +4,12 @@ title: MCP server
 description: Connect any agent to source.code over MCP. Same tools as the CLI, same answers as the web page.
 ---
 
-source.code ships a Model Context Protocol server, so agents that speak MCP can read changes, check policy and open issues without a shell. Every tool runs the matching [`sx`](/docs/cli) command, so what an agent gets is exactly what a person sees: the same blockers, the same error codes and the same hints.
+source.code ships a Model Context Protocol server (and an [HTTP API](/docs/api) for everything else), so agents that speak MCP can read changes, check policy and open issues without a shell. Every tool runs the matching [`sx`](/docs/cli) command, so what an agent gets is exactly what a person sees: the same blockers, the same error codes and the same hints.
 
 <Callout type="warn" title="Preview">
-  The tools answer from sample data today, and the hosted endpoint accepts any
-  bearer token. Real tokens, scopes and OAuth arrive with the hosted API.
+  The tools answer from sample data today. Tokens, scopes and sign-in are real:
+  the same token works here and on the [HTTP API](/docs/api), and every tool is
+  checked against that token's scopes.
 </Callout>
 
 ## Connect
@@ -17,7 +18,7 @@ There are two ways in. Both expose the same tools.
 
 ### Hosted endpoint
 
-Streamable HTTP at `https://source.code/mcp`. Send a token in the `Authorization` header.
+Streamable HTTP at `https://source.code/mcp`. Sign in with OAuth, which MCP clients do on their own, or send a token in the `Authorization` header.
 
 ```bash
 claude mcp add --transport http source-code https://source.code/mcp \
@@ -38,6 +39,12 @@ For clients that read a JSON config:
 }
 ```
 
+### Signing in with OAuth
+
+A client that supports MCP authorization finds everything it needs from the server. An unauthenticated request answers `401` with `WWW-Authenticate: Bearer resource_metadata="https://source.code/.well-known/oauth-protected-resource/mcp"`, which names the authorization server. The client registers itself, sends you to a consent page, and gets a token that refreshes. See [OAuth](/docs/api/oauth).
+
+The token is the same kind the API accepts. One sign-in covers both, unless the client asked for one with the `resource` parameter.
+
 ### Local command
 
 If the agent starts a local command instead, run `sx` as the server over stdio:
@@ -57,7 +64,7 @@ Read-only tools never change anything. Tools that change state accept `dry_run`.
 | `list_accounts` | Every account you can act as, with your role in each                           | No               |
 | `get_context`   | Start here. Open changes and what blocks each, open issues, policy, env schema | No               |
 | `list_changes`  | Open changes, or all                                                           | No               |
-| `get_change`    | One change and every requirement blocking it                                   | No               |
+| `get_change`    | One change, by number, and every requirement blocking it                       | No               |
 | `create_change` | Create a change from a branch. Again for the same branch adds a patch set      | Yes, repeat-safe |
 | `land_change`   | Land a change if policy allows                                                 | Yes              |
 | `check_policy`  | Whether a change meets every policy, and which rule asks for what              | No               |
@@ -93,6 +100,10 @@ A failed call sets `isError` and returns the same object the CLI prints:
 ```
 
 Branch on `code`. A `policy_blocked` landing is a stop, not a retry: an agent cannot approve its own change.
+
+## What the token limits
+
+A tool calls the API as the token that connected, so it can do what that token's scopes allow and nothing more. A bot installed for issues only can `create_issue` and gets `insufficient_scope` from `land_change`, with the same error object the API returns.
 
 ## What an agent never gets
 

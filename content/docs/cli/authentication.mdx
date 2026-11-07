@@ -4,16 +4,39 @@ title: Authentication
 description: Signing in for people, tokens for scripts and agents.
 ---
 
-## Tokens
+## Where sx talks to
 
-Scripts, CI and agents sign in with a token in the environment:
+With nothing set, `sx` runs the [API](/docs/api) in its own process on sample data, which is what the preview offers. To use a real server, point it at one:
 
 ```bash
-export SX_TOKEN=sxt_...
+export SX_API=https://api.source.code/v1     # or: sx config set api <url>
+```
+
+## Signing in as a person
+
+```bash
+sx auth login
+```
+
+```
+Open https://source.code/api/v1/oauth/device?user_code=BCDF-GHJK
+and check the code is BCDF-GHJK
+```
+
+Open the address in any browser, check the code matches, and approve. `sx` waits, then saves a token that **refreshes itself**. This is the OAuth device flow (RFC 8628), so it works over SSH and on machines with no browser. The code and the address go to stderr, so a script's stdout stays clean.
+
+The saved sign-in is in `credentials.json` next to your settings, readable only by you. `sx auth logout` revokes it on the server and deletes it. Ask for fewer powers with `--scope "repo:read pulls:read"`. [How the flow works](/docs/api/oauth).
+
+## Tokens for scripts and agents
+
+Scripts, CI and agents use a token in the environment. It always wins over a saved sign-in.
+
+```bash
+export SX_TOKEN=sxp_...
 sx auth status
 ```
 
-Create tokens in **Settings, Agents and tokens**. A token belongs to a bot with explicit scopes. It can lose scopes while installed but never gain them. A run started by an automation receives a token limited to one repository and one run.
+Create tokens with `POST /v1/tokens` or in **Settings, Agents and tokens**. They always expire, show their secret once, and can be limited to repositories and to fewer scopes than you hold. A token belonging to a bot can lose scopes while installed but never gain them. A run started by an automation receives a token limited to one repository and one run. See [Authentication](/docs/api/authentication).
 
 ## Check where you stand
 
@@ -22,14 +45,10 @@ sx auth status
 ```
 
 ```json
-{ "host": "https://source.code", "authenticated": true, "via": "SX_TOKEN" }
+{ "host": "https://api.source.code/v1", "authenticated": true, "via": "SX_TOKEN", "account": "dana", "login": "dana", "scopes": ["pulls:read", "repo:read"] }
 ```
 
-Exit code `4` means you are not signed in.
-
-## Signing in as a person
-
-`sx auth login` will open a browser. It needs the hosted service and is not available in the preview, so it exits with a message that says to use `SX_TOKEN`.
+Over the network it asks the server who the token is, so `scopes` is what the server says, not what you hoped. Exit code `4` means you are not signed in.
 
 ## Accounts
 
@@ -50,6 +69,6 @@ Which account a command acts as, in order:
 4. The account saved by `sx account switch`
 5. You
 
-`sx account current` prints `from`: `flag`, `env`, `repo`, `config` or `default`, so a surprise is easy to trace. An account you cannot act as exits `3` with `account_not_found`. Your role limits what you can do there: members of an organization cannot create repositories in it, which exits `5` with `account_forbidden`.
+`sx account current` prints `from`: `flag`, `env`, `repo`, `config` or `default`, so a surprise is easy to trace. An account you cannot act as exits `3` with `account_not_found`. Your role limits what you can do there: members of an organization cannot create repositories in it, which exits `5` with `forbidden`.
 
 A token acts as the person it belongs to, with access to the same accounts. Agents should pass `-A` or set `SX_ACCOUNT` rather than switch, so a run never changes a saved setting.

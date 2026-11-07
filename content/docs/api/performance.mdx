@@ -1,0 +1,224 @@
+---
+icon: BoltIcon
+title: Performance
+description: What we measured, against what, how it compares with other forges, what to expect over a network, and what the design does to stay fast and small.
+---
+
+<Callout type="warn" title="Read this first">
+  The figures in the first section are for the API layer on **sample data held
+  in memory**, in one process on one core, with the load generator on the same
+  machine. They show the cost of our code. They do not include a real database,
+  the git store, TLS or a network, and they are not a promise for the hosted
+  service. The sections after it add the network and say plainly which numbers
+  are measured and which are a model.
+</Callout>
+
+## What we measured
+
+`bun scripts/api-bench.ts` starts the server in its own process behind a real HTTP server and drives it over sockets from **three separate client processes with 32 connections each**, for 5 seconds per scenario. The server's CPU use is printed next to every row: about 100% means one core was busy, so the number is the server's limit and not the load generator's. The repository holds 10,000 changes and 2,000 issues.
+
+Apple M5, Bun 1.4.4, one server process. "Before" is the first version of the API that passed its tests, measured with exactly the same harness (`docs/bench/baseline.json`). "Now" is the current code (`docs/bench/after.json`). `bun scripts/api-bench.ts --compare docs/bench/baseline.json` reproduces the table on your machine.
+
+| Scenario | before req/s | now req/s | change | p99 before | p99 now |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `GET /v1` (anonymous) | 90,788 | 111,923 | +23% | 2.09 ms | 1.68 ms |
+| One change, from the body cache | 58,635 | 111,633 | +90% | 3.16 ms | 1.68 ms |
+| One change, `If-None-Match` (304) | 59,978 | 121,267 | +102% | 3.04 ms | 1.55 ms |
+| One of 10,000 changes (cache misses) | 42,718 | 68,739 | +61% | 4.26 ms | 2.75 ms |
+| The same change, 1,000 different tokens | 37,720 | 57,642 | +53% | 4.34 ms | 3.10 ms |
+| Policy of a change | 57,803 | 69,914 | +21% | 3.16 ms | 2.65 ms |
+| `GET …/context` (the agent start-up bundle) | 46,821 | 58,571 | +25% | 3.86 ms | 3.16 ms |
+| `GET /sync` with nothing new | 59,406 | 69,444 | +17% | 3.10 ms | 2.65 ms |
+| 50 changes of 10,000 | 7,751 | 29,330 | +278% | 15.4 ms | 5.40 ms |
+| 50 changes, `fields=number,title,policy` | 12,276 | 27,341 | +123% | 12.2 ms | 5.96 ms |
+| 50 changes, author filter | 7,682 | 26,915 | +250% | 13.7 ms | 6.08 ms |
+| 50 issues of 2,000 | 16,611 | 37,424 | +125% | 9.04 ms | 4.70 ms |
+| Event log, 50 newest | 57,518 | 65,254 | +13% | 3.36 ms | 2.87 ms |
+| Search, one query (10,000 matches) | 27,318 | 40,807 | +49% | 6.58 ms | 4.43 ms |
+| Search, 500 different queries | 35,993 | 34,464 | −4% | 4.99 ms | 9.59 ms |
+| `openapi.json`, conditional | 2,063 | 104,708 | +4,977% | 49.6 ms | 1.78 ms |
+| `POST /batch`, three reads | 13,339 | 14,316 | +7% | 9.40 ms | 17.4 ms |
+| Mixed: 80% change reads, 15% lists, 5% writes | 21,143 | 44,542 | +111% | 8.35 ms | 4.52 ms |
+| `POST` an issue | 3,512 | 43,742 | +1,145% | 43.2 ms | 8.52 ms |
+| `POST` an issue with an `Idempotency-Key` | 4,070 | 41,375 | +917% | 41.5 ms | 12.4 ms |
+| `POST` a review | 23,671 | 40,006 | +69% | 11.9 ms | 6.45 ms |
+| `POST` a check run | 31,643 | 42,000 | +33% | 9.40 ms | 6.33 ms |
+| `POST` a token, then revoke it | 7,073 | 8,903 | +26% | 11.9 ms | 9.59 ms |
+
+Zero errors in every scenario.
+
+### Where it did not move
+
+- **Search with 500 different queries is level with before (−4%) and its p99 roughly doubled** (5.0 to 9.6 ms). Every distinct query is computed from scratch. We made scoring cheaper and snippets lazy and it did not move this row, so we do not know yet what the tail is made of; it is the one scenario we left worse than we found it.
+- **`POST /batch` of three reads is +7% with a worse p99** (9.4 to 17 ms). It was a single bad window in one run and we have not shown that, so treat it as unexplained too.
+- **Events, sync and policy rose only 13–21%.** They were already close to the cost of one HTTP round trip in this runtime, so there was little left to remove.
+- **Uploads have no honest "before".** The baseline's in-memory blob store hit its cap and 150,007 of its requests failed, so its 29,990 req/s counted failures. Now a 100 KB upload (announce, then PUT) runs at 12,109 per second with zero errors. The blob store here discards the bytes, so it measures the signed address, the type, size and magic-byte checks, hashing and the response, and not storage.
+
+### Beyond requests per second
+
+| Measure | Before | Now |
+| --- | --- | --- |
+| One hot read as connections grow (8 to 2,048) | ~30,000/s | 50,500–52,800/s, p99 78 ms at 2,048 |
+| 1,000 long-polling readers answered after one write | 25–27 ms | 25–36 ms |
+| 1,000 open event streams, one write, last delivery | 13 ms | 28 ms |
+| 3,000 writes with a webhook subscribed | 1,363 writes/s | 20,732 writes/s |
+| Server CPU per write, including its delivery | 824 µs | 79 µs |
+| Sign-in steps (consent, approve, exchange, rotate) | 0.07–0.08 ms each | 0.05 ms each |
+
+Throughput stays flat from 8 to 2,048 connections and latency grows in line with the queue (p50 38 ms at 2,048 connections is 2,048 requests waiting for one core). Nothing falls over and no request fails. The fan-out rows are within a few tens of milliseconds of each other and the event-stream row is slower by 15 ms (13 to 28 ms; 18 in the previous run), which we put down to noise because it is one write observed once, but have not shown.
+
+### Memory
+
+Writes got ten times faster, so the same five seconds now create ten times the data, and the benchmark's server ends the run holding about 1.1 GB (720 MB of live heap) after creating several hundred thousand issues, reviews and check runs. To judge the cost of the data itself, create 100,000 issues in an otherwise idle server:
+
+| | Before this pass | Now |
+| --- | ---: | ---: |
+| Live heap | 168 MB | **109 MB** |
+| Resident memory right after | 585 MB | **348 MB** (243 MB after 4 s idle) |
+| With an `Idempotency-Key` on each | not measured | 135 MB heap |
+| Per issue, with its event | 1.3 KB | 0.7 KB |
+
+What changed:
+
+- **The event log keeps text, not objects.** An event is one JSON string (about 900 characters) plus four fields to filter on, instead of a nested object of a dozen values (about 1.7 KB). The stream and the list copy that text straight into the response, so reading got cheaper too. The window is bounded by size as well as count: 24 MB of event text or 50,000 events, whichever is smaller.
+- **Idempotency keys are bounded by size too**: 24 MB of stored responses or 100,000 keys, oldest first. A retry that arrives after its key was dropped runs again, which only happens to a retry that comes a very long time after the original.
+- **The search index uses integers, not strings.** Documents get a number, each word points at a sorted list of numbers, and an update touches only the words that changed. Words whose last document is gone leave the vocabulary. Cached results are limited to 150,000 hits in total.
+- **Revoked tokens are limited** to the newest 50,000; older ones answer `token_invalid` instead of `token_revoked`, and still do not work. Tokens are indexed by owner, so listing yours no longer reads everyone's.
+- **Uploads that were announced and never sent are forgotten** when their hour is up, and counting a person's pending uploads is a lookup, not a scan.
+
+Resident memory sits above the heap because the runtime hands pages back slowly: 100,000 requests' worth of garbage is released over a few seconds. Setting `BUN_JSC_forceRAMSize` to the container's memory limit makes it collect earlier; in our test it lowered the peak from 547 MB to 414 MB for the same work. On Railway set it to the service's memory limit in bytes.
+
+### Where the time went
+
+We profiled the server under each scenario and fixed what was at the top:
+
+- **Lists** serialized and hashed all 50 items on every request. Each item (change or issue) is serialized once per version, kept in a bounded cache, and the list's `ETag` is built from the items' digests, so a list is 50 lookups and a join.
+- **Writes** repeated scans: finding an open issue by title, an open change by branch, counting a repository's items, finding a person's pending uploads or active tokens. These are indexes and counters now.
+- **The OpenAPI document** was rebuilt for every request. It is built once and answered with a `304` for a matching `ETag`.
+- **Per request overhead**: parsing the timeout duration, drawing random bytes for every id (now a pooled source), hashing a token for every lookup (a lookup cache by raw token string), formatting the same millisecond as a date and as an id several times (the last answer is kept), adding CORS headers when there is no `Origin`.
+- **Search** scores a candidate from its title and reads the body only when a phrase asks for it, makes snippets only for the 50 hits on the page, and keeps a cached result when the writes since it was made could not match it.
+
+## Against other forges, from a client
+
+Everything above is our code on a laptop. To see where a request stands against the others, `bun scripts/probe-competitors.ts` reads each service's public API the way a client does: one request after another on a kept-alive connection, from one machine (Europe, a home network), on 7 November 2026. It only reads, politely: GitHub with a personal token (5,000 an hour), everything else anonymously, with fewer samples where a service has low limits or heavy lists.
+
+| Service | Request | Samples | p50 | p95 | p99 | p50 minus round trip | Size |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| GitHub | API root | 50 | 233 ms | 281 ms | 476 ms | ~206 ms | 2.3 KB |
+| GitHub | One issue | 50 | 324 ms | 373 ms | 409 ms | ~297 ms | 4.2 KB |
+| GitHub | One pull request | 50 | 327 ms | 436 ms | 502 ms | ~300 ms | 22.7 KB |
+| GitHub | One issue, If-None-Match (304) | 50 | 316 ms | 368 ms | 499 ms | ~289 ms | none |
+| GitHub | List of 50 issues | 50 | 614 ms | 753 ms | 779 ms | ~587 ms | 341.5 KB |
+| GitHub | List of 50 pull requests | 50 | 803 ms | 1052 ms | 1199 ms | ~776 ms | 1088.6 KB |
+| GitHub | Search (issues, 50) | 15 | 933 ms | 1068 ms | 1068 ms | ~906 ms | 258.2 KB |
+| git.cafe | Repository | 50 | 125 ms | 131 ms | 137 ms | ~8 ms | 0.3 KB |
+| git.cafe | One issue | 50 | 129 ms | 139 ms | 176 ms | ~12 ms | 1.3 KB |
+| git.cafe | List of issues (7) | 50 | 135 ms | 145 ms | 158 ms | ~18 ms | 13.2 KB |
+| git.cafe | List of pull requests (1) | 50 | 136 ms | 186 ms | 216 ms | ~19 ms | 0.8 KB |
+| git.cafe | One pull request | 50 | 142 ms | 189 ms | 225 ms | ~25 ms | 1.5 KB |
+| git.cafe | Explore (5 repositories) | 50 | 121 ms | 162 ms | 1361 ms | ~4 ms | 1.2 KB |
+| GitLab | Project | 50 | 251 ms | 329 ms | 366 ms | ~242 ms | 1.0 KB |
+| GitLab | One issue | 50 | 303 ms | 386 ms | 495 ms | ~295 ms | 3.1 KB |
+| GitLab | One merge request | 50 | 323 ms | 455 ms | 573 ms | ~315 ms | 7.4 KB |
+| GitLab | One issue, If-None-Match (304) | 50 | 278 ms | 376 ms | 452 ms | ~269 ms | none |
+| GitLab | List of 50 issues | 20 | 589 ms | 671 ms | 671 ms | ~580 ms | 234.1 KB |
+| GitLab | List of 50 merge requests | 20 | 471 ms | 686 ms | 686 ms | ~463 ms | 268.2 KB |
+| Codeberg | One issue | 30 | 164 ms | 253 ms | 253 ms | ~137 ms | 3.3 KB |
+| Codeberg | One pull request | 30 | 363 ms | 481 ms | 591 ms | ~336 ms | 7.9 KB |
+| Codeberg | List of 50 issues | 6 | 2538 ms | 2852 ms | 2852 ms | ~2511 ms | 219.4 KB |
+| Codeberg | List of 50 pull requests | 4 | 14758 ms | 17899 ms | 17899 ms | ~14731 ms | 1244.1 KB |
+| Gitea | One issue | 20 | 196 ms | 335 ms | 335 ms | ~6 ms | 1.4 KB |
+| Gitea | List of 50 issues | 5 | 894 ms | 1059 ms | 1059 ms | ~704 ms | 166.7 KB |
+| Bitbucket | Repository | 8 | 240 ms | 540 ms | 540 ms | ~231 ms | 3.0 KB |
+| Bitbucket | One pull request | 8 | 514 ms | 763 ms | 763 ms | ~506 ms | 11.0 KB |
+| Bitbucket | List of 50 pull requests | 6 | 2495 ms | 2951 ms | 2951 ms | ~2486 ms | 657.9 KB |
+
+"p50 minus round trip" subtracts the TCP connect time to each host measured from the same machine (GitHub 27 ms, git.cafe 117 ms, GitLab 8.5, Codeberg 27, Gitea 190, Bitbucket 8.5). It is a rough picture of what the service and its edge spent, not a precise one. Rows with 4 to 8 samples are indications.
+
+What to take from it:
+
+- **Reading one object takes from about 10 ms to about 300 ms of service time, depending on the service.** git.cafe is the fastest by a wide margin (8–25 ms beyond the network); GitHub and GitLab take about 300 ms for a single issue; Bitbucket's pull request takes about 500 ms.
+- **A `304` is not faster on GitHub or GitLab.** The same issue answered `304 Not Modified` in the same time as with a body (316 ms against 324 ms on GitHub, 278 ms against 303 ms on GitLab), so a conditional request saves bandwidth and rate-limit units but not time. Ours answers a `304` without building anything (see below).
+- **Lists of 50 cost 0.5 to 15 seconds and 160 KB to 1.2 MB.** GitHub's 50 pull requests are 1.09 MB; Codeberg's are 1.24 MB and took 14.8 seconds. Ours is 60 KB for 50 changes with their policy and checks, and 5 KB with `fields`.
+- **The same object is smaller.** A GitHub pull request is 22.7 KB; our change is 1.8 KB, an issue is 331 bytes against 4.2 KB, and `Accept: text/markdown` is 589 bytes.
+- **GitHub's search took 933 ms** for a page of 50.
+
+These are public, popular repositories on services that run a CDN or caches in front of them, read anonymously or with a token. Our figures in the next section are a model of a service that does not exist yet. Compare them as "what each one does for a request", not as a ranking.
+
+## Over a network: what we expect on Railway
+
+The hosted service has not been built, so this section is a simulation. `bun scripts/api-network.ts` runs the same server behind a TCP proxy that delays every chunk by half a round trip each way, and times one client doing one request after another. Two things are modelled, not measured, and the numbers move if the assumptions do:
+
+1. **Distance.** The proxy adds the round trip on a kept-alive connection. A new connection also pays a TCP round trip and a TLS round trip before the first byte (2 × RTT, computed, without the CPU cost of TLS). With HTTP/2 or a kept-alive connection a client pays that once. The proxy itself adds a millisecond or three, so read each cell as ±4 ms.
+2. **The database.** Today everything is in memory. Once the data is in Convex, a request that misses our caches asks it. We assume **15 ms per round trip** to the database from the API process (Convex and the API in the same region; measure it before relying on it). A read served from the body cache, or answered with a `304`, never leaves the node and pays nothing. A list, a search or a start-up bundle is one query. A write is two (read, then commit).
+
+p50 / p99 in milliseconds, kept-alive connection:
+
+| Request | DB reads | Same machine | RTT 5 ms | RTT 30 ms | RTT 90 ms | RTT 180 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| One change, from the body cache | 0 | 0 / 0 | 5 / 5 | 34 / 36 | 94 / 95 | 185 / 186 |
+| One change, If-None-Match (304) | 0 | 0 / 0 | 5 / 8 | 34 / 35 | 94 / 95 | 185 / 185 |
+| One change, not cached | 1 | 18 / 23 | 22 / 24 | 50 / 53 | 111 / 112 | 201 / 202 |
+| List of 50 changes | 1 | 18 / 21 | 23 / 26 | 51 / 54 | 112 / 112 | 201 / 204 |
+| Search, 50 results | 1 | 18 / 20 | 23 / 25 | 51 / 54 | 111 / 112 | 201 / 202 |
+| POST an issue | 2 | 33 / 36 | 38 / 43 | 66 / 70 | 126 / 127 | 216 / 220 |
+| Agent start-up: context | 1 | 17 / 21 | 23 / 30 | 51 / 52 | 111 / 112 | 202 / 210 |
+
+Reading it:
+
+- **A cached read or a `304` costs the round trip and about a millisecond.** From a client 30 ms away that is 34 ms; from one 180 ms away, 185 ms. Most reads of an object that someone is watching are these.
+- **An uncached read, a list, a search and the start-up bundle cost the round trip plus one database read** (about 17–20 ms more), and **a write costs two** (about 33 ms more).
+- **The p99 stays within a few milliseconds of the p50**, because the work per request is small and constant. That is true of this model; a real database has a tail of its own.
+- **The first request on a new connection costs 2 more round trips** (TCP and TLS): 545 ms for a cached read at 180 ms away. The client library keeps connections open; a script that opens a new one for each call pays this every time.
+
+### On Railway specifically
+
+Railway runs a service as a container on shared cloud cores, behind its own edge proxy, in the region you choose. We do not know yet and have not measured:
+
+- **The core.** An Apple M5 core is much faster than a typical cloud vCPU. Plan for a cached read to cost 2 to 4 times the CPU it does here, so **roughly 25,000 to 55,000 cached reads a second per core** instead of 110,000. The server is one process on one core; a service with several vCPUs should run several processes (or replicas), which the design allows because nothing the API process holds is needed for correctness.
+- **The edge.** Railway's proxy adds a hop and its TLS. Assume 1 to 5 ms on top of the figures above.
+- **The region.** Put the API in the region closest to most callers and Convex in the same one. A client in Europe talking to a service in Europe is the RTT 5–30 ms columns; the same client talking to us-east is the RTT 90 ms column.
+- **Memory.** Set `BUN_JSC_forceRAMSize` to the service's memory limit, as above.
+
+Put together, for a caller 30 ms away we would expect about **35 ms for a cached read, 50 ms for an uncached read or a list, and 70 ms for a write**, against 300 ms for one issue on GitHub and GitLab and 125–142 ms on git.cafe measured from a client 117 ms away. The reason is not that the code is cleverer than theirs; it is that what a client asks for most often is answered from the memory of the node that it reached.
+
+## Targets for the hosted service
+
+These are goals, set before there is anything to measure them against, and published on the status page once there is.
+
+| Kind                  | p50    | p99    |
+| --------------------- | ------ | ------ |
+| Read one object       | 40 ms  | 250 ms |
+| Read a list of 50     | 80 ms  | 400 ms |
+| Write                 | 120 ms | 600 ms |
+| Anything slower       | becomes a `202` operation |
+
+## What the design does for speed
+
+- **A body is built once per version.** A read of an object is keyed by its `version` and who is asking. The answer is serialized once and served from a cache until the version moves. Because versions only go up, an entry is never stale, only superseded, so there is no invalidation to get wrong. The cache key includes what the caller can do, because `actions` depends on it.
+- **Reads decide before they build.** The `ETag` is the version plus what shaped the answer (`fields`, filters, the caller's abilities). A matching `If-None-Match` is answered before any body exists.
+- **No repeated work for the common screen.** Rollups on a change (`checks`, `policy`, `stack`, `reviewers`) remove the fetch-per-item pattern.
+- **Keyset pagination over ordered indexes.** A page costs the same at any depth. No counts, no offsets.
+- **Waiting is registered per repository.** An event wakes only the clients watching that repository. 2,000 waiters on one change, one event, 39 ms to answer all of them in the test.
+- **Nothing blocks.** Work that can take more than a few seconds is an operation. Every handler runs under a 5 second budget and fails with `503` and `Retry-After` past it.
+- **Server-Timing on every response**, so slow is something you can see.
+
+## What the design does for many clients
+
+The API process holds no state that correctness depends on. The pieces that must be shared sit behind interfaces, so adding nodes is adding processes:
+
+| Concern             | How                                                                                       | State of it |
+| ------------------- | ----------------------------------------------------------------------------------------- | ----------- |
+| Rate limits         | Counter in a shared store, leased to nodes in blocks. See [Rate limits](/docs/api/rate-limits#how-it-works-with-many-clients). | Built on Convex (`convex/apiStores.ts`) and tested against Convex's in-memory runtime, including asks that arrive together. Not yet run against a live deployment or measured across nodes. |
+| Idempotency keys    | A shared store; the first request claims the key in one transaction | Built on Convex and tested the same way, including two nodes racing for one key. |
+| Event log, waiters  | One log; waiters per repository                                                           | In memory, one process. A shared log is a roadmap item. |
+| Reads               | Version-keyed body cache per node                                                         | Built.      |
+| Public reads        | Anonymous reads carry `Cache-Control: public, must-revalidate` and an `ETag`, so a CDN can revalidate them cheaply | Headers set; no CDN in front yet. Git data addressed by a full commit id is `immutable` but `private`, so a shared cache will not keep it. |
+
+Concurrency per token is a per-node guard. It limits one client opening hundreds of connections, and it is the only limit that is not shared.
+
+## Scaling the preview honestly
+
+One process on one core does tens of thousands of cached reads a second. The hosted service will be bound by its database and the git store, not by this layer. That is the point of the numbers above: the API should not be where time goes.
+
+What is not measured: several API nodes sharing the Convex stores (the stores are built and tested, but nothing has driven them from more than one process under load), the event log, tokens and OAuth state across nodes (still in memory), and anything over hours.

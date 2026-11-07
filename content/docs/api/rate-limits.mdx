@@ -1,0 +1,83 @@
+---
+icon: BoltIcon
+title: Rate limits
+description: Every limit is published, every response says what is left, and a 304 costs nothing.
+---
+
+There is one system, and it is written down. A request is never refused for a reason you cannot read in this page or in `GET /v1/limits`. If we ever have to block abuse, the answer is a `403` with a way to reach a person, not a throttle you have to guess at.
+
+## Pools
+
+A request draws from one pool. Pools are separate so that a heavy loop cannot starve ordinary calls.
+
+| Pool        | Covers                                          | Starting limit, per token |
+| ----------- | ----------------------------------------------- | ------------------------- |
+| `read`      | Objects, lists, events, sync                    | 1,200 per minute          |
+| `write`     | Anything that changes state                     | 120 per minute            |
+| `heavy`     | Comparing patch sets, large diffs, archives     | 120 per minute            |
+| `search`    | Search                                          | 60 per minute             |
+| `anonymous` | Any request without a token, per client address | 60 per minute             |
+
+These are **starting values**, to be tuned against real traffic. They are served by `GET /v1/limits`, so read them from there. Each operation names its pool and its cost in units (`x-sx-pool`, `x-sx-cost` in the OpenAPI document, and in the [reference](/docs/api/reference/changes)). Most cost one unit.
+
+The [OAuth](/docs/api/oauth#errors) endpoints have their own limits per client address, because they are open to anyone: 20 registrations an hour, 120 token requests a minute, 30 device codes a minute, 10 user-code guesses per 15 minutes. An upload to a signed address costs 2 units of `write`.
+
+Not limited: `GET /v1`, `/v1/limits`, `/v1/errors`, `/v1/openapi.json`, `/v1/auth/principal`, and git transport (clone, fetch, push).
+
+## Headers
+
+Every response says where you stand, using the IETF `RateLimit` header fields:
+
+```http
+RateLimit-Policy: "read";q=1200;w=60
+RateLimit: "read";r=1187;t=41
+```
+
+`q` is the limit, `w` the window in seconds, `r` what is left, `t` seconds until it resets. `r` counts the units this node can still give you, so it is a lower bound when a token is used on several nodes.
+
+## When you hit it
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 41
+RateLimit: "read";r=0;t=41
+```
+
+```json
+{
+  "code": "rate_limited",
+  "retryable": true,
+  "pool": "read",
+  "limit": 1200,
+  "window_seconds": 60,
+  "retry_after_seconds": 41
+}
+```
+
+Wait `Retry-After` seconds and send the same request. Do not retry sooner: there is no penalty beyond the wait, and no penalty for waiting less than you could have.
+
+## Things that cost nothing
+
+- **`304 Not Modified`.** A conditional read that finds nothing new is refunded. Cache with `ETag` and polling becomes free. Use [`wait`](/docs/api/events-and-sync#waiting-instead-of-polling) and it is also instant.
+- **Replays.** A repeat with the same `Idempotency-Key` does the work once.
+
+## Concurrency
+
+A token may have 20 requests in flight on one API node. More are turned away with `429 concurrency_limited` and `Retry-After: 1`. It guards against a client that opens hundreds of connections at once. It is per node because exact global concurrency would cost a shared write for every request and every response. The pools above bound the total.
+
+## Agents
+
+An agent's token draws from its own budget, inside the organization's total, so a runaway agent loop cannot use up what the people on the team need. A run token, which is limited to one repository and one run, gets a small budget of its own. Per-pool numbers for agents will be published here when they are set.
+
+## How it works with many clients
+
+The limiter is built to run on many API nodes at once.
+
+1. A shared store holds one counter per token, pool and window. It never grants more than the limit, so the total admitted across all nodes can not pass it.
+2. A node does not ask the store on every request. It **leases** a block of units (a twentieth of the limit, at most 50), spends them locally, and asks again when they run out. The store sees one write per block, not one per request.
+3. The cost is that units leased and not spent are lost until the window ends. A token spread over N nodes can be under-served by at most N times the block.
+4. When the store has nothing left for a node, the node denies locally until the window resets. A flood of denied requests does not become a flood of writes.
+
+In a test, four nodes sharing one store admitted 1,000 of 3,000 requests against a limit of 1,000 and asked the store fewer than 60 times. 20,000 requests against a limit of 100 made fewer than 40 store calls. The store is an interface (`LimitStore`). The preview uses one in memory; with `CONVEX_URL` and `API_STORE_SECRET` set it uses `ConvexLimitStore`, one mutation per block on a table of windows, so nodes are ordered by the database and cannot both be told yes to the last unit. The same tests pass against both, including twenty asks arriving at once for a limit of fifty. If the store cannot be reached, each node admits a block of 1% of the limit by itself until it can, rather than failing every request; if the store says the secret is wrong, that is an error, not an outage.
+
+The client address for anonymous limits is the one our proxy appended to `X-Forwarded-For`, never what the caller wrote at the start of it, so a client cannot get a fresh budget by lying.

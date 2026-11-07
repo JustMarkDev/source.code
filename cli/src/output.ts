@@ -7,6 +7,8 @@
  *    stable `code` and a `hint` that says what to run next.
  */
 
+import type { ApiClient } from './client'
+
 export const exit = {
   ok: 0,
   error: 1,
@@ -32,6 +34,8 @@ export type Ctx = {
   json: boolean
   out: (s: string) => void
   err: (s: string) => void
+  /** The API client for this run. Made on first use. */
+  api: () => ApiClient
 }
 
 export function wantsJson(flags: Record<string, string | boolean>) {

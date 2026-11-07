@@ -1,0 +1,355 @@
+---
+icon: KeyIcon
+title: Tokens and authorizations
+description: Create, list and revoke tokens, and see the applications you have authorized.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `authorizations.list`
+
+`GET /authorizations`
+
+**Applications you have authorized**
+
+The OAuth grants on your account: which application, what it may do, when it was last used.
+
+| About      |                                  |
+| ---------- | -------------------------------- |
+| Safety     | `read`, safe to repeat           |
+| Needs      | a token                          |
+| Scopes     | `tokens:manage`                  |
+| Rate limit | `read` pool, 1 unit              |
+| Success    | `200`, a list of `authorization` |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/authorizations" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"IVFlxdfcseXhXZJR"
+ratelimit: "read";r=1173;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "authorization",
+      "id": "atz_01m6tq6r803jhhvsrf",
+      "client": {
+        "id": "cl_q0pc72sUknJ-ePzmCngJ",
+        "name": "My agent"
+      },
+      "scopes": ["repo:read", "pulls:read"],
+      "audience": ["api", "mcp"],
+      "url": "https://api.source.code/v1/authorizations/atz_01m6tq6r803jhhvsrf",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "last_used_at": null
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `authorizations.revoke`
+
+`DELETE /authorizations/{id}`
+
+**Revoke an application**
+
+Every access and refresh token the application holds stops working at once.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `tokens:manage`               |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, a JSON document        |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/authorizations/atz_01m6tq6r803jhhvsrf" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=105;t=60
+```
+
+### `tokens.list`
+
+`GET /tokens`
+
+**Your tokens**
+
+Personal, bot and run tokens that belong to you, newest first. Never includes the secret.
+
+| About      |                          |
+| ---------- | ------------------------ |
+| Safety     | `read`, safe to repeat   |
+| Needs      | a token                  |
+| Scopes     | `tokens:manage`          |
+| Rate limit | `read` pool, 1 unit      |
+| Success    | `200`, a list of `token` |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/tokens" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"M5sQSA75o7F_5SYA"
+ratelimit: "read";r=1175;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "token",
+      "id": "tok_01m6tkrwm0bw4d69nd",
+      "name": "dana",
+      "kind": "personal",
+      "class": "human",
+      "scopes": ["repo:read", "repo:write", "…and 13 more"],
+      "repos": null,
+      "prefix": "sxp_dana",
+      "secret": null,
+      "url": "https://api.source.code/v1/tokens/tok_01m6tkrwm0bw4d69nd",
+      "expires_at": "2027-11-07T10:00:00.000Z",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "last_used_at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "object": "token",
+      "id": "tok_01m6tkrwm05vjqm28a",
+      "name": "limited",
+      "kind": "personal",
+      "class": "human",
+      "scopes": ["repo:read", "repo:write", "…and 13 more"],
+      "repos": ["dana/tinyqueue"],
+      "prefix": "sxp_dana",
+      "secret": null,
+      "url": "https://api.source.code/v1/tokens/tok_01m6tkrwm05vjqm28a",
+      "expires_at": "2027-11-07T10:00:00.000Z",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "last_used_at": null
+    },
+    "…and 2 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `tokens.create`
+
+`POST /tokens`
+
+**Create a token**
+
+The response is the only time the secret is shown. A token can never have a scope its creator lacks, never outlives a year, and a token limited to repositories can only create tokens limited to the same ones.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `tokens:manage`                     |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `token`                    |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member            | Type                                                                                                                                                                                                                                                                                   | Notes                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `name`            | string (up to 100 characters, at least 1)                                                                                                                                                                                                                                              | Required.                                            |
+| `scopes`          | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` | Required.                                            |
+| `expires_in_days` | `30` or `60` or `90` or `365`                                                                                                                                                                                                                                                          | Default `90`.                                        |
+| `repos`           | array of string (pattern)                                                                                                                                                                                                                                                              | `owner/name`. Limits the token to these repositories |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/tokens" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"ci","scopes":["repo:read","pulls:read"],"expires_in_days":30,"repos":["dana/gitfs"]}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb
+ratelimit: "write";r=107;t=60
+```
+
+```json
+{
+  "object": "token",
+  "id": "tok_01m6tq6r80jm2pgnhb",
+  "name": "ci",
+  "kind": "personal",
+  "class": "human",
+  "scopes": ["repo:read", "pulls:read"],
+  "repos": ["dana/gitfs"],
+  "prefix": "sxp_U8Ja",
+  "secret": "sxp_U8Ja1R9AD6LEpfHvW2qiuC1b8QxPoape",
+  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb",
+  "expires_at": "2026-12-07T10:00:00.000Z",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "last_used_at": null
+}
+```
+
+### `tokens.revoke`
+
+`DELETE /tokens/{id}`
+
+**Revoke a token**
+
+It stops working at once. Revoking a token that is already revoked answers 404.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `tokens:manage`               |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, a JSON document        |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=106;t=60
+```
+
+### `tokens.get`
+
+`GET /tokens/{id}`
+
+**One of your tokens**
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `tokens:manage`        |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `token`       |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"hSUCuGvgqjH_ffOk"
+ratelimit: "read";r=1174;t=60
+```
+
+```json
+{
+  "object": "token",
+  "id": "tok_01m6tq6r80jm2pgnhb",
+  "name": "ci",
+  "kind": "personal",
+  "class": "human",
+  "scopes": ["repo:read", "pulls:read"],
+  "repos": ["dana/gitfs"],
+  "prefix": "sxp_U8Ja",
+  "secret": null,
+  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb",
+  "expires_at": "2026-12-07T10:00:00.000Z",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "last_used_at": null
+}
+```

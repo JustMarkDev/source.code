@@ -1,0 +1,28 @@
+{
+  "title": "API",
+  "pages": [
+    "index",
+    "quickstart",
+    "authentication",
+    "oauth",
+    "requests-and-responses",
+    "pagination-and-filters",
+    "errors",
+    "writes",
+    "events-and-sync",
+    "webhooks",
+    "repositories",
+    "runs",
+    "search",
+    "uploads",
+    "rate-limits",
+    "performance",
+    "versioning",
+    "agents",
+    "sdk",
+    "compared",
+    "roadmap",
+    "reference"
+  ],
+  "icon": "CodeBracketIcon"
+}

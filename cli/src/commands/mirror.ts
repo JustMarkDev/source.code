@@ -1,18 +1,30 @@
 import { resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
-import { store } from '../fixtures'
 import type { Command } from './types'
 
-export const mirror: Command = (
+type Mirror = {
+  id: string
+  host: string
+  slug: string
+  direction: string
+  state: string
+  last_sync_at: string
+}
+
+export const mirror: Command = async (
   { rest: [sub = 'list', ...rest], flags },
   ctx,
 ) => {
-  resolveRepo(str(flags, 'repo'))
+  const repo = resolveRepo(str(flags, 'repo'))
+  const api = ctx.api()
+  const dry = has(flags, 'dry-run')
   if (sub === 'list') {
-    print(ctx, store.mirrors, () =>
+    const rows = (await api.get(`${repo.path}/mirrors`)).json
+      .data as Array<Mirror>
+    print(ctx, rows, () =>
       table(
-        store.mirrors.map((m) => [m.id, m.host, m.slug, m.direction, m.state]),
+        rows.map((m) => [m.id, m.host, m.slug, m.direction, m.state]),
         ['ID', 'HOST', 'REPO', 'DIRECTION', 'STATE'],
       ),
     )
@@ -27,46 +39,39 @@ export const mirror: Command = (
         'Example: sx mirror add codeberg dana/gitfs --direction push',
         exit.usage,
       )
-    const dupe = store.mirrors.find((m) => m.host === host && m.slug === slug)
-    const created = dupe ?? {
-      id: `m${store.mirrors.length + 1}`,
-      host,
-      slug,
-      direction:
-        (str(flags, 'direction') as 'push' | 'pull' | 'two-way' | undefined) ??
-        'push',
-      state: 'in-sync' as const,
-      lastSync: new Date().toISOString(),
-    }
-    if (!dupe && !has(flags, 'dry-run')) store.mirrors.push(created)
+    const r = await api.post(`${repo.path}/mirrors`, {
+      body: { host, slug, direction: str(flags, 'direction') ?? 'push' },
+      dryRun: dry,
+    })
+    const created = r.headers.get('sx-outcome') === 'created'
     print(
       ctx,
-      { ...created, created: !dupe },
-      () => `${dupe ? 'already mirrored' : 'added'} ${host}:${slug}`,
+      { ...r.json, created },
+      () => `${created ? 'added' : 'already mirrored'} ${host}:${slug}`,
     )
     return
   }
-  const m = store.mirrors.find((x) => x.id === rest.at(0))
-  if (!m)
+  const id = rest.at(0)
+  if (!id)
     throw new SxError(
       'mirror_not_found',
-      `No mirror ${rest.at(0) ?? ''}.`,
+      `mirror ${sub} needs an id.`,
       'sx mirror list shows ids.',
       exit.notFound,
     )
   if (sub === 'sync') {
-    m.state = 'in-sync'
-    m.lastSync = new Date().toISOString()
+    const m = (
+      await api.post(`${repo.path}/mirrors/${id}/sync`, { dryRun: dry })
+    ).json as Mirror
     print(ctx, m, () => `synced ${m.host}:${m.slug}`)
     return
   }
   if (sub === 'remove') {
-    if (!has(flags, 'dry-run'))
-      store.mirrors.splice(store.mirrors.indexOf(m), 1)
+    await api.del(`${repo.path}/mirrors/${id}`, { dryRun: dry })
     print(
       ctx,
-      { removed: m.id },
-      () => `removed ${m.host}:${m.slug}. History here is untouched.`,
+      { removed: id },
+      () => `removed ${id}. History here is untouched.`,
     )
     return
   }

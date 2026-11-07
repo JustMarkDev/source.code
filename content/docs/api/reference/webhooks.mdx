@@ -1,0 +1,793 @@
+---
+icon: ArrowPathIcon
+title: Webhooks
+description: Create an endpoint, watch deliveries, send one again, replay what was missed.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `webhooks.list`
+
+`GET /repos/{owner}/{repo}/webhooks`
+
+**Webhooks on a repository**
+
+| About      |                            |
+| ---------- | -------------------------- |
+| Safety     | `read`, safe to repeat     |
+| Needs      | a token                    |
+| Scopes     | `webhooks:read`            |
+| Rate limit | `read` pool, 1 unit        |
+| Success    | `200`, a list of `webhook` |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"rtfjSVnUbDR0q7Vz"
+ratelimit: "read";r=1172;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "webhook",
+      "id": "whk_01m6tq6r80tkff2y77",
+      "repo": "dana/gitfs",
+      "endpoint": "https://hooks.example.com/source-code",
+      "description": "Chat bridge",
+      "events": ["change.*", "issue.created"],
+      "active": true,
+      "disabled_reason": null,
+      "secret": null,
+      "last_delivery": null,
+      "html_url": "https://source.code/dana/gitfs/settings",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "updated_at": "2026-11-07T10:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `webhooks.create`
+
+`POST /repos/{owner}/{repo}/webhooks`
+
+**Create a webhook**
+
+The URL must be https and must not point at a private, loopback or link-local address. The response is the only time the signing secret is shown. A repository can have 10.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `webhooks:write`                    |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `webhook`                  |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                           | Notes                                                                                         |
+| ------------- | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| `endpoint`    | string (up to 2000 characters) | Required.                                                                                     |
+| `events`      | array of string (pattern)      | Required. Event types, such as `change.landed`. `change.*` matches the family, `*` everything |
+| `description` | string (up to 200 characters)  |                                                                                               |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint":"https://hooks.example.com/source-code","events":["change.*","issue.created"],"description":"Chat bridge"}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77
+ratelimit: "write";r=104;t=60
+```
+
+```json
+{
+  "object": "webhook",
+  "id": "whk_01m6tq6r80tkff2y77",
+  "repo": "dana/gitfs",
+  "endpoint": "https://hooks.example.com/source-code",
+  "description": "Chat bridge",
+  "events": ["change.*", "issue.created"],
+  "active": true,
+  "disabled_reason": null,
+  "secret": "whsec_gFFNvz8OxXK7u4jWaNztVEL4g93c0Q8z",
+  "last_delivery": null,
+  "html_url": "https://source.code/dana/gitfs/settings",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `webhooks.delete`
+
+`DELETE /repos/{owner}/{repo}/webhooks/{webhook}`
+
+**Delete a webhook**
+
+Pending deliveries are dropped.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `webhooks:write`              |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, a JSON document        |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=97;t=60
+```
+
+### `webhooks.get`
+
+`GET /repos/{owner}/{repo}/webhooks/{webhook}`
+
+**One webhook**
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `webhooks:read`        |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `webhook`     |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ulQr5QjBDhFqxuvk"
+ratelimit: "read";r=1171;t=60
+```
+
+```json
+{
+  "object": "webhook",
+  "id": "whk_01m6tq6r80tkff2y77",
+  "repo": "dana/gitfs",
+  "endpoint": "https://hooks.example.com/source-code",
+  "description": "Chat bridge",
+  "events": ["change.*", "issue.created"],
+  "active": true,
+  "disabled_reason": null,
+  "secret": null,
+  "last_delivery": null,
+  "html_url": "https://source.code/dana/gitfs/settings",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `webhooks.update`
+
+`PATCH /repos/{owner}/{repo}/webhooks/{webhook}`
+
+**Change a webhook**
+
+Set `active: true` to turn a disabled endpoint back on. That also clears the failure count.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `webhooks:write`        |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `webhook`      |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                           | Notes                                                                               |
+| ------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
+| `endpoint`    | string (up to 2000 characters) |                                                                                     |
+| `events`      | array of string (pattern)      | Event types, such as `change.landed`. `change.*` matches the family, `*` everything |
+| `description` | string (up to 200 characters)  |                                                                                     |
+| `active`      | boolean                        |                                                                                     |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"events":["change.*","issue.*"]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=103;t=60
+```
+
+```json
+{
+  "object": "webhook",
+  "id": "whk_01m6tq6r80tkff2y77",
+  "repo": "dana/gitfs",
+  "endpoint": "https://hooks.example.com/source-code",
+  "description": "Chat bridge",
+  "events": ["change.*", "issue.*"],
+  "active": true,
+  "disabled_reason": null,
+  "secret": null,
+  "last_delivery": null,
+  "html_url": "https://source.code/dana/gitfs/settings",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
+}
+```
+
+### `webhooks.deliveries.list`
+
+`GET /repos/{owner}/{repo}/webhooks/{webhook}/deliveries`
+
+**Deliveries, newest first**
+
+Kept for 30 days, up to 1,000 per webhook.
+
+| About      |                             |
+| ---------- | --------------------------- |
+| Safety     | `read`, safe to repeat      |
+| Needs      | a token                     |
+| Scopes     | `webhooks:read`             |
+| Rate limit | `read` pool, 1 unit         |
+| Success    | `200`, a list of `delivery` |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Query parameters**
+
+| Name     | Type                                 | Notes                                                              |
+| -------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200)             | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                               | `next_cursor` from the previous page, exactly as returned          |
+| `state`  | `pending` or `succeeded` or `failed` |                                                                    |
+
+**Errors**
+
+[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries?limit=2" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"0t5v0mxPBTITsSPh"
+ratelimit: "read";r=1170;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "delivery",
+      "id": "dlv_01m6tq6r80v4v4fnp6",
+      "webhook": "whk_01m6tq6r80tkff2y77",
+      "event": {
+        "id": "evt_01m6tq6r80dpa202my",
+        "type": "issue.created",
+        "sequence": 13
+      },
+      "state": "succeeded",
+      "attempt_count": 1,
+      "attempts": null,
+      "payload": null,
+      "next_attempt_at": null,
+      "redelivery_of": null,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r80v4v4fnp6",
+      "created_at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "object": "delivery",
+      "id": "dlv_01m6tq6r808ys3zqs9",
+      "webhook": "whk_01m6tq6r80tkff2y77",
+      "event": {
+        "id": "evt_01m6tq6r80q2hk19pj",
+        "type": "webhook.ping",
+        "sequence": 0
+      },
+      "state": "succeeded",
+      "attempt_count": 1,
+      "attempts": null,
+      "payload": null,
+      "next_attempt_at": null,
+      "redelivery_of": null,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r808ys3zqs9",
+      "created_at": "2026-11-07T10:00:00.000Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `webhooks.deliveries.get`
+
+`GET /repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}`
+
+**One delivery, with every attempt and the payload**
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `webhooks:read`        |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `delivery`    |
+
+**Path parameters**
+
+| Name       | Type   | Notes |
+| ---------- | ------ | ----- |
+| `owner`    | string |       |
+| `repo`     | string |       |
+| `webhook`  | string |       |
+| `delivery` | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r80v4v4fnp6" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"C3h4UrmU5MGLo83H"
+ratelimit: "read";r=1169;t=60
+```
+
+```json
+{
+  "object": "delivery",
+  "id": "dlv_01m6tq6r80v4v4fnp6",
+  "webhook": "whk_01m6tq6r80tkff2y77",
+  "event": {
+    "id": "evt_01m6tq6r80dpa202my",
+    "type": "issue.created",
+    "sequence": 13
+  },
+  "state": "succeeded",
+  "attempt_count": 1,
+  "attempts": [
+    {
+      "number": 1,
+      "at": "2026-11-07T10:00:00.000Z",
+      "status": 200,
+      "error": null,
+      "duration_ms": 38
+    }
+  ],
+  "payload": {
+    "object": "event",
+    "id": "evt_01m6tq6r80dpa202my",
+    "sequence": 13,
+    "created_at": "2026-11-07T10:00:00.000Z",
+    "type": "issue.created",
+    "repo": "dana/gitfs",
+    "actor": {
+      "object": "actor",
+      "id": "acc_01m203xrm0bw4d69nd",
+      "handle": "dana",
+      "class": "human"
+    },
+    "subject": {
+      "object": "issue",
+      "id": "iss_01m6tq6r80cam0b954",
+      "number": 221
+    },
+    "changes": ["state"],
+    "data": {
+      "object": "issue",
+      "id": "iss_01m6tq6r80cam0b954",
+      "number": 221,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/issues/221",
+      "html_url": "https://source.code/dana/gitfs/issues/221",
+      "repo": {
+        "object": "repo",
+        "id": "rep_01m3kkw4m0zvf3zfc9",
+        "full_name": "dana/gitfs",
+        "url": "https://api.source.code/v1/repos/dana/gitfs"
+      },
+      "title": "A webhook will carry this",
+      "body": "",
+      "state": "open",
+      "author": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "labels": [],
+      "closed_at": null,
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "updated_at": "2026-11-07T10:00:00.000Z",
+      "version": 1
+    }
+  },
+  "next_attempt_at": null,
+  "redelivery_of": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r80v4v4fnp6",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `webhooks.deliveries.redeliver`
+
+`POST /repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}/redeliver`
+
+**Send a delivery again**
+
+Creates a new delivery of the same event. `webhook-id` is unchanged, so a receiver that deduplicates by it sees the same event.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `webhooks:write`                    |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `202`, a `delivery`                 |
+
+**Path parameters**
+
+| Name       | Type   | Notes |
+| ---------- | ------ | ----- |
+| `owner`    | string |       |
+| `repo`     | string |       |
+| `webhook`  | string |       |
+| `delivery` | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r80v4v4fnp6/redeliver" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 202
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r808bzk8j8h
+ratelimit: "write";r=100;t=60
+```
+
+```json
+{
+  "object": "delivery",
+  "id": "dlv_01m6tq6r808bzk8j8h",
+  "webhook": "whk_01m6tq6r80tkff2y77",
+  "event": {
+    "id": "evt_01m6tq6r80dpa202my",
+    "type": "issue.created",
+    "sequence": 13
+  },
+  "state": "pending",
+  "attempt_count": 0,
+  "attempts": null,
+  "payload": null,
+  "next_attempt_at": "2026-11-07T10:00:00.000Z",
+  "redelivery_of": "dlv_01m6tq6r80v4v4fnp6",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r808bzk8j8h",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `webhooks.ping`
+
+`POST /repos/{owner}/{repo}/webhooks/{webhook}/ping`
+
+**Send a test delivery**
+
+Sends a `webhook.ping` event so you can check the endpoint and your signature check. Answers 202 with the delivery.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `webhooks:write`                    |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `202`, a `delivery`                 |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/ping" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 202
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r808ys3zqs9
+ratelimit: "write";r=102;t=60
+```
+
+```json
+{
+  "object": "delivery",
+  "id": "dlv_01m6tq6r808ys3zqs9",
+  "webhook": "whk_01m6tq6r80tkff2y77",
+  "event": {
+    "id": "evt_01m6tq6r80q2hk19pj",
+    "type": "webhook.ping",
+    "sequence": 0
+  },
+  "state": "pending",
+  "attempt_count": 0,
+  "attempts": null,
+  "payload": null,
+  "next_attempt_at": "2026-11-07T10:00:00.000Z",
+  "redelivery_of": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/deliveries/dlv_01m6tq6r808ys3zqs9",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `webhooks.replay`
+
+`POST /repos/{owner}/{repo}/webhooks/{webhook}/replay`
+
+**Replay events the endpoint missed**
+
+Sends every event after `after_sequence` that this webhook subscribes to, oldest first, up to `limit`. Use the `last_sequence` it returns to continue. A lost delivery is never a manual job.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `webhooks:write`                    |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `202`, a `replay`                   |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Request body**
+
+| Member           | Type                                  | Notes          |
+| ---------------- | ------------------------------------- | -------------- |
+| `after_sequence` | integer (min 0, max 9007199254740991) | Required.      |
+| `limit`          | integer (min 1, max 1000)             | Default `100`. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/replay" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"after_sequence":0,"limit":50}'
+```
+
+```http
+HTTP/1.1 202
+ratelimit: "write";r=99;t=60
+```
+
+```json
+{
+  "object": "replay",
+  "queued": 10,
+  "last_sequence": 13
+}
+```
+
+### `webhooks.rotate_secret`
+
+`POST /repos/{owner}/{repo}/webhooks/{webhook}/rotate-secret`
+
+**Rotate the signing secret**
+
+Returns the new secret once. Deliveries are signed with both the new and the old secret for 24 hours, so a receiver can switch without dropping events.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `webhooks:write`                    |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `200`, a `webhook`                  |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `webhook` | string |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77/rotate-secret" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=98;t=60
+```
+
+```json
+{
+  "object": "webhook",
+  "id": "whk_01m6tq6r80tkff2y77",
+  "repo": "dana/gitfs",
+  "endpoint": "https://hooks.example.com/source-code",
+  "description": "Chat bridge",
+  "events": ["change.*", "issue.*"],
+  "active": true,
+  "disabled_reason": null,
+  "secret": "whsec_3L5N8LoLx3uG+1kP7cbhFXpzQaClAUT1",
+  "last_delivery": {
+    "id": "dlv_01m6tq6r80gyd9hzpz",
+    "state": "succeeded",
+    "at": "2026-11-07T10:00:00.000Z"
+  },
+  "html_url": "https://source.code/dana/gitfs/settings",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 3
+}
+```

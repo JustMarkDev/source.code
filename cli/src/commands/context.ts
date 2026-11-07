@@ -2,38 +2,66 @@ import { activeAccount } from '../account'
 import { gitContext, resolveRepo } from '../repo'
 import { print } from '../output'
 import { str } from '../args'
-import { store } from '../fixtures'
-import { blockers } from './change'
 import type { Command } from './types'
 
 /** Everything an agent needs to start well, in one call, with no secret values. */
-export const context: Command = ({ flags }, ctx) => {
+export const context: Command = async ({ flags }, ctx) => {
   const repo = resolveRepo(str(flags, 'repo'))
   const git = gitContext()
-  const acting = activeAccount(flags)
+  const api = ctx.api()
+  const [acting, c, grants] = await Promise.all([
+    activeAccount(ctx, flags),
+    api.get(`${repo.path}/context`),
+    // Reading grants needs a scope some tokens do not have; that is not an error here.
+    api.get(`${repo.path}/env/grants`).catch(() => ({
+      json: {
+        data: [] as Array<{
+          id: string
+          state: string
+          environment: string
+          expires_at: string | null
+        }>,
+      },
+    })),
+  ])
   const data = {
     account: { handle: acting.handle, kind: acting.kind, role: acting.role },
     repo: repo.slug,
-    defaultBranch: repo.defaultBranch,
+    defaultBranch: c.json.repo.default_branch,
     branch: git.branch ?? null,
-    openChanges: store.changes
-      .filter((c) => c.state !== 'landed')
-      .map((c) => ({ id: c.id, title: c.title, blockers: blockers(c) })),
-    openIssues: store.issues
-      .filter((i) => i.state === 'open')
-      .map((i) => ({ number: i.number, title: i.title })),
+    openChanges: c.json.changes.map(
+      (x: { number: number; title: string; blocking: Array<string> }) => ({
+        number: x.number,
+        title: x.title,
+        blockers: x.blocking,
+      }),
+    ),
+    openIssues: c.json.issues.map((i: { number: number; title: string }) => ({
+      number: i.number,
+      title: i.title,
+    })),
     policy: { humanApprovalRequired: true, agentsMayApprove: false },
-    envSchema: store.env.map((v) => ({ name: v.name, secret: v.secret })),
+    envSchema: c.json.env.map((v: { name: string; kind: string }) => ({
+      name: v.name,
+      kind: v.kind,
+    })),
     envAccess: {
       values: 'never returned',
       run: 'sx env run --env development -- <command>',
       needAccess:
         'sx env grant request --env development --reason "<why>"; a person approves; then retry',
-      activeGrants: store.grants
-        .filter((g) => g.state === 'active')
-        .map((g) => ({ id: g.id, env: g.env, expires: g.expires })),
+      activeGrants: grants.json.data
+        .filter((g: { state: string }) => g.state === 'active')
+        .map(
+          (g: {
+            id: string
+            environment: string
+            expires_at: string | null
+          }) => ({ id: g.id, env: g.environment, expires: g.expires_at }),
+        ),
       production: 'not available to agents',
     },
+    cursor: c.json.cursor,
     note: 'Secret values are never included. Run commands through sx env run so values reach the process but never you.',
   }
   print(ctx, data, () => JSON.stringify(data, null, 2))

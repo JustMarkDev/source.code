@@ -1,6 +1,4 @@
 import { SxError, exit } from './output'
-import { store } from './fixtures'
-import type { Repo } from './fixtures'
 
 function git(args: Array<string>): string | undefined {
   try {
@@ -22,8 +20,15 @@ export function gitContext() {
   }
 }
 
-/** `-R owner/name`, then `SX_REPO`, then the git remote. */
-export function resolveRepo(flag: string | undefined): Repo {
+export type RepoRef = {
+  slug: string
+  owner: string
+  name: string
+  path: string
+}
+
+/** `-R owner/name`, then `SX_REPO`, then the git remote. Whether it exists is the API's to say. */
+export function resolveRepo(flag: string | undefined): RepoRef {
   const slug = flag ?? process.env.SX_REPO ?? gitContext().slug
   if (!slug)
     throw new SxError(
@@ -32,13 +37,13 @@ export function resolveRepo(flag: string | undefined): Repo {
       'Run inside a clone, pass -R owner/name, or set SX_REPO.',
       exit.usage,
     )
-  const repo = store.repos.find((r) => r.slug === slug)
-  if (!repo)
+  const [owner, name, ...extra] = slug.split('/')
+  if (!owner || !name || extra.length)
     throw new SxError(
-      'repo_not_found',
-      `No repository named ${slug}.`,
-      'sx repo list shows what you can see.',
-      exit.notFound,
+      'repo_unknown',
+      `${slug} is not owner/name.`,
+      'Pass -R owner/name.',
+      exit.usage,
     )
-  return repo
+  return { slug, owner, name, path: `/repos/${owner}/${name}` }
 }

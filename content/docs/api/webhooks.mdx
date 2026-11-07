@@ -1,0 +1,129 @@
+---
+icon: ArrowPathIcon
+title: Webhooks
+description: Signed, retried, replayable deliveries of the event log to your server.
+---
+
+A webhook sends the events of one repository to a URL you choose. The body is the [event](/docs/api/events-and-sync#the-event-log) object, the same one `GET /events` returns, so you parse it with the code you already have.
+
+## Create one
+
+```bash
+curl -X POST "$SX/repos/dana/gitfs/webhooks" \
+  -H "Authorization: Bearer $SX_TOKEN" -H "Content-Type: application/json" \
+  -d '{"endpoint":"https://hooks.example.com/source-code","events":["change.*","issue.created"]}'
+```
+
+The response is the only time the signing secret is shown (`whsec_…`). You need the `webhooks:write` scope and write access to the repository. A repository can have 10.
+
+`events` takes exact types (`change.landed`), families (`change.*`) or `*`. The types are listed in [Events and sync](/docs/api/events-and-sync#the-event-log), plus `webhook.ping` and `webhook.disabled`.
+
+## What arrives
+
+```http
+POST /source-code HTTP/1.1
+Content-Type: application/json
+User-Agent: source.code-webhooks/1
+webhook-id: evt_01m6dqs9m0g7q74420
+webhook-timestamp: 1794128043
+webhook-signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhnkZ2QViiPMBQVWQMto=
+sx-event: change.landed
+sx-delivery: dlv_01m6dqs9m0g7q74421
+
+{"object":"event","id":"evt_01m6dqs9m0g7q74420","sequence":48211,"type":"change.landed", …}
+```
+
+The headers follow the [Standard Webhooks](https://www.standardwebhooks.com) scheme, so many existing verification libraries work unchanged.
+
+## Verify the signature
+
+The signature is `v1,` and the base64 of an HMAC-SHA256 over `webhook-id`, `webhook-timestamp` and the **raw body**, joined with dots, keyed with the secret after `whsec_` (base64-decoded). Compare in constant time. Reject timestamps more than five minutes old.
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+export function verify(secret, headers, rawBody) {
+  const age = Math.abs(Date.now() / 1000 - Number(headers['webhook-timestamp']))
+  if (!(age < 300)) return false
+  const key = Buffer.from(secret.replace('whsec_', ''), 'base64')
+  const want = createHmac('sha256', key)
+    .update(`${headers['webhook-id']}.${headers['webhook-timestamp']}.${rawBody}`)
+    .digest()
+  // The header may hold several signatures, one per live secret.
+  return headers['webhook-signature'].split(' ').some((s) => {
+    const got = Buffer.from(s.replace('v1,', ''), 'base64')
+    return got.length === want.length && timingSafeEqual(got, want)
+  })
+}
+```
+
+```python
+import base64, hashlib, hmac, time
+
+def verify(secret, headers, raw_body: bytes) -> bool:
+    if abs(time.time() - int(headers["webhook-timestamp"])) > 300:
+        return False
+    key = base64.b64decode(secret.removeprefix("whsec_"))
+    msg = f'{headers["webhook-id"]}.{headers["webhook-timestamp"]}.'.encode() + raw_body
+    want = base64.b64encode(hmac.new(key, msg, hashlib.sha256).digest()).decode()
+    return any(hmac.compare_digest(s.removeprefix("v1,"), want)
+               for s in headers["webhook-signature"].split(" "))
+```
+
+Verify the raw bytes you received, not a re-serialization of the parsed JSON.
+
+## Delivery and retries
+
+Answer with any `2xx` within **10 seconds** and the delivery is done. Anything else, including a timeout, is retried:
+
+| Attempt | After the last one | Attempt | After the last one |
+| ------: | -----------------: | ------: | -----------------: |
+| 1       | at once            | 5       | 2 hours            |
+| 2       | 5 seconds          | 6       | 5 hours            |
+| 3       | 5 minutes          | 7       | 10 hours           |
+| 4       | 30 minutes         | 8       | 10 hours           |
+
+Eight attempts over about 28 hours. Then the delivery is `failed`.
+
+- **At least once.** Deduplicate by `webhook-id`, the event id: it is the same on every retry and on a redelivery.
+- **Order is not promised.** Use `sequence` to order events, and the `data` object, which is the state after the event, to reconcile.
+- **Redirects are not followed.** A `3xx` is a failure.
+- **`410 Gone` turns the endpoint off at once.** Five deliveries in a row that end `failed` also turn it off. `active` goes `false`, `disabled_reason` says why, and a `webhook.disabled` event is written. `PATCH` `active: true` turns it back on.
+
+## Look at what happened
+
+```bash
+curl "$SX/repos/dana/gitfs/webhooks/whk_…/deliveries?state=failed" -H "Authorization: Bearer $SX_TOKEN"
+curl "$SX/repos/dana/gitfs/webhooks/whk_…/deliveries/dlv_…"       # every attempt and the payload
+```
+
+Deliveries are kept for 30 days, up to 1,000 per webhook. Each attempt records the time, the status or the error, and how long it took.
+
+## Send it again, or catch up
+
+```bash
+# One delivery again. A new delivery of the same event; webhook-id is unchanged.
+curl -X POST "$SX/repos/dana/gitfs/webhooks/whk_…/deliveries/dlv_…/redeliver" -H "Authorization: Bearer $SX_TOKEN"
+
+# Everything this endpoint subscribes to after sequence 48000, oldest first.
+curl -X POST "$SX/repos/dana/gitfs/webhooks/whk_…/replay" -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" -d '{"after_sequence":48000,"limit":500}'
+```
+
+`replay` returns `last_sequence`; call again from there to continue. Your server was down for an hour? One call. `POST …/ping` sends a `webhook.ping` to test the endpoint and your signature check.
+
+## Rotate the secret without dropping anything
+
+```bash
+curl -X POST "$SX/repos/dana/gitfs/webhooks/whk_…/rotate-secret" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+The new secret is returned once. For 24 hours every delivery is signed with **both**, in one `webhook-signature` header separated by a space, so you can deploy the new secret and retire the old one with no gap.
+
+## Where deliveries may go
+
+An endpoint must be `https` and must not point inside our network. The URL is refused when you save it if it is a private, loopback, link-local or unique-local address, a name like `localhost` or `*.internal`, the metadata service, an address written as a single number, or has a user name or password in it. It is checked again at every attempt, on the address the name resolves to now, and the connection is made to that address, so a name that changes its answer cannot be used to reach something private. Put credentials in your own server's checks, not in the URL.
+
+## Limits
+
+10 webhooks per repository. Deliveries are sent with at most 64 in flight at once. Management calls are in the `write` and `read` rate-limit pools.

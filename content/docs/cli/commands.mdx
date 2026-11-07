@@ -49,7 +49,9 @@ sx change land [id]
 sx change checkout <id>
 ```
 
-`change create` needs nothing from you. Title defaults to your last commit and base to `change.base`. Running it again for the same branch returns `action: "patch_set_added"` and the same id.
+`change create` needs nothing from you. Title defaults to your last commit and base to `change.base`. Running it again for the same branch returns `action: "patch_set_added"` and the same change.
+
+Changes are named by number, `216`, the same number the API and the web use. With no number, `change view` and `change land` use the open change for your current branch. `change land` lands exactly the tree it just read, so nothing lands that was not looked at.
 
 `change land` exits `5` when policy blocks it:
 
@@ -100,8 +102,8 @@ Both exit `5` when blocked. `explain` lists each requirement.
 ```bash
 sx mirror list
 sx mirror add codeberg dana/gitfs --direction push
-sx mirror sync m2
-sx mirror remove m2
+sx mirror sync mir_01m6dqs9m0g7q74420
+sx mirror remove mir_01m6dqs9m0g7q74420
 ```
 
 ## agent
@@ -121,6 +123,20 @@ sx context
 
 One JSON document for an agent: the repository, open changes with what blocks them, open issues, policy summary and the env schema. No secret values.
 
-## config, auth, completion
+## auth
 
-See [Settings](/docs/cli/config), [Authentication](/docs/cli/authentication) and [Install](/docs/cli/install).
+```bash
+sx auth status
+sx auth login [--scope "repo:read pulls:read"]
+sx auth logout
+```
+
+See [Authentication](/docs/cli/authentication).
+
+## config, completion
+
+See [Settings](/docs/cli/config) and [Install](/docs/cli/install).
+
+## Every command is an API call
+
+`sx` is a client of the [HTTP API](/docs/api). The JSON a command prints is what the API returned (plus a few fields `sx` adds, such as `action` and `blockers`), and an error is the API's error with its `code`, `hint` and exit code. Anything `sx` can do, a script can do with `curl`.

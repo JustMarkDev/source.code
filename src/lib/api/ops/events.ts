@@ -1,0 +1,181 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/require-await */
+import { Effect } from 'effect'
+import { z } from 'zod'
+import { Domain, Raw, defineOp } from '../registry'
+import * as S from '../schemas'
+import { afterOf, fp, listOf, pageShape } from './common'
+
+export const listEvents = defineOp({
+  id: 'events.list',
+  summary: 'The event log, oldest first',
+  description:
+    'Everything that happened in repositories you can see. Pass the last `next_cursor` to continue. Events are kept for 30 days. `type` takes a comma list; `change.*` matches every change event.',
+  tags: ['events'],
+  method: 'GET',
+  path: '/events',
+  auth: 'required',
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  query: z.strictObject({
+    ...pageShape,
+    repo: z.string().optional().describe('Only this repository, `owner/name`'),
+    type: z
+      .string()
+      .optional()
+      .describe('Comma list of event types. `change.*` matches every change event'),
+  }),
+  response: S.listOf(S.Event),
+  errors: ['cursor_mismatch'],
+  shapeable: true,
+  waitOn: () => '*',
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      const q = ctx.query
+      const f = fp('events.list', q.repo, q.type)
+      const page = yield* run((d) =>
+        d.listEvents(ctx.principal, { repo: q.repo, type: q.type, after: afterOf(q.cursor, f), limit: q.limit }),
+      )
+      return listOf(page.items as unknown as Array<z.infer<typeof S.Event>>, page.next, f)
+    }),
+})
+
+export const syncRepo = defineOp({
+  id: 'sync.get',
+  summary: 'Keep a local copy of a repository up to date',
+  description:
+    'Call without a cursor for a snapshot of the repository, its changes and its issues. Then call with the returned cursor to get only what changed, newest state of each object. When `reset` is true the cursor was too old and `objects` is a fresh snapshot. One request replaces polling every list.',
+  tags: ['events', 'agents'],
+  method: 'GET',
+  path: '/sync',
+  auth: 'optional',
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  query: z.strictObject({
+    repo: z
+      .string()
+      .regex(/^[^/]+\/[^/]+$/)
+      .describe('`owner/name`'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('The `cursor` of the previous response. Omit for a snapshot.'),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .default(100)
+      .describe('Objects per response, 1 to 200'),
+  }),
+  response: S.Sync,
+  errors: ['not_found', 'moved'],
+  waitOn: () => '*',
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) => d.sync(ctx.principal, ctx.query))
+    }),
+})
+
+export const streamEvents = defineOp({
+  id: 'events.stream',
+  summary: 'Events as they happen (Server-Sent Events)',
+  description:
+    'A text/event-stream. Each event carries its sequence as the SSE id, so a reconnect with Last-Event-ID continues without a gap inside the retention window. A comment line is sent every 15 seconds to keep the connection open.',
+  tags: ['events'],
+  method: 'GET',
+  path: '/events/stream',
+  auth: 'required',
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  query: z.strictObject({
+    repo: z.string().optional().describe('Only this repository, `owner/name`'),
+    type: z.string().optional().describe('Comma list of event types'),
+  }),
+  response: z.string(),
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      const { events, can } = yield* run(async (d) => ({
+        events: d.events,
+        can: d.canSee(ctx.principal),
+      }))
+      const last = ctx.header('last-event-id')
+      let after = last && /^\d+$/.test(last) ? Number(last) : events.head
+      const types = ctx.query.type?.split(',') ?? null
+      const repo = ctx.query.repo
+      const encoder = new TextEncoder()
+      let open = true
+      const body = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          controller.enqueue(encoder.encode(': connected\n\n'))
+          while (open && !ctx.signal.aborted) {
+            const { events: batch } = events.since(after, 100, (e) => {
+              if (repo && e.repo !== repo) return false
+              if (!can(e.repo)) return false
+              return (
+                !types ||
+                types.some((t) => (t.endsWith('.*') ? e.type.startsWith(t.slice(0, -1)) : t === e.type))
+              )
+            })
+            for (const e of batch)
+              controller.enqueue(
+                encoder.encode(`id: ${e.sequence}\nevent: ${e.type}\ndata: ${e.json}\n\n`),
+              )
+            // Move past events that did not match, so they are not scanned again.
+            after = Math.max(after, batch.at(-1)?.sequence ?? after)
+            if (batch.length === 0) after = Math.max(after, events.head)
+            if (batch.length === 100) continue
+            const before = events.head
+            await events.wait(repo ? `repo:${repo}` : '*', 15_000, ctx.signal)
+            if (events.head === before && open && !ctx.signal.aborted)
+              controller.enqueue(encoder.encode(': keepalive\n\n'))
+          }
+          controller.close()
+        },
+        cancel() {
+          open = false
+        },
+      })
+      return new Raw(
+        new Response(body, {
+          headers: {
+            'content-type': 'text/event-stream; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-accel-buffering': 'no',
+          },
+        }),
+      )
+    }),
+})
+
+export const getOperation = defineOp({
+  id: 'operations.get',
+  summary: 'A long-running operation',
+  description:
+    'Poll it, or add ?wait=20 with If-None-Match to hold the request until it changes. `result` is a stub of what it produced; `error` is a full problem object.',
+  tags: ['operations'],
+  method: 'GET',
+  path: '/operations/{id}',
+  auth: 'required',
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  params: z.object({ id: z.string().describe('The operation `op_` id') }),
+  response: S.Operation,
+  errors: ['not_found'],
+  waitOn: () => '*',
+  probe: (ctx, d) =>
+      d.operationVersion(ctx.params.id),
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) => d.getOperation(ctx.params.id, ctx.principal))
+    }),
+})
+
+export const eventOps = [listEvents, syncRepo, streamEvents, getOperation]

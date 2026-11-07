@@ -1,62 +1,71 @@
 import { gitContext, resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
-import { nextChangeId, store } from '../fixtures'
 import { resolve } from '../config'
-import type { Change } from '../fixtures'
+import type { Ctx } from '../output'
 import type { Command } from './types'
 
-const label = (c: Change) =>
-  c.state === 'landed' ? 'landed' : c.state === 'draft' ? 'draft' : 'open'
+type Change = any
 
-function find(id: string | undefined): Change {
-  const ctxBranch = gitContext().branch
-  const c = store.changes.find(
-    (x) => x.id === id || (id === undefined && x.branch === ctxBranch),
-  )
-  if (!c)
-    throw new SxError(
-      'change_not_found',
-      id ? `No change ${id}.` : 'No change for the current branch.',
-      'sx change list shows open changes. sx change create makes one.',
-      exit.notFound,
-    )
-  return c
-}
+const label = (c: Change) => c.state
+const num = (id: string) => id.replace(/^#/, '')
 
 /** What stops this change from landing, said once and the same everywhere. */
-function blockers(c: Change): Array<string> {
-  const out: Array<string> = []
-  for (const parent of c.blockedBy) {
-    const p = store.changes.find((x) => x.id === parent)
-    if (p && p.state !== 'landed') out.push(`${parent} must land first`)
-  }
-  if (c.state === 'draft') out.push('still a draft')
-  if (c.ci !== 'pass')
-    out.push(c.ci === 'fail' ? 'ci/test failed' : 'ci/test is running')
-  if (c.findings.high > 0)
-    out.push(`${c.findings.high} high finding unresolved`)
-  if (c.approvals < 1) out.push('needs 1 human approval')
-  return out
+export function blockers(
+  requirements: Array<{ state: string; detail: string }>,
+): Array<string> {
+  return requirements
+    .filter((r) => r.state === 'fail' || r.state === 'pending')
+    .map((r) => r.detail)
 }
 
-export const change: Command = (
+export const landHint =
+  'sx change view shows each requirement. sx policy explain says which rule asked for it.'
+
+async function find(
+  ctx: Ctx,
+  repoPath: string,
+  id: string | undefined,
+): Promise<Change> {
+  const api = ctx.api()
+  if (id) return (await api.get(`${repoPath}/changes/${num(id)}`)).json
+  const branch = gitContext().branch
+  if (branch) {
+    const found = (
+      await api.get(`${repoPath}/changes`, {
+        query: { branch, state: 'open,draft', limit: 1 },
+      })
+    ).json.data[0]
+    if (found) return found
+  }
+  throw new SxError(
+    'not_found',
+    'No change for the current branch.',
+    'sx change list shows open changes. sx change create makes one.',
+    exit.notFound,
+  )
+}
+
+export const change: Command = async (
   { rest: [sub = 'list', ...rest], flags },
   ctx,
 ) => {
   const repo = resolveRepo(str(flags, 'repo'))
+  const api = ctx.api()
   const dry = has(flags, 'dry-run')
 
   if (sub === 'list') {
-    const rows = store.changes.filter(
-      (c) => has(flags, 'all') || c.state !== 'landed',
-    )
+    const rows = (
+      await api.get(`${repo.path}/changes`, {
+        query: { state: has(flags, 'all') ? 'all' : undefined, limit: 200 },
+      })
+    ).json.data as Array<Change>
     print(ctx, rows, () =>
       table(
         rows.map((c) => [
-          c.id,
+          `#${c.number}`,
           label(c),
-          c.stack ? `${c.stack.index}/${c.stack.of}` : '-',
+          c.stack ? `${c.stack.position}/${c.stack.size}` : '-',
           c.title,
         ]),
         ['CHANGE', 'STATE', 'STACK', 'TITLE'],
@@ -79,73 +88,72 @@ export const change: Command = (
         exit.usage,
       )
     const base = str(flags, 'base') ?? resolve('change.base').value
-    const existing = store.changes.find((c) => c.branch === branch)
-    if (existing) {
-      if (!dry) existing.patchSets += 1
-      print(
-        ctx,
-        { ...existing, action: 'patch_set_added', base, repo: repo.slug },
-        () => `${existing.id} now at patch set ${existing.patchSets}`,
-      )
-      return
-    }
-    const created: Change = {
-      id: nextChangeId(),
-      title,
-      branch,
-      author: 'you',
-      state:
-        has(flags, 'draft') || resolve('change.draft').value === 'true'
-          ? 'draft'
-          : 'open',
-      patchSets: 1,
-      ci: 'pending',
-      approvals: 0,
-      findings: { high: 0, medium: 0, low: 0 },
-      stack: null,
-      blockedBy: [],
-    }
-    if (!dry) store.changes.push(created)
+    const draft =
+      has(flags, 'draft') || resolve('change.draft').value === 'true'
+    const r = await api.post(`${repo.path}/changes`, {
+      body: { branch, title, base, draft },
+      dryRun: dry,
+    })
+    const action = r.headers.get('sx-outcome') ?? 'created'
     print(
       ctx,
-      { ...created, action: 'created', base, repo: repo.slug, dryRun: dry },
-      () => `${dry ? 'would create' : 'created'} ${created.id}  ${title}`,
+      {
+        ...r.json,
+        id: String(r.json.number),
+        action,
+        base,
+        repo: repo.slug,
+        dryRun: dry,
+      },
+      () =>
+        action === 'created'
+          ? `${dry ? 'would create' : 'created'} #${r.json.number}  ${title}`
+          : `#${r.json.number} now at patch set ${r.json.patch_set_count}`,
     )
     return
   }
 
-  const c = find(rest.at(0))
+  const c = await find(ctx, repo.path, rest.at(0))
   if (sub === 'view') {
-    print(ctx, { ...c, blockers: blockers(c) }, () =>
+    const policy = (await api.get(`${repo.path}/changes/${c.number}/policy`))
+      .json
+    const why = blockers(policy.requirements)
+    print(ctx, { ...c, id: String(c.number), blockers: why }, () =>
       [
-        `${c.id}  ${label(c)}  ${c.title}`,
-        `patch sets ${c.patchSets}, ${c.approvals} approval, ci ${c.ci}`,
-        ...blockers(c).map((b) => `  blocked: ${b}`),
+        `#${c.number}  ${label(c)}  ${c.title}`,
+        `patch sets ${c.patch_set_count}, checks ${c.checks.state}, policy ${c.policy.state}`,
+        ...why.map((b) => `  blocked: ${b}`),
       ].join('\n'),
     )
     return
   }
 
   if (sub === 'land') {
-    const why = blockers(c)
-    if (why.length > 0)
-      throw new SxError(
-        'policy_blocked',
-        `${c.id} cannot land: ${why.join('; ')}.`,
-        'sx change view shows each requirement. sx policy explain says which rule asked for it.',
-        exit.policy,
-      )
-    if (!dry) c.state = 'landed'
+    try {
+      // Land exactly the tree we just read, so nothing lands that was not looked at.
+      await api.post(`${repo.path}/changes/${c.number}/land`, {
+        body: { expected_tree: c.head.tree },
+        dryRun: dry,
+      })
+    } catch (e) {
+      if (e instanceof SxError && e.code === 'policy_blocked')
+        throw new SxError(e.code, e.message, landHint, e.status)
+      throw e
+    }
     print(
       ctx,
-      { id: c.id, landed: !dry, dryRun: dry },
-      () => `${dry ? 'would land' : 'landed'} ${c.id}`,
+      { id: String(c.number), number: c.number, landed: !dry, dryRun: dry },
+      () => `${dry ? 'would land' : 'landed'} #${c.number}`,
     )
     return
   }
 
   if (sub === 'checkout') {
-    print(ctx, { id: c.id, branch: c.branch }, () => `git switch ${c.branch}`)
+    print(
+      ctx,
+      { id: String(c.number), branch: c.branch },
+      () => `git switch ${c.branch}`,
+    )
     return
   }
 
@@ -156,5 +164,3 @@ export const change: Command = (
     exit.usage,
   )
 }
-
-export { blockers }

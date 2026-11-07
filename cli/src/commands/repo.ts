@@ -1,25 +1,39 @@
-import { accountNotFound, activeAccount, findAccount } from '../account'
+import { accounts, activeAccount } from '../account'
 import { gitContext, resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
-import { store } from '../fixtures'
 import { resolve } from '../config'
 import type { Command } from './types'
 
-const ownerOf = (slug: string) => slug.split('/').at(0) ?? ''
+type ApiRepo = {
+  full_name: string
+  visibility: string
+  stars: number
+  description: string
+}
+const withSlug = <T extends { full_name: string }>(r: T) => ({
+  ...r,
+  slug: r.full_name,
+})
 
-export const repo: Command = (
+export const repo: Command = async (
   { rest: [sub = 'view', ...rest], flags },
   ctx,
 ) => {
+  const api = () => ctx.api()
   if (sub === 'list') {
     // The repositories of the account you are acting as, or of all of them.
-    const owners = new Set(
-      has(flags, 'all')
-        ? store.accounts.map((a) => a.handle)
-        : [activeAccount(flags).handle],
+    const owners = has(flags, 'all')
+      ? (await accounts(ctx)).map((a) => a.handle)
+      : [(await activeAccount(ctx, flags)).handle]
+    const lists = await Promise.all(
+      owners.map((owner) =>
+        api().get('/repos', { query: { owner, limit: 200 } }),
+      ),
     )
-    const shown = store.repos.filter((r) => owners.has(ownerOf(r.slug)))
+    const shown = lists
+      .flatMap((l) => l.json.data as Array<ApiRepo & { full_name: string }>)
+      .map(withSlug)
     print(ctx, shown, () =>
       table(
         shown.map((r) => [r.slug, r.visibility, String(r.stars)]),
@@ -38,31 +52,25 @@ export const repo: Command = (
         exit.usage,
       )
     // A bare name goes in the account you are acting as.
-    const slug = given.includes('/')
-      ? given
-      : `${activeAccount(flags).handle}/${given}`
-    const owner = findAccount(ownerOf(slug))
-    if (!owner) throw accountNotFound(ownerOf(slug))
-    if (owner.role === 'member')
-      throw new SxError(
-        'account_forbidden',
-        `Members of ${owner.handle} cannot create repositories there.`,
-        'Ask an owner or admin, or create it in an account you manage. sx account list shows your role in each.',
-        exit.policy,
-      )
-    const existing = store.repos.find((r) => r.slug === slug)
-    // Creating twice is fine: the answer is the repository that exists.
-    const created = existing ?? {
-      slug,
-      description: str(flags, 'description') ?? '',
-      visibility:
-        flags.private === true ? ('private' as const) : ('public' as const),
-      defaultBranch: 'main',
-      stars: 0,
-    }
-    if (!existing && flags['dry-run'] !== true) store.repos.push(created)
-    print(ctx, { ...created, created: !existing }, () =>
-      existing ? `${slug} already exists` : `created ${slug}`,
+    const [owner, name] = given.includes('/')
+      ? (given.split('/') as [string, string])
+      : [(await activeAccount(ctx, flags)).handle, given]
+    const r = await api().post('/repos', {
+      body: {
+        name,
+        owner,
+        visibility: flags.private === true ? 'private' : 'public',
+        ...(str(flags, 'description')
+          ? { description: str(flags, 'description') }
+          : {}),
+      },
+      dryRun: has(flags, 'dry-run'),
+    })
+    const created = r.headers.get('sx-outcome') === 'created'
+    print(ctx, { ...withSlug(r.json), created }, () =>
+      created
+        ? `created ${r.json.full_name}`
+        : `${r.json.full_name} already exists`,
     )
     return
   }
@@ -83,12 +91,16 @@ export const repo: Command = (
     print(ctx, { slug, url }, () => `git clone ${url}`)
     return
   }
-  const r = resolveRepo(str(flags, 'repo'))
   if (sub === 'view') {
+    const r = resolveRepo(str(flags, 'repo'))
+    const got = (await api().get(r.path)).json as ApiRepo & {
+      full_name: string
+    }
     print(
       ctx,
-      { ...r, branch: gitContext().branch ?? null },
-      () => `${r.slug}  ${r.visibility}  ${r.stars} stars\n${r.description}`,
+      { ...withSlug(got), branch: gitContext().branch ?? null },
+      () =>
+        `${got.full_name}  ${got.visibility}  ${got.stars} stars\n${got.description}`,
     )
     return
   }

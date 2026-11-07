@@ -1,0 +1,110 @@
+---
+icon: CpuChipIcon
+title: Agents
+description: How to build an agent on the API. Discovery, planning, safe retries, and what to do on each failure.
+---
+
+No model has seen this API. The API is built so one that has not can still use it well: it describes itself, says what is safe before you call, says what to do after a failure, and lets you check an action before you take it.
+
+## Learn it from the API
+
+| Ask                              | You get                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| `GET /v1`                        | Links to every collection, the OpenAPI document, the limits, the MCP server, `llms.txt`. |
+| `GET /v1/openapi.json`           | Every operation with its schemas and the `x-sx-*` metadata below.                         |
+| `GET /v1/errors`                 | Every error code: status, whether it is retryable, the CLI exit code, the hint.          |
+| `GET /v1/limits`                 | Rate-limit pools, page sizes and every other number.                                      |
+| `GET /v1/auth/principal`         | Who the token is, what it may do, when it expires.                                        |
+| [`/llms.txt`](/llms.txt)         | These docs as plain text.                                                                 |
+
+Every operation in the OpenAPI document says, before you call it:
+
+| Member            | Tells you                                                                   |
+| ----------------- | --------------------------------------------------------------------------- |
+| `x-sx-safety`     | `read`, `write` or `destructive`                                            |
+| `x-sx-idempotent` | Whether repeating it with the same input is harmless                        |
+| `x-sx-dry-run`    | Whether `?dry_run=true` works                                               |
+| `x-sx-scopes`     | The scopes it needs                                                         |
+| `x-sx-pool`, `x-sx-cost` | Which rate-limit pool, how many units                                |
+| `x-sx-errors`     | The error codes it can return                                               |
+| `x-sx-async`      | Whether it may answer `202` and an operation                                |
+
+An agent can decide what to confirm, what to retry and what to budget from this alone.
+
+## Ask for text
+
+A change, an issue and the start-up bundle can come back as short Markdown instead of JSON, with the same facts in a fraction of the tokens:
+
+```bash
+curl -H "Authorization: Bearer $SX_TOKEN" -H "Accept: text/markdown" $SX/repos/dana/gitfs/changes/216
+```
+
+```
+# #216 Cache negative ref lookups
+**open** by @dana · dana/gitfs · `cache-negative` → `main`
+Patch set 2 (tree `9c4d7e1`) · 3 files, +84 −12 · checks pending (0 passed, 0 failed, 1 pending)
+
+## Policy: blocked
+- blocking: ci-evidence
+…
+```
+
+The Markdown is built from the JSON, so the two cannot disagree. Each form has its own `ETag`, `If-None-Match` works in both, and the response says `Vary: Accept`. Errors are always `application/problem+json`. Operations that have a readable form list `text/markdown` in the OpenAPI document.
+
+## Give an agent its own token
+
+Start a [run](/docs/api/runs) rather than handing over your token. It is limited to one repository and a few scopes, it expires, you can cancel it, and everything it does is recorded as an agent.
+
+## A loop that works
+
+1. **Start with one request.** `GET /repos/{owner}/{repo}/context` returns open changes and what blocks each, open issues, a policy summary and the env schema. No secret values are ever in it.
+2. **Keep it current without polling.** Use the `cursor` it returns with [`GET /sync`](/docs/api/events-and-sync#sync), or wait on an object with `wait`.
+3. **Read `actions` before acting.** A change says whether you can `land`, `abandon`, `restore` or `mark_ready` and gives `reasons` when you cannot.
+4. **Plan.** `POST …/policy/simulate` answers "if this check passes and that finding is resolved, can it land?" and writes nothing.
+5. **Check.** Repeat the write with `?dry_run=true`. You get the real answer or the real error.
+6. **Act, safely.** Send an `Idempotency-Key`, `If-Match` for edits, and `expected_tree` to land. Then you may retry anything.
+7. **Follow up.** `wait` on the change or the operation. Read `policy` for what is still missing.
+
+## What to do on each failure
+
+Branch on `code`, never on text.
+
+| `code`                                 | Do                                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `policy_blocked`, `retryable: false`   | **Stop.** Report the `requirements` that failed. Do not look for another way in.             |
+| `policy_blocked`, `retryable: true`    | Only waiting is left. `wait` on the change, or sleep and send the same request.              |
+| `human_required`                       | **Stop and ask a person.** An agent cannot approve its own work.                             |
+| `stale_head`                           | The change moved. Read it again, check the new `head.tree`, decide again.                    |
+| `version_mismatch`                     | Merge your edit into `current` and send again with its ETag.                                 |
+| `parent_not_landed`                    | Land the stack, or the parent first.                                                         |
+| `insufficient_scope`                   | Do not retry. Report `required_scopes`. A person has to give the token the scope.            |
+| `rate_limited`, `concurrency_limited`  | Wait `Retry-After` seconds.                                                                  |
+| `request_in_progress`                  | Wait `Retry-After`, send the same request with the same key.                                 |
+| `backend_unavailable`, `repo_warming`  | Retry after `Retry-After` with backoff. Keyed writes are safe to repeat.                     |
+| `not_found`                            | Check the path. Private things also answer this.                                             |
+| `invalid_request`                      | Fix what `errors` lists. It names each field.                                                |
+
+`retryable` is a boolean so a generic retry loop is one `if`.
+
+## Rules the API holds for you
+
+- **An agent never approves itself.** Not through the API, not through a policy.
+- **Secret values never appear** in any response, event or context. Names and kinds do.
+- **Scopes only shrink** while a bot is installed.
+- **What an agent writes is marked.** Every actor has a `class` of `human`, `agent` or `bot`. Send `Sx-Agent` to add which agent and run.
+- **The same rules as people.** There is no looser path for automation.
+
+## Keeping cost down
+
+Agents pay for every token they read. The API helps:
+
+- `fields=number,title,policy` returns only those. On a list it applies to each item.
+- `context` replaces a dozen calls with one.
+- Lists carry `checks` and `policy` per item, so you do not fetch each change to find the red one.
+- `304` costs nothing and returns no body.
+- `GET /sync` returns only what changed.
+
+
+## The CLI and MCP
+
+`sx` and the [MCP server](/docs/mcp) speak the same language: the same error codes, the same exit codes, the same operation names (`changes.land` here, `land_change` there). They are clients of this API: with `SX_API` and a token (or after `sx auth login`) every command and tool is an API call made with your token, so scopes, rate limits and policy apply to them exactly as they do to curl. Without them they run the same code on sample data in-process.

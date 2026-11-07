@@ -1,0 +1,1710 @@
+---
+icon: UsersIcon
+title: Accounts and repositories
+description: Who you can act as, the repositories you can see, creating one, and the one-call context for starting work.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `accounts.list`
+
+`GET /accounts`
+
+**Every account you can act as**
+
+Yourself and each organization you belong to, with your role in each. Send Sx-Account to act as one of them.
+
+| About      |                            |
+| ---------- | -------------------------- |
+| Safety     | `read`, safe to repeat     |
+| Needs      | a token                    |
+| Scopes     | none                       |
+| Rate limit | `read` pool, 1 unit        |
+| Success    | `200`, a list of `account` |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"fxrzkfDGqM4GzJfq"
+ratelimit: "read";r=1199;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "account",
+      "id": "acc_01m203xrm0bw4d69nd",
+      "handle": "dana",
+      "name": "Dana Okafor",
+      "kind": "person",
+      "role": "owner",
+      "url": "https://api.source.code/v1/accounts/dana",
+      "html_url": "https://source.code/dana",
+      "created_at": "2026-09-08T09:00:00.000Z"
+    },
+    {
+      "object": "account",
+      "id": "acc_01m2svwym0ahjabzx5",
+      "handle": "northwind",
+      "name": "Northwind Labs",
+      "kind": "organization",
+      "role": "owner",
+      "url": "https://api.source.code/v1/accounts/northwind",
+      "html_url": "https://source.code/northwind",
+      "created_at": "2026-09-18T09:00:00.000Z"
+    },
+    "…and 1 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `accounts.get`
+
+`GET /accounts/{handle}`
+
+**One account**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a `account`                         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name     | Type   | Notes                                                                             |
+| -------- | ------ | --------------------------------------------------------------------------------- |
+| `fields` | string | Comma list of fields to return, dotted for nested. `object` and `id` always stay. |
+
+**Errors**
+
+[`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"acc_01m203xrm0bw4d69nd-fL8I3yq7tREbJUSV"
+ratelimit: "read";r=1198;t=60
+```
+
+```json
+{
+  "object": "account",
+  "id": "acc_01m203xrm0bw4d69nd",
+  "handle": "dana",
+  "name": "Dana Okafor",
+  "kind": "person",
+  "role": "owner",
+  "url": "https://api.source.code/v1/accounts/dana",
+  "html_url": "https://source.code/dana",
+  "created_at": "2026-09-08T09:00:00.000Z"
+}
+```
+
+### `teams.list`
+
+`GET /accounts/{handle}/teams`
+
+**An organization's teams**
+
+Members of the organization only. Everyone else gets 404.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `read`, safe to repeat  |
+| Needs      | a token                 |
+| Scopes     | `repo:read`             |
+| Rate limit | `read` pool, 1 unit     |
+| Success    | `200`, a list of `team` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/northwind/teams" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"nG6IQn98Qntv9Yrc"
+ratelimit: "read";r=1163;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "team",
+      "id": "tem_01m6tq6r80d2se5vge",
+      "org": "northwind",
+      "slug": "support",
+      "name": "Support",
+      "description": "Reads private repositories to answer questions",
+      "members": [],
+      "repos": [],
+      "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "updated_at": "2026-11-07T10:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `teams.create`
+
+`POST /accounts/{handle}/teams`
+
+**Create a team**
+
+Owners and admins only. A team is a named group of people. Give it repositories of the organization and its members can read or write them, whether or not they belong to the organization. Naturally idempotent on the slug: asking for one that exists returns it with `Sx-Outcome: unchanged`.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                      | Notes     |
+| ------------- | ----------------------------------------- | --------- |
+| `slug`        | string (pattern)                          | Required. |
+| `name`        | string (up to 100 characters, at least 1) |           |
+| `description` | string (up to 500 characters)             |           |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/accounts/northwind/teams" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"support","name":"Support","description":"Reads private repositories to answer questions"}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/accounts/northwind/teams/support
+sx-outcome: created
+ratelimit: "write";r=90;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80d2se5vge",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer questions",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `teams.delete`
+
+`DELETE /accounts/{handle}/teams/{slug}`
+
+**Delete a team**
+
+Its members lose the access it gave them. Repositories are not touched.
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, a JSON document                    |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=84;t=60
+```
+
+### `teams.get`
+
+`GET /accounts/{handle}/teams/{slug}`
+
+**One team, with its members and repositories**
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `repo:read`            |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `team`        |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ApF5XdObNoMojdJr"
+ratelimit: "read";r=1162;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80d2se5vge",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer questions",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `teams.update`
+
+`PATCH /accounts/{handle}/teams/{slug}`
+
+**Rename a team or change its description**
+
+Send If-Match with the ETag you read.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                      | Notes |
+| ------------- | ----------------------------------------- | ----- |
+| `name`        | string (up to 100 characters, at least 1) |       |
+| `description` | string (up to 500 characters)             |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated), [`version_mismatch`](/docs/api/errors#version_mismatch)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Reads private repositories to answer customers"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=89;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80d2se5vge",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
+}
+```
+
+### `teams.members.remove`
+
+`DELETE /accounts/{handle}/teams/{slug}/members/{login}`
+
+**Remove a person from a team**
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, a JSON document                    |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support/members/stranger" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=85;t=60
+```
+
+### `teams.members.add`
+
+`PUT /accounts/{handle}/teams/{slug}/members/{login}`
+
+**Add a person to a team**
+
+Adding someone who is already in the team changes nothing. A team has at most 500 members.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/northwind/teams/support/members/stranger" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=88;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80d2se5vge",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": ["stranger"],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 3
+}
+```
+
+### `teams.repos.remove`
+
+`DELETE /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`
+
+**Take a repository away from a team**
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, a JSON document                    |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `owner`  | string |       |
+| `repo`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support/repos/northwind/relay" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=86;t=60
+```
+
+### `teams.repos.set`
+
+`PUT /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`
+
+**Give a team a repository**
+
+`read` lets members read it, including a private one; `write` lets them change it. Only repositories of the team's own organization. Setting it again changes the permission.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `owner`  | string |       |
+| `repo`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member       | Type              | Notes     |
+| ------------ | ----------------- | --------- |
+| `permission` | `read` or `write` | Required. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/northwind/teams/support/repos/northwind/relay" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"permission":"read"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=87;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80d2se5vge",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": ["stranger"],
+  "repos": [
+    {
+      "full_name": "northwind/relay",
+      "permission": "read"
+    }
+  ],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 4
+}
+```
+
+### `repos.list`
+
+`GET /repos`
+
+**Repositories you can see**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a list of `repo`                    |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                                             |
+| -------- | ------------------------ | --------------------------------------------------------------------------------- |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped.                |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned                         |
+| `owner`  | string                   | Only repositories of this account                                                 |
+| `fields` | string                   | Comma list of fields to return, dotted for nested. `object` and `id` always stay. |
+
+**Errors**
+
+[`invalid_request`](/docs/api/errors#invalid_request)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos?limit=2" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"gooBBjbHEL45sHIL"
+ratelimit: "read";r=1197;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "repo",
+      "id": "rep_01m6nezem0qw6cjdq0",
+      "owner": "dana",
+      "name": "stacky",
+      "full_name": "dana/stacky",
+      "description": "A stack that is ready to land.",
+      "visibility": "public",
+      "default_branch": "main",
+      "stars": 0,
+      "open_changes": 3,
+      "open_issues": 0,
+      "url": "https://api.source.code/v1/repos/dana/stacky",
+      "html_url": "https://source.code/dana/stacky",
+      "created_at": "2026-11-05T09:00:00.000Z",
+      "updated_at": "2026-11-05T09:00:00.000Z",
+      "version": 1
+    },
+    {
+      "object": "repo",
+      "id": "rep_01m573tgm0h7yr39d4",
+      "owner": "dana",
+      "name": "notes",
+      "full_name": "dana/notes",
+      "description": "Private notes.",
+      "visibility": "private",
+      "default_branch": "main",
+      "stars": 0,
+      "open_changes": 0,
+      "open_issues": 0,
+      "url": "https://api.source.code/v1/repos/dana/notes",
+      "html_url": "https://source.code/dana/notes",
+      "created_at": "2026-10-18T09:00:00.000Z",
+      "updated_at": "2026-10-18T09:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "c_WzE3OTIzMTQwMDAwMDAsInJlcF8wMW01NzN0Z20waDd5cjM5ZDQiLCIxcGhqcGcyIl0"
+}
+```
+
+### `repos.create`
+
+`POST /repos`
+
+**Create a repository**
+
+A bare name goes in the account you act as; set `owner` to use another. Naturally idempotent: asking for one that exists returns it with `Sx-Outcome: unchanged`. Members of an organization cannot create repositories there.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `repo`         |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                          | Notes                                           |
+| ------------- | ----------------------------- | ----------------------------------------------- |
+| `name`        | string (pattern)              | Required.                                       |
+| `owner`       | string                        | Account handle. Default: the account you act as |
+| `description` | string (up to 500 characters) |                                                 |
+| `visibility`  | `public` or `private`         | Default `"public"`.                             |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"notes2","description":"Scratch","visibility":"private"}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/repos/dana/notes2
+sx-outcome: created
+ratelimit: "write";r=94;t=60
+```
+
+```json
+{
+  "object": "repo",
+  "id": "rep_01m6tq6r80s0tywnf4",
+  "owner": "dana",
+  "name": "notes2",
+  "full_name": "dana/notes2",
+  "description": "Scratch",
+  "visibility": "private",
+  "default_branch": "main",
+  "stars": 0,
+  "open_changes": 0,
+  "open_issues": 0,
+  "url": "https://api.source.code/v1/repos/dana/notes2",
+  "html_url": "https://source.code/dana/notes2",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `repos.delete`
+
+`DELETE /repos/{owner}/{repo}`
+
+**Delete a repository**
+
+Permanent. Owners of the account and admins of the organization only. You must repeat the full name as `?confirm=owner/name`, so a mistyped path cannot delete the wrong thing. Its changes, issues, webhooks, mirrors and variables go with it; events already written stay in the log.
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, a JSON document                    |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `confirm` | string  | `owner/name`, to confirm                                                                                |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/repos/dana/notes?confirm=dana/notes" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=82;t=60
+```
+
+### `repos.get`
+
+`GET /repos/{owner}/{repo}`
+
+**One repository**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Wait       | `?wait=20` with `If-None-Match`            |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a `repo`                            |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name     | Type                    | Notes                                                                                              |
+| -------- | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `fields` | string                  | Comma list of fields to return, dotted for nested. `object` and `id` always stay.                  |
+| `wait`   | integer (min 0, max 30) | With If-None-Match: hold the request up to this many seconds until the ETag would change. 0 to 30. |
+
+**Errors**
+
+[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"1.0.6.3-fL8I3yq7tREbJUSV"
+ratelimit: "read";r=1196;t=60
+```
+
+```json
+{
+  "object": "repo",
+  "id": "rep_01m3kkw4m0zvf3zfc9",
+  "owner": "dana",
+  "name": "gitfs",
+  "full_name": "dana/gitfs",
+  "description": "Git over object storage.",
+  "visibility": "public",
+  "default_branch": "main",
+  "stars": 2140,
+  "open_changes": 5,
+  "open_issues": 2,
+  "url": "https://api.source.code/v1/repos/dana/gitfs",
+  "html_url": "https://source.code/dana/gitfs",
+  "created_at": "2026-09-28T09:00:00.000Z",
+  "updated_at": "2026-09-28T09:00:00.000Z",
+  "version": 1
+}
+```
+
+### `repos.update`
+
+`PATCH /repos/{owner}/{repo}`
+
+**Rename a repository, change its description, visibility or default branch**
+
+Owners of the account and admins of the organization only. Send `If-Match` with the ETag you read. A rename keeps working at the old address: it answers `308` with the new one, and webhooks, mirrors and variables move with the repository. Making a repository private hides it from everyone who could only see it because it was public.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `repo`         |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member           | Type                                      | Notes |
+| ---------------- | ----------------------------------------- | ----- |
+| `name`           | string (pattern)                          |       |
+| `description`    | string (up to 500 characters)             |       |
+| `visibility`     | `public` or `private`                     |       |
+| `default_branch` | string (up to 200 characters, at least 1) |       |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated), [`version_mismatch`](/docs/api/errors#version_mismatch)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/repos/dana/notes2" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"notes","description":"Scratch space"}'
+```
+
+```http
+HTTP/1.1 409
+ratelimit: "write";r=83;t=60
+```
+
+```json
+{
+  "type": "https://source.code/docs/api/errors#invalid_state",
+  "title": "The thing is not in a state that allows this",
+  "status": 409,
+  "code": "invalid_state",
+  "detail": "dana/notes already exists.",
+  "hint": "Pick another name, or delete the repository that has it.",
+  "retryable": false,
+  "exit_code": 2,
+  "request_id": "req_01m6tq6r80kvv5vp7w"
+}
+```
+
+### `repos.context`
+
+`GET /repos/{owner}/{repo}/context`
+
+**Everything needed to start work, in one request**
+
+Open changes and what blocks each, open issues, a policy summary and the env schema (names and kinds only, never values). This is what `sx context` calls. The cursor is a position in the event log to continue from with /sync.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Wait       | `?wait=20` with `If-None-Match`            |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a `context`                         |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name     | Type                    | Notes                                                                                              |
+| -------- | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `fields` | string                  | Comma list of fields to return, dotted for nested. `object` and `id` always stay.                  |
+| `wait`   | integer (min 0, max 30) | With If-None-Match: hold the request up to this many seconds until the ETag would change. 0 to 30. |
+
+**Errors**
+
+[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/context" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"5frfOmogULUhuklb"
+ratelimit: "read";r=1195;t=60
+```
+
+```json
+{
+  "object": "context",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "owner": "dana",
+    "name": "gitfs",
+    "full_name": "dana/gitfs",
+    "description": "Git over object storage.",
+    "visibility": "public",
+    "default_branch": "main",
+    "stars": 2140,
+    "open_changes": 5,
+    "open_issues": 2,
+    "url": "https://api.source.code/v1/repos/dana/gitfs",
+    "html_url": "https://source.code/dana/gitfs",
+    "created_at": "2026-09-28T09:00:00.000Z",
+    "updated_at": "2026-09-28T09:00:00.000Z",
+    "version": 1
+  },
+  "changes": [
+    {
+      "number": 218,
+      "title": "Show cache stats in `gitfs doctor`",
+      "state": "draft",
+      "author": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "checks": "none",
+      "policy": "pending",
+      "blocking": ["core-paths:pending", "ci-evidence:pending"]
+    },
+    {
+      "number": 217,
+      "title": "Bound the negative cache and evict LRU",
+      "state": "draft",
+      "author": {
+        "object": "actor",
+        "id": "acc_01m203xrm07rgvmjza",
+        "handle": "claude-t3",
+        "class": "agent"
+      },
+      "checks": "pass",
+      "policy": "pending",
+      "blocking": ["core-paths:pending", "agent-authored:pending"]
+    },
+    "…and 3 more"
+  ],
+  "issues": [
+    {
+      "number": 209,
+      "title": "Document the cache flags",
+      "labels": ["docs"]
+    },
+    {
+      "number": 4,
+      "title": "Panic on trailing-dot ref names",
+      "labels": ["bug"]
+    }
+  ],
+  "policy": {
+    "rules": 4,
+    "mode": "enforce"
+  },
+  "env": [
+    {
+      "name": "DATABASE_URL",
+      "kind": "url",
+      "set": ["development", "production"]
+    },
+    {
+      "name": "STRIPE_KEY",
+      "kind": "string",
+      "set": ["production"]
+    },
+    "…and 1 more"
+  ],
+  "cursor": "e_0"
+}
+```
+
+### `repos.number`
+
+`GET /repos/{owner}/{repo}/numbers/{number}`
+
+**Resolve #n to a change or an issue**
+
+Changes and issues share one counter per repository, so a number is never ambiguous. Answers 200 with the type and its address.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `number_ref`                      |
+
+**Path parameters**
+
+| Name     | Type                                  | Notes |
+| -------- | ------------------------------------- | ----- |
+| `owner`  | string                                |       |
+| `repo`   | string                                |       |
+| `number` | integer (min 1, max 9007199254740991) |       |
+
+**Errors**
+
+[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/numbers/216" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"g49oIoX3xlKNZsZ9"
+ratelimit: "read";r=1194;t=60
+```
+
+```json
+{
+  "object": "number_ref",
+  "number": 216,
+  "type": "change",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216"
+}
+```
+
+### `runs.list`
+
+`GET /repos/{owner}/{repo}/runs`
+
+**A repository's runs, newest first**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `run`                     |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name     | Type                                                             | Notes                                                              |
+| -------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200)                                         | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                                                           | `next_cursor` from the previous page, exactly as returned          |
+| `state`  | `running` or `succeeded` or `failed` or `cancelled` or `expired` |                                                                    |
+
+**Errors**
+
+[`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/runs" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ZDS_NYFB_w7HUkon"
+ratelimit: "read";r=1165;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "run",
+      "id": "run_01m6tq6r8062rx90ds",
+      "repo": {
+        "object": "repo",
+        "id": "rep_01m3kkw4m0zvf3zfc9",
+        "full_name": "dana/gitfs",
+        "url": "https://api.source.code/v1/repos/dana/gitfs"
+      },
+      "task": "Fix the flaky cache test",
+      "state": "running",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m6tq6r80mxzmx3x9",
+        "handle": "dana",
+        "class": "agent"
+      },
+      "change": 216,
+      "scopes": ["repo:read", "issues:read", "…and 4 more"],
+      "token": null,
+      "token_id": "tok_01m6tq6r80ccvse96e",
+      "notes": [
+        {
+          "at": "2026-11-07T10:00:00.000Z",
+          "text": "Reproduced the failure on patch set 2"
+        }
+      ],
+      "summary": null,
+      "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+      "started_at": "2026-11-07T10:00:00.000Z",
+      "expires_at": "2026-11-07T11:00:00.000Z",
+      "finished_at": null,
+      "version": 2
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `runs.start`
+
+`POST /repos/{owner}/{repo}/runs`
+
+**Start a run and get a token for it**
+
+A run is one bounded piece of work by an agent. Starting one mints a token limited to this repository, with only the scopes asked for (never more than yours, never `tokens:manage`), that stops working when the run ends or after `ttl_minutes`. The token is in the response once. Give it to the agent and keep your own. Everything the agent does is attributed to you as an agent. At most 20 runs may be going at once.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:write`, `tokens:manage`       |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `run`                      |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                                                                                                                                                                                                                                                                   | Notes                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `task`        | string (up to 500 characters, at least 1)                                                                                                                                                                                                                                              | Required. What the run is for, in a sentence                      |
+| `change`      | integer (min 1, max 9007199254740991)                                                                                                                                                                                                                                                  | The change it works on                                            |
+| `scopes`      | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` | Default: read, comment on issues and changes, read the env schema |
+| `ttl_minutes` | integer (min 1, max 240)                                                                                                                                                                                                                                                               | Default `60`.                                                     |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"task":"Fix the flaky cache test","change":216,"ttl_minutes":60}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds
+ratelimit: "write";r=93;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r8062rx90ds",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "running",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": "sxr_IHivCCS8-naFZRDpN1idkO83sA6NcnRO",
+  "token_id": "tok_01m6tq6r80ccvse96e",
+  "notes": [],
+  "summary": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": null,
+  "version": 1
+}
+```
+
+### `runs.get`
+
+`GET /repos/{owner}/{repo}/runs/{id}`
+
+**One run**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `run`                             |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Errors**
+
+[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"faZuF9eYzjt4svTz"
+ratelimit: "read";r=1164;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r8062rx90ds",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "running",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r80ccvse96e",
+  "notes": [
+    {
+      "at": "2026-11-07T10:00:00.000Z",
+      "text": "Reproduced the failure on patch set 2"
+    }
+  ],
+  "summary": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": null,
+  "version": 2
+}
+```
+
+### `runs.cancel`
+
+`POST /repos/{owner}/{repo}/runs/{id}/cancel`
+
+**Stop a run**
+
+The person who started it, or an admin of the account, can stop a run at any moment. Its token stops working at once.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `repo:read`                   |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `200`, a `run`                |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/cancel" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 409
+ratelimit: "write";r=91;t=60
+```
+
+```json
+{
+  "type": "https://source.code/docs/api/errors#invalid_state",
+  "title": "The thing is not in a state that allows this",
+  "status": 409,
+  "code": "invalid_state",
+  "detail": "Run run_01m6tq6r8062rx90ds is already succeeded.",
+  "hint": "Read the object and check its actions map.",
+  "retryable": false,
+  "exit_code": 2,
+  "request_id": "req_01m6tq6r80358ze6y4"
+}
+```
+
+### `runs.finish`
+
+`POST /repos/{owner}/{repo}/runs/{id}/finish`
+
+**End a run with its outcome**
+
+The run's token stops working. Repeating it with the same outcome returns the run unchanged, so a retry is safe. Ending a run that already ended some other way answers `invalid_state`.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:read`             |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `run`          |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member    | Type                           | Notes     |
+| --------- | ------------------------------ | --------- |
+| `state`   | `succeeded` or `failed`        | Required. |
+| `summary` | string (up to 2000 characters) |           |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/finish" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"state":"succeeded","summary":"Fixed in #217"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=118;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r8062rx90ds",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "succeeded",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r80ccvse96e",
+  "notes": [
+    {
+      "at": "2026-11-07T10:00:00.000Z",
+      "text": "Reproduced the failure on patch set 2"
+    }
+  ],
+  "summary": "Fixed in #217",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": "2026-11-07T10:00:00.000Z",
+  "version": 3
+}
+```
+
+### `runs.note`
+
+`POST /repos/{owner}/{repo}/runs/{id}/notes`
+
+**Say what the run is doing**
+
+A line of progress for whoever is watching. The last 50 are kept. Not idempotent: sending a line twice adds it twice.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:read`                         |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `200`, a `run`                      |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member | Type                                      | Notes     |
+| ------ | ----------------------------------------- | --------- |
+| `text` | string (up to 500 characters, at least 1) | Required. |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/notes" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Reproduced the failure on patch set 2"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=119;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r8062rx90ds",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "running",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r80ccvse96e",
+  "notes": [
+    {
+      "at": "2026-11-07T10:00:00.000Z",
+      "text": "Reproduced the failure on patch set 2"
+    }
+  ],
+  "summary": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": null,
+  "version": 2
+}
+```

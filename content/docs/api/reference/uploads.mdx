@@ -1,0 +1,389 @@
+---
+icon: ArrowDownTrayIcon
+title: Uploads and evidence
+description: Announce a file, send it to a signed address, attach it to a change.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `evidence.list`
+
+`GET /repos/{owner}/{repo}/changes/{number}/evidence`
+
+**Evidence attached to a change**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `evidence`                |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Errors**
+
+[`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/evidence" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"_zwxOKa_9OZbAIWF"
+ratelimit: "read";r=1167;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "evidence",
+      "id": "evd_01m6tq6r80px8sv67k",
+      "change": 216,
+      "kind": "image",
+      "caption": "After: the cache stats line",
+      "upload": {
+        "id": "upl_01m6tq6r80xr6j9s72",
+        "content_type": "image/png",
+        "size": 48,
+        "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
+        "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/content"
+      },
+      "created_by": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "created_at": "2026-11-07T10:00:00.000Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `evidence.create`
+
+`POST /repos/{owner}/{repo}/changes/{number}/evidence`
+
+**Attach a file to a change as evidence**
+
+Evidence shows what a change does: before and after images, a recording, an interactive preview, or test results. Each says who made it. The upload must be yours and finished, and its type must fit the kind. A file attaches once.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `pulls:write`                       |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `evidence`                 |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member    | Type                                                  | Notes                   |
+| --------- | ----------------------------------------------------- | ----------------------- |
+| `upload`  | string                                                | Required. The `upl_` id |
+| `kind`    | `image` or `recording` or `preview` or `test_results` | Required.               |
+| `caption` | string (up to 300 characters)                         | Default `""`.           |
+
+**Errors**
+
+[`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/changes/216/evidence" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"upload":"upl_01m6tq6r80xr6j9s72","kind":"image","caption":"After: the cache stats line"}'
+```
+
+```http
+HTTP/1.1 201
+ratelimit: "write";r=95;t=60
+```
+
+```json
+{
+  "object": "evidence",
+  "id": "evd_01m6tq6r80px8sv67k",
+  "change": 216,
+  "kind": "image",
+  "caption": "After: the cache stats line",
+  "upload": {
+    "id": "upl_01m6tq6r80xr6j9s72",
+    "content_type": "image/png",
+    "size": 48,
+    "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
+    "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/content"
+  },
+  "created_by": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `uploads.create`
+
+`POST /uploads`
+
+**Announce a file you are about to upload**
+
+Say what the file is. The response has an `upload_url`: PUT the bytes there with the same Content-Type, no token needed. The address works once, for exactly this type and size, for an hour. The first bytes of images and video are checked against the type.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:write`                        |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `upload`                   |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member         | Type                                                                                                                                           | Notes                 |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `filename`     | string (up to 200 characters, at least 1)                                                                                                      | Required.             |
+| `content_type` | `image/png` or `image/jpeg` or `image/gif` or `image/webp` or `video/mp4` or `video/webm` or `application/json` or `text/plain` or `text/html` | Required.             |
+| `size`         | integer (min 1, max 52428800)                                                                                                                  | Required.             |
+| `purpose`      | `evidence`                                                                                                                                     | Default `"evidence"`. |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/uploads" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"after.png","content_type":"image/png","size":48}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72
+ratelimit: "write";r=96;t=60
+```
+
+```json
+{
+  "object": "upload",
+  "id": "upl_01m6tq6r80xr6j9s72",
+  "filename": "after.png",
+  "content_type": "image/png",
+  "size": 48,
+  "purpose": "evidence",
+  "state": "pending",
+  "sha256": null,
+  "upload_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=xG53cCku9PO2ivZ4SnH5xX9e27oXQK4xDnv5mXJFJdo",
+  "content_url": null,
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `uploads.get`
+
+`GET /uploads/{id}`
+
+**One of your uploads**
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `repo:read`            |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `upload`      |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Errors**
+
+[`insufficient_scope`](/docs/api/errors#insufficient_scope), [`not_found`](/docs/api/errors#not_found), [`unauthenticated`](/docs/api/errors#unauthenticated)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"59vV3CBbjRVCvm41"
+ratelimit: "read";r=1168;t=60
+```
+
+```json
+{
+  "object": "upload",
+  "id": "upl_01m6tq6r80xr6j9s72",
+  "filename": "after.png",
+  "content_type": "image/png",
+  "size": 48,
+  "purpose": "evidence",
+  "state": "uploaded",
+  "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
+  "upload_url": null,
+  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/content",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `uploads.content`
+
+`GET /uploads/{id}/content`
+
+**Read the file**
+
+You can read your own uploads. Once a file is attached to a change, anyone who can read that repository can read it. Served with `nosniff` and a sandboxing policy; only images and video display inline. The ETag is the SHA-256, and the content never changes.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a JSON document                     |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Errors**
+
+[`not_found`](/docs/api/errors#not_found), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/content" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607"
+ratelimit: "read";r=1166;t=60
+```
+
+### `uploads.put`
+
+`PUT /uploads/{id}/data`
+
+**Send the file**
+
+The address comes from `uploads.create`. It carries its own signature in `exp` and `sig`, so this needs no token. Send the bytes as the body with the declared Content-Type and exactly the declared size.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | nothing                             |
+| Scopes     | none                                |
+| Rate limit | `write` pool, 2 units               |
+| Success    | `200`, a `upload`                   |
+
+**Path parameters**
+
+| Name | Type   | Notes |
+| ---- | ------ | ----- |
+| `id` | string |       |
+
+**Query parameters**
+
+| Name  | Type                                                  | Notes                             |
+| ----- | ----------------------------------------------------- | --------------------------------- |
+| `exp` | integer (min -9007199254740991, max 9007199254740991) | Required. From the upload address |
+| `sig` | string (up to 100 characters, at least 10)            | Required. From the upload address |
+
+**Errors**
+
+[`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`payload_too_large`](/docs/api/errors#payload_too_large), [`signature_invalid`](/docs/api/errors#signature_invalid), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=xG53cCku9PO2ivZ4SnH5xX9e27oXQK4xDnv5mXJFJdo" \
+  -H "content-type: image/png" \
+  --data-binary @after.png
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "anonymous";r=58;t=60
+```
+
+```json
+{
+  "object": "upload",
+  "id": "upl_01m6tq6r80xr6j9s72",
+  "filename": "after.png",
+  "content_type": "image/png",
+  "size": 48,
+  "purpose": "evidence",
+  "state": "uploaded",
+  "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
+  "upload_url": null,
+  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/content",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72",
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```

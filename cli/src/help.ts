@@ -40,12 +40,12 @@ export const groupHelp: Record<string, string> = {
   change: `sx change <command>
 
   list [--all]            open changes, or every change
-  view [id]               one change and what blocks it (default: current branch)
+  view [number]           one change and what blocks it (default: current branch)
   create [--draft]        make a change from the current branch
                           title = last commit, base = default branch
                           run again to add a patch set
-  land [id]               land a change if policy allows
-  checkout <id>           print the git command to switch to its branch
+  land [number]           land exactly the tree it just read, if policy allows
+  checkout <number>       print the git command to switch to its branch
 `,
   repo: `sx repo <command>
 
@@ -102,6 +102,16 @@ export const groupHelp: Record<string, string> = {
     3. the owner of the repository you are in, when you can act as it
     4. the account saved by sx account switch
     5. you
+`,
+  auth: `sx auth <command>
+
+  status                  signed in? to what, as whom, with which scopes (exit 4: no)
+  login [--scope "a b"]   sign in with a code you approve in a browser (saves a token that refreshes)
+  logout                  revoke the saved sign-in and delete it
+
+  SX_TOKEN in the environment always wins over a saved sign-in. SX_API (or
+  \`sx config set api <url>\`) says which server; with neither, sx runs the
+  preview's sample data in this process.
 `,
   config: `sx config <command>
 
