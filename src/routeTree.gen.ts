@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DesignRouteImport } from './routes/design'
 import { Route as DiscoverRouteImport } from './routes/discover'
@@ -39,6 +40,11 @@ import { Route as HandleRepoCommitShaRouteImport } from './routes/$handle/$repo/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -170,6 +176,7 @@ const HandleRepoCommitShaRoute = HandleRepoCommitShaRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
@@ -227,6 +235,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/discover': typeof DiscoverRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/compare'
     | '/dashboard'
     | '/design'
     | '/discover'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/compare'
     | '/dashboard'
     | '/design'
     | '/discover'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/compare'
     | '/dashboard'
     | '/design'
     | '/discover'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompareRoute: typeof CompareRoute
   DashboardRoute: typeof DashboardRoute
   DesignRoute: typeof DesignRoute
   DiscoverRoute: typeof DiscoverRoute
@@ -376,6 +389,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -558,6 +578,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompareRoute: CompareRoute,
   DashboardRoute: DashboardRoute,
   DesignRoute: DesignRoute,
   DiscoverRoute: DiscoverRoute,

@@ -451,6 +451,7 @@ function CommandPalette({
 
 const publicLinks = [
   { label: 'Discover', to: '/discover' },
+  { label: 'Compare', to: '/compare' },
   { label: 'Pricing', to: '/pricing' },
 ] as const
 const navLinks = [
@@ -646,6 +647,7 @@ const footerColumns: Array<[string, Array<FooterLink>]> = [
     'Product',
     [
       { label: 'Discover', link: { to: '/discover' } },
+      { label: 'Compare', link: { to: '/compare' } },
       { label: 'Pricing', link: { to: '/pricing' } },
       { label: 'Dashboard', link: { to: '/dashboard' } },
     ],

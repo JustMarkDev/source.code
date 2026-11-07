@@ -5,16 +5,14 @@ import {
   KeyIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
-import type { BrandId } from '~/components/brand'
 import type { StatusItem } from '~/components/forge/status-card'
-import { BrandLogo, brandName } from '~/components/brand'
 import { Sparkline } from '~/components/dither-kit'
 import { CopyField } from '~/components/forge/repo-shell'
-import { SoftwareCard } from '~/components/forge/software-card'
+import { AnySection } from '~/components/forge/any-section'
+import { CompareMatrix, Legend } from '~/components/forge/compare-table'
 import { StatusCard } from '~/components/forge/status-card'
 import { Button } from '~/components/ui/button'
 import { authClient } from '~/lib/auth/client'
-import { latestStable, repos } from '~/mock/data'
 
 export const Route = createFileRoute('/')({
   head: () => ({
@@ -46,24 +44,6 @@ const preview: Array<StatusItem> = [
   },
 ]
 
-const agents: Array<BrandId> = [
-  'claudereview',
-  't3code',
-  'boat',
-  'e2b',
-  'daytona',
-  'coderabbit',
-  'greptile',
-  'blacksmith',
-  'namespace',
-]
-
-/** Apps with a stable release, most starred first. The first four show on the home page. */
-const downloadable = repos
-  .filter((r) => r.category === 'Apps' && latestStable(r))
-  .sort((a, b) => b.stars - a.stars)
-  .slice(0, 4)
-
 const history = [4, 6, 5, 9, 8, 12, 10, 14, 13, 18, 16, 22, 20, 26]
 
 function Landing() {
@@ -90,15 +70,15 @@ function Landing() {
           </Button>
           <Button
             size="lg"
-            render={<Link to="/discover" />}
+            render={<Link to="/compare" />}
             nativeButton={false}
           >
-            Browse software
+            How it compares
           </Button>
         </div>
         <p className="mx-auto max-w-xl text-sm text-muted-foreground">
-          Browsing and downloading is free and needs no account. Bring your own
-          runner, model and agent; we never resell compute or tokens.
+          Bring your own runner, model and agent. We never resell compute or
+          tokens.
         </p>
       </section>
 
@@ -183,72 +163,30 @@ function Landing() {
         ))}
       </section>
 
-      <section aria-labelledby="software" className="space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-1.5">
-            <h2 id="software" className="text-3xl font-semibold tracking-tight">
-              Software you can download today
-            </h2>
-            <p className="text-muted-foreground">
-              Free, signed and checksummed. No account needed.
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            render={<Link to="/discover" />}
-            nativeButton={false}
-          >
-            Browse all software
-          </Button>
-        </div>
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {downloadable.map((r) => (
-            <li key={`${r.owner}/${r.name}`} className="flex">
-              <div className="flex-1">
-                <SoftwareCard repo={r} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <AnySection />
 
-      <section className="mx-auto max-w-3xl space-y-8 text-center">
-        <div className="space-y-3">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Any model. Any harness. Any agent.
+      <section
+        aria-labelledby="compare"
+        className="mx-auto max-w-5xl space-y-6"
+      >
+        <div className="space-y-3 text-center">
+          <h2 id="compare" className="text-3xl font-semibold tracking-tight">
+            How it compares
           </h2>
-          <p className="text-muted-foreground">
-            source.code does not pick for you or sell you tokens. Connect the
-            reviewers, runners and environments you already use, and swap them
-            when something better comes along.
+          <p className="mx-auto max-w-2xl text-muted-foreground text-balance">
+            GitHub, GitLab, Bitbucket, GitCafe and Forgejo are good products.
+            Here is where we differ, including the rows where they are ahead.
           </p>
         </div>
-        <ul className="flex flex-wrap justify-center gap-3">
-          {agents.map((id) => (
-            <li
-              key={id}
-              className="surface inline-flex items-center gap-2 rounded-xl border bg-card px-3.5 py-2 text-sm"
-            >
-              <BrandLogo id={id} className="size-4" />
-              {brandName(id)}
-            </li>
-          ))}
-        </ul>
-        <div className="flex justify-center gap-3">
-          <Button
-            render={
-              <Link to="/docs/$" params={{ _splat: 'cli/agent-guide' }} />
-            }
-            nativeButton={false}
-          >
-            Teach an agent to use it
-          </Button>
+        <CompareMatrix />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Legend />
           <Button
             variant="ghost"
-            render={<Link to="/pricing" />}
+            render={<Link to="/compare" />}
             nativeButton={false}
           >
-            See pricing
+            Read the notes and sources
           </Button>
         </div>
       </section>
