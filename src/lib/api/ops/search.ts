@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await --
-   Domain.run takes an async function so the same handlers can read from Convex later;
-   the in-memory domain answers synchronously. */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { fragmentsOf, parseQuery } from '../search'
@@ -40,7 +37,7 @@ export const searchOp = defineOp({
       // The cursor belongs to one viewer: a different caller may see a
       // different list, so its cursor must not silently continue this one.
       const f = fp('search', q.q, ctx.principal?.capabilityKey ?? 'anon')
-      const out = yield* run(async (d) => {
+      const out = yield* run((d) => {
         const parsed = parseQuery(q.q)
         if (
           !parsed.terms.length &&

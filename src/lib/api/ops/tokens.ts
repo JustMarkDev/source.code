@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await --
-   Domain.run takes an async function so the same handlers can read from Convex later;
-   the in-memory domain answers synchronously. */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { allScopes } from '../auth'
@@ -64,7 +61,7 @@ export const listTokens = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run(async (d) =>
+      const data = yield* run((d) =>
         d.svc.auth
           .list(ctx.principal!.handle, ['personal', 'bot', 'run'])
           .map((t) => present(d, t, null)),
@@ -208,7 +205,7 @@ export const getToken = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) =>
+      return yield* run((d) =>
         present(d, own(d, ctx.principal!, ctx.params.id), null),
       )
     }),
@@ -232,7 +229,7 @@ export const revokeToken = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run(async (d) => {
+      yield* run((d) => {
         const t = own(d, ctx.principal!, ctx.params.id)
         if (!ctx.dryRun) d.svc.auth.revoke(t.id)
       })
@@ -274,7 +271,7 @@ export const listAuthorizations = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run(async (d) =>
+      const data = yield* run((d) =>
         d.svc.auth
           .listAuthorizations(ctx.principal!.handle)
           .map((a) => presentAuthz(d, a)),
@@ -309,7 +306,7 @@ export const revokeAuthorization = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run(async (d) => {
+      yield* run((d) => {
         const a = d.svc.auth.authorizations.get(ctx.params.id)
         if (!a || a.handle !== ctx.principal!.handle || a.revokedAt !== null)
           throw apiError('not_found', `No authorization ${ctx.params.id}.`)

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/require-await */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { hashToken, principalOf } from '../auth'
@@ -109,8 +108,8 @@ export const syncRepo = defineOp({
     return id ? `repo-id:${id}` : repoWaitTopic(repo)
   },
   probe: (ctx, d) => {
-    const [owner, name] = ctx.query.repo.split('/')
-    return d.syncVersion(owner, name ?? '', ctx.principal)
+    const [owner = '', name = ''] = ctx.query.repo.split('/')
+    return d.syncVersion(owner, name, ctx.principal)
   },
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -144,7 +143,7 @@ export const streamEvents = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const { events, domain, repoId } = yield* run(async (d) => ({
+      const { events, domain, repoId } = yield* run((d) => ({
         events: d.events,
         domain: d,
         repoId: ctx.query.repo ? d.repoIdForHistory(ctx.query.repo) : null,
@@ -170,18 +169,20 @@ export const streamEvents = defineOp({
           }),
         )
       const encoder = new TextEncoder()
-      let open = true
+      const stream = { open: true }
+      // Read through a call: the cancel callback closes it between awaits.
+      const isOpen = () => stream.open && !ctx.signal.aborted
       const send = (
         text: string,
         controller: ReadableStreamDefaultController<Uint8Array>,
       ) => {
-        if (!open || ctx.signal.aborted) return false
+        if (!isOpen()) return false
         try {
           controller.enqueue(encoder.encode(text))
           return true
         } catch {
           // The client went away between the check and the enqueue.
-          open = false
+          stream.open = false
           return false
         }
       }
@@ -193,7 +194,7 @@ export const streamEvents = defineOp({
             } catch {}
             return
           }
-          while (open && !ctx.signal.aborted) {
+          while (isOpen()) {
             // A stream is long-lived; a token revoked or expired mid-stream stops it.
             const bearer = /^Bearer\s+(.+)$/i.exec(
               ctx.header('authorization') ?? '',
@@ -240,7 +241,7 @@ export const streamEvents = defineOp({
               )
                 break
             }
-            if (!open) break
+            if (!isOpen()) break
             // Move past events that did not match, so they are not scanned again.
             after = Math.max(after, scannedTo)
             if (batch.length === 0) after = Math.max(after, events.head)
@@ -251,7 +252,7 @@ export const streamEvents = defineOp({
               15_000,
               ctx.signal,
             )
-            if (events.head === before && open && !ctx.signal.aborted)
+            if (events.head === before && isOpen())
               send(': keepalive\n\n', controller)
           }
           try {
@@ -259,7 +260,7 @@ export const streamEvents = defineOp({
           } catch {}
         },
         cancel() {
-          open = false
+          stream.open = false
         },
       })
       return new Raw(

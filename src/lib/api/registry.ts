@@ -17,9 +17,13 @@ export type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 export class Domain extends Context.Service<
   Domain,
   {
-    /** Run a data access function. Failures become `ApiError`. */
+    /**
+     * Run a data access function. Failures become `ApiError`. The function may
+     * answer at once or later: the in-memory domain does the first, the Convex
+     * one will do the second.
+     */
     readonly run: <TValue>(
-      f: (core: DomainCore) => Promise<TValue>,
+      f: (core: DomainCore) => PromiseLike<TValue> | TValue,
     ) => Effect.Effect<TValue, ApiError>
   }
 >()('api/Domain') {}

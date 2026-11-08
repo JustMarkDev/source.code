@@ -79,8 +79,6 @@ export function createSampleApi(
   }
   const events = overrides.events ?? new EventLog(now)
   const domain = new MemoryDomain(urls, now, events)
-  seedSample(domain)
-  overrides.seed?.(domain)
   const auth =
     (overrides.tokens as AuthStore | undefined) ?? sampleTokenStore(now())
   domain.svc.auth = auth
@@ -97,7 +95,8 @@ export function createSampleApi(
   domain.svc.uploads = new UploadService(new MemoryBlobStore(), now)
   domain.svc.extras = new ExtrasStore(now)
   domain.svc.git = overrides.git ?? new StoreGit()
-  domain.registerGitStores()
+  seedSample(domain)
+  overrides.seed?.(domain)
   seedExtras(domain)
   const issuer = overrides.issuer ?? urls.html
   const oauth = new OAuthServer({

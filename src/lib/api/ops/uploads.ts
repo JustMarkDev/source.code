@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await --
-   Domain.run takes an async function so the same handlers can read from Convex later;
-   the in-memory domain answers synchronously. */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { ALLOWED } from '../uploads'
@@ -83,7 +80,7 @@ export const createUpload = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const out = yield* run(async (d) => {
+      const out = yield* run((d) => {
         const b = ctx.body
         if (b.size > ALLOWED[b.content_type].max)
           throw apiError(
@@ -179,7 +176,7 @@ export const putUpload = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => {
+      return yield* run((d) => {
         const rec = d.svc.uploads.get(ctx.params.id)
         // An unknown id and a bad signature look the same.
         if (!rec || !d.svc.uploads.verify(rec, ctx.query.exp, ctx.query.sig))
@@ -241,7 +238,7 @@ export const getUpload = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => {
+      return yield* run((d) => {
         const rec = d.svc.uploads.get(ctx.params.id)
         // A repository-limited token cannot use ownership to step around the
         // repository limit of an attached upload.
@@ -278,7 +275,7 @@ export const uploadContent = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => {
+      return yield* run((d) => {
         const rec = d.svc.uploads.get(ctx.params.id)
         const mine =
           rec &&

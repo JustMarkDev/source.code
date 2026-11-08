@@ -6,20 +6,15 @@
  *   bun scripts/api-sdk.ts
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { format } from 'prettier'
 import { allOperations } from '../src/lib/api'
 import { buildOpenApi } from '../src/lib/api/openapi'
+import { formatSource } from '../src/lib/api/format'
 import { generateSdk } from '../src/lib/api/sdk'
 
 export async function sdkSource(): Promise<string> {
   const ops = allOperations()
   const doc = buildOpenApi(ops, 'https://api.source.code/v1')
-  return format(generateSdk(JSON.parse(JSON.stringify(doc))), {
-    parser: 'typescript',
-    semi: false,
-    singleQuote: true,
-    trailingComma: 'all',
-  })
+  return formatSource('index.ts', generateSdk(JSON.parse(JSON.stringify(doc))))
 }
 
 if (import.meta.main) {

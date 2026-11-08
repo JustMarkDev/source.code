@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition --
-   Reads of maps, records and arrays are checked at run time here; the repo does
-   not turn on noUncheckedIndexedAccess, so the rule cannot tell they may be missing. */
 import { createHash } from 'node:crypto'
 import { Duration, Effect, Layer, ManagedRuntime } from 'effect'
 import {
@@ -19,6 +16,7 @@ import type { OAuthServer } from './oauth'
 import type { Audience, Principal, TokenStore } from './auth'
 import type { z } from 'zod'
 import type { LimitStore, Policy } from './limiter'
+import type { DomainCore } from './domain'
 import type { MemoryDomain } from './domain'
 import type { EventLog } from './events'
 import type { Ctx, Op } from './registry'
@@ -212,7 +210,8 @@ export function createApi(options: ApiOptions) {
   const base = options.base ?? 'https://api.source.code/v1'
   const htmlBase = options.htmlBase ?? 'https://source.code'
   const now = options.now ?? Date.now
-  const pools = options.pools ?? defaultPools
+  const pools: Record<string, Policy | undefined> =
+    options.pools ?? defaultPools
   const router = new Router(options.ops)
   const limitStore = options.limitStore ?? new MemoryLimitStore()
   const limiter = new Limiter(limitStore, { now })
@@ -230,7 +229,7 @@ export function createApi(options: ApiOptions) {
     domain.svc.uploads.sweepNow()
     domain.sweepRunsOperations()
   }, 5 * 60_000)
-  sweeper.unref?.()
+  sweeper.unref()
   const domain = options.domain
   const policyHeaders: Record<string, string> = {}
   const variants = new Map<string, string>()
@@ -250,9 +249,10 @@ export function createApi(options: ApiOptions) {
   const runtime = ManagedRuntime.make(
     Layer.succeed(Domain)(
       Domain.of({
-        run: (f) =>
+        run: <TValue>(f: (core: DomainCore) => PromiseLike<TValue> | TValue) =>
           Effect.tryPromise({
-            try: () => f(domain),
+            // A throw before the first await is a failure too, not an escape.
+            try: () => new Promise<TValue>((resolve) => resolve(f(domain))),
             catch: (e) => {
               if (e instanceof ApiError) return e
               if (e instanceof Moved)
@@ -314,7 +314,7 @@ export function createApi(options: ApiOptions) {
   ): Promise<{ principal: Principal | null; error?: Response }> {
     const header = req.headers.get('authorization')
     if (!header) return { principal: null }
-    const [scheme, token] = header.split(' ')
+    const [scheme = '', token = ''] = header.split(' ')
     const refuse = (
       code: 'token_invalid' | 'token_expired' | 'token_revoked',
       detail: string,
@@ -324,7 +324,7 @@ export function createApi(options: ApiOptions) {
         'www-authenticate': authChallenge(', error="invalid_token"'),
       }),
     })
-    if (scheme?.toLowerCase() !== 'bearer' || !token)
+    if (scheme.toLowerCase() !== 'bearer' || !token)
       return refuse(
         'token_invalid',
         'The Authorization header is not a bearer token.',
@@ -609,7 +609,7 @@ export function createApi(options: ApiOptions) {
     const timing: Record<string, string | number> = {}
 
     // Query: the parameters every operation shares come off first.
-    const raw: Record<string, string> = {}
+    const raw: Record<string, string | undefined> = {}
     for (const [k, v] of url.searchParams) raw[k] = v
     const fields = raw.fields
     const wait = raw.wait
@@ -950,7 +950,7 @@ export function createApi(options: ApiOptions) {
           identity,
           url.search,
           fingerprintBody,
-          checkIfMatch ? (ifMatch ?? '') : '',
+          checkIfMatch ? ifMatch : '',
           op.rawBody ? (req.headers.get('content-type') ?? '') : '',
           replayKey.stamp,
         ),
@@ -1094,7 +1094,7 @@ export function createApi(options: ApiOptions) {
           out = out.body
         }
         const wantsNdjsonList =
-          wantsNdjson && (out as { object?: string })?.object === 'list'
+          wantsNdjson && (out as { object?: string } | null)?.object === 'list'
         // Objects that arrive already serialized are sent as they are, unless the
         // caller wants a shape that needs the object. `seed` stands in for the
         // body when an ETag is made, so a long body is not hashed.
@@ -1113,7 +1113,7 @@ export function createApi(options: ApiOptions) {
             data?: Array<unknown>
             has_more?: boolean
             next_cursor?: string | null
-          }
+          } | null
           if (
             list?.object === 'list' &&
             Array.isArray(list.data) &&
@@ -1135,7 +1135,7 @@ export function createApi(options: ApiOptions) {
           // a markdown builder reads members that `fields` may have removed.
           if (wantsMarkdown && status < 300)
             markdown = op.markdown!(out as Record<string, unknown>)
-          const list = out as { object?: string; data?: Array<unknown> }
+          const list = out as { object?: string; data?: Array<unknown> } | null
           out =
             list?.object === 'list' && Array.isArray(list.data)
               ? { ...list, data: list.data.map((d) => project(d, fieldPaths)) }
@@ -1157,7 +1157,7 @@ export function createApi(options: ApiOptions) {
           )
           const text = `${lines.join('\n')}\n`
           const ndEtag =
-            step.versionKey !== null && step.versionKey !== undefined
+            step.versionKey !== null
               ? etagOf(step.versionKey)
               : `W/"${hash(text)}"`
           const ndHeaders: Record<string, string> = {
@@ -1185,10 +1185,10 @@ export function createApi(options: ApiOptions) {
           json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
         if (isRead && op.conditional !== false) {
           etag =
-            step.versionKey !== null && step.versionKey !== undefined
+            step.versionKey !== null
               ? etagOf(step.versionKey)
               : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
-          if (step.versionKey !== null && step.versionKey !== undefined)
+          if (step.versionKey !== null)
             cache.set(cacheKey(step.versionKey), json)
           if (ifNoneMatch && matches(ifNoneMatch, etag)) {
             refund?.()
@@ -1216,7 +1216,7 @@ export function createApi(options: ApiOptions) {
         headers['cache-control'] = principal
           ? 'private, no-cache'
           : 'public, max-age=0, must-revalidate'
-      if (status === 202 && headers.location === undefined) {
+      if (status === 202 && !('location' in headers)) {
         const loc = (JSON.parse(json) as { url?: string }).url
         if (loc) headers.location = loc
       }

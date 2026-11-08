@@ -181,7 +181,6 @@ function fileDiff(
   }
 }
 
-/* eslint-disable @typescript-eslint/require-await -- mirrors the async SDK surface */
 // Implements the subset of @pierre/storage's Repo the app uses, from in-memory fixtures.
 export function fakeRepo(id: string): GitRepo {
   return {

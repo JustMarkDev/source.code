@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unnecessary-condition --
-   Every method is async on purpose: the Convex-backed domain has to fit the same
-   surface, and callers already await. Indexed reads of maps and arrays are checked
-   at run time; the repo does not turn on noUncheckedIndexedAccess. */
 import { createHash } from 'node:crypto'
 import { newId, seededId } from './ids'
 import { pageSorted } from './cursor'
@@ -389,14 +385,8 @@ export class MemoryDomain {
     const rec = this.makeRepo(owner, name, init)
     this.repos.set(`${owner}/${name}`, rec)
     this.reposById.set(rec.id, rec)
-    this.svc.git?.setRepo?.(`${owner}/${name}`, rec.storeId)
+    this.svc.git.setRepo?.(`${owner}/${name}`, rec.storeId)
     return rec
-  }
-
-  /** Point the git reads at every repository's immutable store id. */
-  registerGitStores() {
-    for (const rec of this.repos.values())
-      this.svc.git?.setRepo?.(`${rec.owner}/${rec.name}`, rec.storeId)
   }
 
   private makeRepo(
@@ -757,7 +747,9 @@ export class MemoryDomain {
     const runs = c.checks.filter(
       (k) => k.name === 'ci/test' && k.tree === head.tree,
     )
-    const run = runs.sort((a, b) => b.updated - a.updated)[0]
+    const run = runs.sort((a, b) => b.updated - a.updated)[0] as
+      | (typeof runs)[number]
+      | undefined
     const ciState = assume.checks?.['ci/test'] ?? run?.state ?? 'pending'
     out.push({
       id: 'ci-evidence',
@@ -1387,8 +1379,8 @@ export class MemoryDomain {
     this.aliases.delete(lower)
     for (const [key, value] of this.aliases)
       if (value.toLowerCase() === lower) this.aliases.delete(key)
-    this.svc.git?.setRepo?.(`${owner}/${input.name}`, rec.storeId)
-    this.svc.search?.upsertIfBuilt?.({
+    this.svc.git.setRepo?.(`${owner}/${input.name}`, rec.storeId)
+    this.svc.search.upsertIfBuilt({
       key: `repo:${rec.id}`,
       type: 'repo',
       id: rec.id,
@@ -1842,7 +1834,7 @@ export class MemoryDomain {
     for (const m of t.members) this.unindexMember(m, `${org}/${slug}`)
     this.teams.delete(`${org}/${slug}`)
     this.accessRevision++
-    this.svc.search?.reset()
+    this.svc.search.reset()
   }
 
   private unindexMember(handle: string, key: string) {
@@ -1875,7 +1867,7 @@ export class MemoryDomain {
       t.updated = this.now()
       t.version++
       this.accessRevision++
-      this.svc.search?.reset()
+      this.svc.search.reset()
     }
     return this.presentTeam(t)
   }
@@ -1897,7 +1889,7 @@ export class MemoryDomain {
     t.updated = this.now()
     t.version++
     this.accessRevision++
-    this.svc.search?.reset()
+    this.svc.search.reset()
   }
 
   async setTeamRepo(
@@ -1929,7 +1921,7 @@ export class MemoryDomain {
       t.version++
       this.accessRevision++
       // Visibility changed, so cached search results may be stale.
-      this.svc.search?.reset()
+      this.svc.search.reset()
     }
     if (dry)
       return this.presentTeam({
@@ -1958,7 +1950,7 @@ export class MemoryDomain {
     t.updated = this.now()
     t.version++
     this.accessRevision++
-    this.svc.search?.reset()
+    this.svc.search.reset()
   }
 
   /** Who may rename, hide or delete a repository: the owner of its account, or an admin of the organization. */
@@ -2085,7 +2077,7 @@ export class MemoryDomain {
       repo.defaultBranch = body.default_branch
       changed.push('default_branch')
     }
-    if (maintainersChanged && nextMaintainers) {
+    if (maintainersChanged) {
       const removed = [...repo.maintainers].filter(
         (h) => !nextMaintainers.includes(h),
       )
@@ -2099,7 +2091,7 @@ export class MemoryDomain {
       repo.maintainers = new Set(nextMaintainers)
       for (const c of repo.changes.values()) c.policyMemo = undefined
       this.accessRevision++
-      this.svc.search?.reset()
+      this.svc.search.reset()
       changed.push('maintainers')
     }
     if (renaming) {
@@ -2108,9 +2100,8 @@ export class MemoryDomain {
       repo.name = body.name!
       this.repos.set(to, repo)
       this.svc.auth.renameRepo(from, to)
-      this.svc.git?.setRepo?.(to, repo.storeId)
-      if (from.toLowerCase() !== to.toLowerCase())
-        this.svc.git?.dropRepo?.(from)
+      this.svc.git.setRepo?.(to, repo.storeId)
+      if (from.toLowerCase() !== to.toLowerCase()) this.svc.git.dropRepo?.(from)
       // The old address keeps working: it answers 308 with the new one. Any
       // alias that pointed at the old name follows the chain.
       for (const [key, value] of this.aliases)
@@ -2118,8 +2109,8 @@ export class MemoryDomain {
           this.aliases.set(key, to)
       this.aliases.set(from.toLowerCase(), to)
       this.aliases.delete(to.toLowerCase())
-      this.svc.hooks?.rename(from, to)
-      this.svc.extras?.rename(from, to)
+      this.svc.hooks.rename(from, to)
+      this.svc.extras.rename(from, to)
       const runs = this.runsByRepo.get(from)
       if (runs) {
         this.runsByRepo.delete(from)
@@ -2145,7 +2136,7 @@ export class MemoryDomain {
         changed.includes('visibility') ||
         changed.includes('description')
       )
-        this.svc.search?.reset()
+        this.svc.search.reset()
       this.emit(
         repo,
         'repo.updated',
@@ -2204,14 +2195,14 @@ export class MemoryDomain {
       if (value.toLowerCase() === full.toLowerCase()) this.aliases.delete(key)
     this.svc.auth.dropRepo(full)
     this.svc.uploads.dropRepo(repo.id)
-    this.svc.git?.dropRepo?.(full)
+    this.svc.git.dropRepo?.(full)
     this.deleted.set(full, repo.owner)
     this.deletedRepos.set(repo.id, { full, owner: repo.owner })
     this.deletedIds.set(full.toLowerCase(), repo.id)
     this.accessRevision++
     this.reposById.delete(repo.id)
-    this.svc.hooks?.dropRepo(full)
-    this.svc.extras?.drop(full)
+    this.svc.hooks.dropRepo(full)
+    this.svc.extras.drop(full)
     for (const t of this.teams.values())
       if (t.repos.delete(full)) {
         t.updated = this.now()
@@ -2223,7 +2214,7 @@ export class MemoryDomain {
       this.runs.delete(r.id)
     }
     this.runsByRepo.delete(full)
-    this.svc.search?.reset()
+    this.svc.search.reset()
     return { deleted: true, full }
   }
 
@@ -2452,13 +2443,11 @@ export class MemoryDomain {
       policy: { rules: 4, mode: 'enforce' },
       env:
         p?.scopes.has('secrets:schema') && this.hasRepoGrant(r, p)
-          ? this.svc.extras
-            ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({
-                name: v.name,
-                kind: v.kind,
-                set: [...v.set],
-              }))
-            : r.env
+          ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({
+              name: v.name,
+              kind: v.kind,
+              set: [...v.set],
+            }))
           : [],
       cursor: `e_${r.id}_${this.events.head}`,
     }
@@ -2843,7 +2832,7 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p)
     const c = this.getChangeRec(repo, ref)
-    const ps = c.patchSets[n - 1]
+    const ps = c.patchSets[n - 1] as (typeof c.patchSets)[number] | undefined
     if (!ps)
       throw apiError('not_found', `Change #${c.number} has no patch set ${n}.`)
     return this.presentPatchSet(repo, c, ps)
@@ -2893,8 +2882,8 @@ export class MemoryDomain {
   ): Promise<z.infer<typeof S.PatchSetComparison>> {
     const repo = this.resolve(owner, name, p)
     const c = this.getChangeRec(repo, ref)
-    const a = c.patchSets[from - 1]
-    const b = c.patchSets[to - 1]
+    const a = c.patchSets[from - 1] as (typeof c.patchSets)[number] | undefined
+    const b = c.patchSets[to - 1] as (typeof c.patchSets)[number] | undefined
     if (!a || !b)
       throw apiError(
         'not_found',
@@ -2906,8 +2895,8 @@ export class MemoryDomain {
       ...Object.keys(a.files),
       ...Object.keys(b.files),
     ])) {
-      const x = a.files[path]
-      const y = b.files[path]
+      const x = a.files[path] as (typeof a.files)[string] | undefined
+      const y = b.files[path] as (typeof b.files)[string] | undefined
       if (x && y && x.hash === y.hash) unchanged++
       else
         files.push({
@@ -3422,8 +3411,10 @@ export class MemoryDomain {
           errors?: unknown
           extra?: Record<string, unknown>
         }
-        const code =
-          failure.code && errorCatalog[failure.code] ? failure.code : 'internal'
+        const code: keyof typeof errorCatalog =
+          failure.code !== undefined && failure.code in errorCatalog
+            ? failure.code
+            : 'internal'
         const entry = errorCatalog[code]
         op.error = {
           type: `https://source.code/docs/api/errors#${code}`,
@@ -3614,23 +3605,20 @@ export class MemoryDomain {
       )
       return shown
     }
-    if (dry) {
-      const preview = {
-        ...i,
-        title: body.title ?? i.title,
-        body: body.body ?? i.body,
-        labels: body.labels ?? i.labels,
-        state: body.state ?? i.state,
-        closed:
-          body.state === 'closed'
-            ? this.now()
-            : body.state === 'open'
-              ? null
-              : i.closed,
-      }
-      return this.presentIssue(repo, preview)
+    const preview = {
+      ...i,
+      title: body.title ?? i.title,
+      body: body.body ?? i.body,
+      labels: body.labels ?? i.labels,
+      state: body.state ?? i.state,
+      closed:
+        body.state === 'closed'
+          ? this.now()
+          : body.state === 'open'
+            ? null
+            : i.closed,
     }
-    return this.presentIssue(repo, i)
+    return this.presentIssue(repo, preview)
   }
 
   // ----- events and sync --------------------------------------------------
@@ -3830,9 +3818,9 @@ export class MemoryDomain {
     p: Viewer,
     q: { repo: string; cursor?: string; limit: number },
   ): Promise<z.infer<typeof S.Sync>> {
-    const [owner, name] = q.repo.split('/')
+    const [owner = '', name = ''] = q.repo.split('/')
     const repo = this.repoForSync(
-      owner.startsWith('rep_') ? owner : `${owner}/${name ?? ''}`,
+      owner.startsWith('rep_') ? owner : `${owner}/${name}`,
       p,
     )
     const canPull = !p || p.scopes.has('pulls:read')

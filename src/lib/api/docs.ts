@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { format, resolveConfig } from 'prettier'
+import { formatSource } from './format'
 import { randomSource } from './ids'
 import { STACK_ID, T0, sampleTokens, seedStack } from './sample'
 import { buildOpenApi } from './openapi'
@@ -1083,10 +1083,6 @@ export async function generateReference(): Promise<Map<string, string>> {
   const doc = buildOpenApi(ops, BASE)
   const examples = await captureExamples()
   const files = new Map<string, string>()
-  const config =
-    (await resolveConfig(
-      new URL('../../../.prettierrc', import.meta.url).pathname,
-    )) ?? {}
   const covered = new Set<string>()
   for (const page of pages) {
     const mine = ops
@@ -1113,13 +1109,10 @@ export async function generateReference(): Promise<Map<string, string>> {
     ].join('\n')
     files.set(
       `reference/${page.file}.mdx`,
-      await format(text, { ...config, parser: 'mdx' }),
+      await formatSource('page.mdx', text),
     )
   }
-  files.set(
-    'errors.mdx',
-    await format(errorsPage(), { ...config, parser: 'mdx' }),
-  )
+  files.set('errors.mdx', await formatSource('errors.mdx', errorsPage()))
   const missing = ops.filter((o) => !covered.has(o.id)).map((o) => o.id)
   if (missing.length)
     throw new Error(`operations with no reference page: ${missing.join(', ')}`)
