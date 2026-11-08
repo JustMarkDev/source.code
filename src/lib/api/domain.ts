@@ -1436,7 +1436,7 @@ export class MemoryDomain {
     const person = this.accounts.get(login)
     if (!person || person.kind !== 'person') throw apiError('not_found', `No person ${login}.`)
     if (t.members.size >= 500 && !t.members.has(login)) throw apiError('limit_reached', 'A team can have 500 members.')
-    if (dry) return this.presentTeam(t)
+    if (dry) return this.presentTeam({ ...t, members: new Set([...t.members, login]) })
     if (!t.members.has(login)) {
       t.members.add(login)
       let set = this.teamsOf.get(login)
@@ -1477,6 +1477,7 @@ export class MemoryDomain {
       // Visibility changed, so cached search results may be stale.
       this.svc.search?.reset()
     }
+    if (dry) return this.presentTeam({ ...t, repos: new Map(t.repos).set(`${repo.owner}/${repo.name}`, permission) })
     return this.presentTeam(t)
   }
 
@@ -1729,7 +1730,8 @@ export class MemoryDomain {
   }
 
   async syncVersion(owner: string, name: string, p: Viewer) {
-    return `${this.repoKey(this.repoForSync(`${owner}/${name}`, p))}.${this.events.oldest}`
+    const full = owner.startsWith('rep_') ? owner : `${owner}/${name}`
+    return `${this.repoKey(this.repoForSync(full, p))}.${this.events.oldest}`
   }
 
   /** Sync accepts an old name and the current name; it resolves the stable id. */
@@ -2105,8 +2107,21 @@ export class MemoryDomain {
     const c = this.getChangeRec(repo, ref)
     if (c.state === 'landed' || c.state === 'abandoned')
       throw apiError('invalid_state', `Change #${c.number} is ${c.state}.`)
-    if (!dry)
-      this.pushPatchSet(repo, c, this.asActor(p!), {
+    if (dry) {
+      const prev = this.head(c)
+      const preview = {
+        ...prev,
+        n: prev.n + 1,
+        sha: body.sha,
+        tree: body.kind === 'rebase' ? prev.tree : body.sha.slice(0, 7),
+        kind: body.kind,
+        note: body.note ?? (body.kind === 'rebase' ? 'Rebased' : 'Updated'),
+        author: this.asActor(p!),
+        created: this.now(),
+      }
+      return this.presentPatchSet(repo, c, preview)
+    }
+    this.pushPatchSet(repo, c, this.asActor(p!), {
         sha: body.sha,
         kind: body.kind,
         note: body.note ?? (body.kind === 'rebase' ? 'Rebased' : 'Updated'),
@@ -2362,18 +2377,17 @@ export class MemoryDomain {
     if (!from[action].includes(c.state))
       throw apiError('invalid_state', `Change #${c.number} is ${c.state}; it cannot be ${action === 'ready' ? 'marked ready' : action === 'abandon' ? 'abandoned' : 'restored'}.`)
     const next = action === 'abandon' ? 'abandoned' : 'open'
-    if (!dry) {
-      this.touchChange(repo, c, () => {
+    if (dry) return this.presentChange(repo, { ...c, state: next }, p)
+    this.touchChange(repo, c, () => {
         c.state = next
       })
-      this.changeEvent(
-        repo,
-        c,
-        action === 'abandon' ? 'change.abandoned' : 'change.updated',
-        this.asActor(p!),
-        ['state'],
-      )
-    }
+    this.changeEvent(
+      repo,
+      c,
+      action === 'abandon' ? 'change.abandoned' : 'change.updated',
+      this.asActor(p!),
+      ['state'],
+    )
     return this.presentChange(repo, c, p)
   }
 

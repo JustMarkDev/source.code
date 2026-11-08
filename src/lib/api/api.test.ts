@@ -318,6 +318,8 @@ describe('who can see what', () => {
     const r = await h.call('GET', '/sync?repo=dana/git-fs')
     expect(r.status).toBe(200)
     expect(r.json.object).toBe('sync')
+    const id = (await h.call('GET', REPO)).json.id as string
+    expect((await h.call('GET', `/sync?repo=${id}/~`)).status).toBe(200)
   })
 
   test('the context cursor can continue with sync', async () => {
@@ -819,6 +821,9 @@ describe('writes', () => {
     const preview = await h.call('PATCH', `${REPO}?dry_run=true`, { body: { description: 'Would be this' } })
     expect(preview.json.description).toBe('Would be this')
     expect((await h.call('GET', REPO)).json.description).not.toBe('Would be this')
+    const abandon = await h.call('POST', `${REPO}/changes/216/abandon?dry_run=true`)
+    expect(abandon.json.state).toBe('abandoned')
+    expect((await h.call('GET', `${REPO}/changes/216`)).json.state).toBe('open')
   })
 
   test('an Idempotency-Key makes a create happen once', async () => {

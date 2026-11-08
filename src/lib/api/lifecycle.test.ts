@@ -309,6 +309,17 @@ describe('teams', () => {
     expect((await h.call('GET', vault, { token: h.tokens.stranger })).status).toBe(404)
   })
 
+  test('a dry run shows team member and repository changes', async () => {
+    const h = await withVault()
+    await h.call('POST', ORG, { body: { slug: 'dry' } })
+    const member = await h.call('PUT', `${ORG}/dry/members/stranger?dry_run=true`)
+    expect(member.json.members).toContain('stranger')
+    expect((await h.call('GET', `${ORG}/dry`)).json.members).toEqual([])
+    const repo = await h.call('PUT', `${ORG}/dry/repos/northwind/vault?dry_run=true`, { body: { permission: 'write' } })
+    expect(repo.json.repos).toEqual([{ full_name: 'northwind/vault', permission: 'write' }])
+    expect((await h.call('GET', `${ORG}/dry`)).json.repos).toEqual([])
+  })
+
   test('a team reaches only its own organization, and the grant follows a rename', async () => {
     const h = await withVault()
     await h.call('POST', ORG, { body: { slug: 'readers' } })
