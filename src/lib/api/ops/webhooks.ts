@@ -274,13 +274,14 @@ export const listDeliveries = defineOp({
       const out = yield* run(async (d) => {
         const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
         const after = afterOf(q.cursor, f)
-        // Newest first: ids sort by time, so the cursor is the last id seen.
-        const rows = h.deliveries.filter((x) => (!q.state || x.state === q.state) && (!after || x.id < after.id))
+        const afterSequence = after ? Number(after.id) : Number.POSITIVE_INFINITY
+        // Newest first: the monotonic sequence is the stable order when ids share a millisecond.
+        const rows = h.deliveries.filter((x) => (!q.state || x.state === q.state) && x.sequence < afterSequence)
         const page = rows.slice(0, q.limit)
         const more = rows.length > q.limit
         return {
           items: page.map((x) => presentDelivery(d, h, x, false)),
-          next: more ? { key: 0, id: page[page.length - 1].id } : null,
+          next: more ? { key: 0, id: String(page[page.length - 1].sequence) } : null,
         }
       })
       return listOf(out.items, out.next, f)

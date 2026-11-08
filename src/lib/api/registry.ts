@@ -173,7 +173,7 @@ export type OpSpec<
   /** Honours `?fields=`. */
   shapeable?: boolean
   /** Honours `?wait=` with `If-None-Match`; names the topic to wait on. */
-  waitOn?: (params: Infer<TParams>) => string
+  waitOn?: (params: Infer<TParams>, query?: unknown) => string
   /**
    * The version of what is being read, found without building it. With it a
    * conditional read can answer 304 and a repeat read can come from the body

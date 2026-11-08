@@ -229,6 +229,18 @@ describe('git data', () => {
     await h.call('POST', '/repos', { body: { name: 'empty' } })
     expect((await h.call('GET', '/repos/dana/empty/git/tree')).status).toBe(404)
   })
+
+  test('git follows a rename and cannot be inherited by a reused name', async () => {
+    const h = harness()
+    await h.call('PATCH', REPO, { body: { name: 'gitfs2' } })
+    expect((await h.call('GET', '/repos/dana/gitfs/git/tree')).status).toBe(308)
+    expect((await h.call('GET', '/repos/dana/gitfs2/git/tree')).status).toBe(200)
+    await h.call('DELETE', '/repos/dana/gitfs2?confirm=dana/gitfs2')
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'gitfs2', visibility: 'private' } })
+    expect((await h.call('GET', '/repos/dana/gitfs2/git/tree')).status).toBe(404)
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'tinyqueue' } })
+    expect((await h.call('GET', '/repos/northwind/tinyqueue/git/tree')).status).toBe(404)
+  })
 })
 
 describe('teams', () => {
@@ -391,8 +403,15 @@ describe('runs', () => {
     expect(types).toEqual(['run.started', 'run.finished'])
   })
 
-  test('cancelling stops the token at once; only the starter or an admin may', async () => {
+  test('a run token cannot control another run of the same person', async () => {
     const h = harness()
+    const a = await h.call('POST', `${REPO}/runs`, { body: { task: 'a' } })
+    const b = await h.call('POST', `${REPO}/runs`, { body: { task: 'b' } })
+    const denied = await h.call('POST', `${REPO}/runs/${a.json.id}/cancel`, { token: b.json.token })
+    expect(denied.status).toBe(403)
+  })
+
+  test('cancelling stops the token at once; only the starter or an admin may', async () => {    const h = harness()
     const r = await start(h)
     const id = r.json.id as string
     // hollis can write to the repository but did not start the run and does not administer it.

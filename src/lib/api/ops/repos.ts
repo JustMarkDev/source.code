@@ -60,6 +60,7 @@ export const listRepos = defineOp({
   ...common,
   id: 'repos.list',
   summary: 'Repositories you can see',
+  scopes: ['repo:read'],
   tags: ['repositories'],
   method: 'GET',
   path: '/repos',
@@ -88,6 +89,7 @@ export const getRepo = defineOp({
   ...common,
   id: 'repos.get',
   summary: 'One repository',
+  scopes: ['repo:read'],
   tags: ['repositories'],
   method: 'GET',
   path: '/repos/{owner}/{repo}',
@@ -95,7 +97,7 @@ export const getRepo = defineOp({
   response: S.Repo,
   errors: ['not_found', 'moved'],
   shapeable: true,
-  waitOn: (p) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
+  waitOn: (p) => p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
   probe: (ctx, d) =>
       d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
@@ -109,6 +111,7 @@ export const repoContext = defineOp({
   ...common,
   id: 'repos.context',
   summary: 'Everything needed to start work, in one request',
+  scopes: ['repo:read'],
   description:
     'Open changes and what blocks each, open issues, a policy summary and the env schema (names and kinds only, never values). This is what `sx context` calls. The cursor is a position in the event log to continue from with /sync.',
   tags: ['repositories', 'agents'],
@@ -119,7 +122,7 @@ export const repoContext = defineOp({
   errors: ['not_found', 'moved'],
   shapeable: true,
   markdown: contextMarkdown,
-  waitOn: (p) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
+  waitOn: (p) => p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
   probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -132,6 +135,7 @@ export const numberRef = defineOp({
   ...common,
   id: 'repos.number',
   summary: 'Resolve #n to a change or an issue',
+  scopes: ['repo:read'],
   description:
     'Changes and issues share one counter per repository, so a number is never ambiguous. Answers 200 with the type and its address.',
   tags: ['repositories'],

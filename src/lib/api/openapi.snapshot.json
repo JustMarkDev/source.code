@@ -1702,7 +1702,9 @@
         },
         "security": [
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -1710,10 +1712,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "rate_limited",
@@ -1861,7 +1866,9 @@
         },
         "security": [
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -1869,11 +1876,14 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "rate_limited",
@@ -2139,7 +2149,9 @@
         },
         "security": [
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -2147,10 +2159,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",
@@ -2376,7 +2391,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -2384,10 +2401,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -2651,7 +2671,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -2659,10 +2681,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "heavy",
         "x-sx-cost": 2,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -2777,7 +2802,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -2785,10 +2812,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -3326,7 +3356,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -3334,10 +3366,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -3572,7 +3607,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -3580,10 +3617,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -3697,7 +3737,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -3705,10 +3747,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -4099,7 +4144,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -4107,10 +4154,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -4604,7 +4654,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -4612,10 +4664,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -4966,7 +5021,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "pulls:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -4974,11 +5031,14 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -5226,7 +5286,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -5234,10 +5296,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -7203,7 +7268,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "issues:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -7211,10 +7278,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "issues:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -7547,7 +7617,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "issues:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -7555,11 +7627,14 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "issues:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -8263,7 +8338,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -8271,10 +8348,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -10789,7 +10869,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -10797,10 +10879,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",
@@ -11063,7 +11148,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -11071,10 +11158,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "rate_limited",
@@ -11320,7 +11410,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -11328,11 +11420,14 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "search",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
           "cursor_mismatch",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "rate_limited",
@@ -11437,7 +11532,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -11445,10 +11542,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "moved",

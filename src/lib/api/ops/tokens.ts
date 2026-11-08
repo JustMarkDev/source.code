@@ -96,24 +96,25 @@ export const createToken = defineOp({
       const p = ctx.principal!
       const body = ctx.body
       const t = yield* run(async (d) => {
+        const repos = body.repos?.map((r) => r.toLowerCase()) ?? null
         const missing = body.scopes.filter((s) => !p.scopes.has(s))
         if (missing.length)
           throw apiError('insufficient_scope', `You cannot give a token scopes you do not have: ${missing.join(', ')}.`, {
             extra: { required_scopes: missing, token_scopes: [...p.scopes] },
           })
-        if (p.repos && (!body.repos || body.repos.some((r) => !p.repos!.includes(r))))
+        if (p.repos && (!repos || repos.some((r) => !p.repos!.includes(r))))
           throw apiError('forbidden', 'Your token is limited to repositories, so a token you create must be limited to some of them.')
         for (const r of body.repos ?? []) await d.getRepo(...(r.split('/') as [string, string]), p)
         if (d.svc.auth.countActive(p.handle, ctx.now()) >= MAX_TOKENS)
           throw apiError('limit_reached', `You can have ${MAX_TOKENS} active tokens.`)
-        if (ctx.dryRun) return present(d, { id: 'tok_dryrun', name: body.name, kind: 'personal', handle: p.handle, actingAs: p.handle, class: p.class, scopes: body.scopes, repos: body.repos ?? null, audience: ['api', 'mcp'], prefix: 'sxp_', createdAt: ctx.now(), expiresAt: ctx.now() + body.expires_in_days * 86_400_000, lastUsedAt: null, revokedAt: null }, null)
+        if (ctx.dryRun) return present(d, { id: 'tok_dryrun', name: body.name, kind: 'personal', handle: p.handle, actingAs: p.handle, class: p.class, scopes: body.scopes, repos, audience: ['api', 'mcp'], prefix: 'sxp_', createdAt: ctx.now(), expiresAt: ctx.now() + body.expires_in_days * 86_400_000, lastUsedAt: null, revokedAt: null }, null)
         const { record, secret } = d.svc.auth.create({
           name: body.name,
           kind: p.class === 'human' ? 'personal' : 'bot',
           handle: p.handle,
           class: p.class,
           scopes: body.scopes,
-          repos: body.repos ?? null,
+          repos,
           ttlMs: body.expires_in_days * 86_400_000,
         })
         return present(d, record, secret)

@@ -11,12 +11,14 @@ import type { Parsed } from '../args'
 import type { Command } from './types'
 
 export const auth: Command = async ({ rest: [sub = 'status'], flags }, ctx) => {
-  const token = process.env.SX_TOKEN
-  const network = !!process.env.SX_API
+  const apiConfig = resolve('api')
+  const network = apiConfig.from !== 'default'
+  const saved = network ? readCredentials(apiConfig.value.replace(/\/$/, '')) : null
+  const token = process.env.SX_TOKEN ?? saved?.access_token
   if (sub === 'status') {
     // Over the network the token is checked by asking who it is. In the preview
     // there is no server to ask, so a token in the environment is enough.
-    const authenticated = network ? !!token : !!token
+    const authenticated = !!token
     let account: string | null = null
     let login: string | null = null
     let scopes: Array<string> | null = null
@@ -29,9 +31,9 @@ export const auth: Command = async ({ rest: [sub = 'status'], flags }, ctx) => {
       }
     }
     const data = {
-      host: network ? process.env.SX_API : resolve('host').value,
+      host: network ? apiConfig.value : resolve('host').value,
       authenticated,
-      via: token ? 'SX_TOKEN' : null,
+      via: process.env.SX_TOKEN ? 'SX_TOKEN' : saved ? 'credentials' : null,
       // Who the token acts as, once signed in. `sx account list` shows the others.
       account,
       login,
@@ -39,7 +41,7 @@ export const auth: Command = async ({ rest: [sub = 'status'], flags }, ctx) => {
     }
     print(ctx, data, () =>
       authenticated
-        ? `signed in to ${data.host} with SX_TOKEN`
+        ? `signed in to ${data.host} with ${data.via}`
         : `not signed in to ${data.host}`,
     )
     return authenticated ? exit.ok : exit.auth

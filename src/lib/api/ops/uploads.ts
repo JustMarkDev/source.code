@@ -254,6 +254,7 @@ export const listEvidence = defineOp({
   path: '/repos/{owner}/{repo}/changes/{number}/evidence',
   params: changeParams,
   auth: 'optional',
+  scopes: ['pulls:read'],
   pool: 'read',
   safety: 'read',
   response: S.listOf(S.Evidence),

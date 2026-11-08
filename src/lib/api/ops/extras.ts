@@ -329,7 +329,7 @@ export const envValues = defineOp({
       const { run } = yield* Domain
       const out = yield* run(async (d) => {
         const p = ctx.principal!
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, p, 'write')
+        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, p, 'read')
         const x = d.svc.extras.for(full)
         const agent = p.class !== 'human'
         if (agent && ctx.params.environment === 'production')

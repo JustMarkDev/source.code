@@ -20,7 +20,7 @@ description: Announce a file, send it to a signed address, attach it to a change
 | ---------- | ------------------------------------------ |
 | Safety     | `read`, safe to repeat                     |
 | Needs      | nothing for public data, a token otherwise |
-| Scopes     | none                                       |
+| Scopes     | `pulls:read`                               |
 | Rate limit | `read` pool, 1 unit                        |
 | Success    | `200`, a list of `evidence`                |
 
@@ -34,7 +34,7 @@ description: Announce a file, send it to a signed address, attach it to a change
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 

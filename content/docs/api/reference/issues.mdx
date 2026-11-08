@@ -22,7 +22,7 @@ Open by default, newest number first.
 | ---------- | ------------------------------------------ |
 | Safety     | `read`, safe to repeat                     |
 | Needs      | nothing for public data, a token otherwise |
-| Scopes     | none                                       |
+| Scopes     | `issues:read`                              |
 | Rate limit | `read` pool, 1 unit                        |
 | Wait       | `?wait=20` with `If-None-Match`            |
 | Fields     | `?fields=a,b.c`                            |
@@ -49,7 +49,7 @@ Open by default, newest number first.
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -227,7 +227,7 @@ ratelimit: "write";r=109;t=60
 | ---------- | ------------------------------------------ |
 | Safety     | `read`, safe to repeat                     |
 | Needs      | nothing for public data, a token otherwise |
-| Scopes     | none                                       |
+| Scopes     | `issues:read`                              |
 | Rate limit | `read` pool, 1 unit                        |
 | Wait       | `?wait=20` with `If-None-Match`            |
 | Fields     | `?fields=a,b.c`                            |
@@ -250,7 +250,7 @@ ratelimit: "write";r=109;t=60
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 

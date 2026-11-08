@@ -121,6 +121,7 @@ export class EventLog {
     if (this.events.length > this.keep * 1.1 || this.held > this.maxChars * 1.1) this.trim()
     this.wake('*')
     if (record.repo) this.wake(`repo:${record.repo.toLowerCase()}`)
+    if (record.repo_id) this.wake(`repo-id:${record.repo_id}`)
     return record
   }
 

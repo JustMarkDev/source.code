@@ -266,6 +266,13 @@ describe('who can see what', () => {
     expect((await h.call('GET', `${REPO}/issues`, { token: T(h).limited })).status).toBe(200)
   })
 
+  test('a token without read scopes cannot read private repository data', async () => {
+    const h = harness()
+    const token = (await h.call('POST', '/tokens', { body: { name: 'hooks', scopes: ['webhooks:write'] } })).json.secret as string
+    for (const path of [`${REPO}/changes/216`, `${REPO}/issues`, '/repos/dana/notes', '/events', '/search?q=cache', `${REPO}/context`])
+      expect((await h.call('GET', path, { token })).status, path).toBe(403)
+  })
+
   test('acting as an organization needs to be a member of it', async () => {
     const h = harness()
     const ok = await h.call('GET', '/auth/principal', { headers: { 'sx-account': 'northwind' } })
@@ -659,7 +666,8 @@ describe('conditional requests', () => {
     const h = harness()
     const dana = (await h.call('GET', `${REPO}/changes/216`)).json
     const anon = (await h.call('GET', `${REPO}/changes/216`, { token: null })).json
-    const triage = (await h.call('GET', `${REPO}/changes/216`, { token: T(h).triage })).json
+    const reader = (await h.call('POST', '/tokens', { body: { name: 'reader', scopes: ['repo:read', 'pulls:read'] } })).json.secret as string
+    const triage = (await h.call('GET', `${REPO}/changes/216`, { token: reader })).json
     expect(anon.actions.land.reasons).toEqual(['sign_in'])
     expect(triage.actions.abandon.reasons).toEqual(['scope:pulls:write'])
     expect(dana.actions.abandon.allowed).toBe(true)

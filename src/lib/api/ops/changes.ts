@@ -22,6 +22,7 @@ const write = {
 }
 const read = {
   auth: 'optional' as const,
+  scopes: ['pulls:read' as const],
   pool: 'read' as const,
   safety: 'read' as const,
   idempotent: true,
@@ -29,7 +30,8 @@ const read = {
 
 const expandChange = ['repo', 'findings', 'check_runs']
 const states = ['draft', 'open', 'landed', 'abandoned', 'all']
-const topic = (p: { owner: string; repo: string }) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
+const topic = (p: { owner: string; repo: string }) =>
+  p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
 
 const list = <T extends z.ZodType>(item: T) => S.listOf(item)
 

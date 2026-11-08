@@ -187,6 +187,8 @@ export type Attempt = { number: number; at: number; status: number | null; error
 export type Delivery = {
   id: string
   hookId: string
+  /** Monotonic within the process, for stable pagination when ids share a millisecond. */
+  sequence: number
   event: EventRecord
   state: 'pending' | 'succeeded' | 'failed'
   attempts: Array<Attempt>
@@ -227,6 +229,7 @@ export class WebhookService {
   private readonly deliveries = new Map<string, Delivery>()
   private readonly cancel = new Map<string, () => void>()
   private inFlight = 0
+  private nextDelivery = 1
   private readonly queue: Array<() => void> = []
   private off: (() => void) | null = null
 
@@ -375,6 +378,7 @@ export class WebhookService {
   enqueue(hook: Hook, event: EventRecord, redeliveryOf: string | null): Delivery {
     const d: Delivery = {
       id: newId('delivery', this.now()),
+      sequence: this.nextDelivery++,
       hookId: hook.id,
       event,
       state: 'pending',

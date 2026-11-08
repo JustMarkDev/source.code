@@ -21,6 +21,7 @@ export const searchOp = defineOp({
   method: 'GET',
   path: '/search',
   auth: 'optional',
+  scopes: ['repo:read'],
   pool: 'search',
   cost: 1,
   safety: 'read',
@@ -46,7 +47,14 @@ export const searchOp = defineOp({
             errors: [{ pointer: '/query/q', code: 'empty_query', message: 'Give a word, a phrase or a qualifier.' }],
           })
         const hits = d.svc.search.search(parsed, d.canSee(ctx.principal), ctx.principal?.capabilityKey ?? 'anon')
-        const page = d.svc.search.page(hits, q.limit, afterOf(q.cursor, f), parsed)
+        const visible = hits.filter((h) =>
+          h.doc.type === 'change'
+            ? !ctx.principal || ctx.principal.scopes.has('pulls:read')
+            : h.doc.type === 'issue'
+              ? !ctx.principal || ctx.principal.scopes.has('issues:read')
+              : true,
+        )
+        const page = d.svc.search.page(visible, q.limit, afterOf(q.cursor, f), parsed)
         return {
           // Most of a result is the document, which does not change between queries. Keep
           // that as text and add only what depends on the query: the snippet and the score.

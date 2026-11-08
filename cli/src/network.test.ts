@@ -355,7 +355,7 @@ describe('signing in with a code', () => {
       const creds = readCredentials(url)!
       expect(creds.access_token).toMatch(/^sxo_/)
       const who = await sx(env, 'auth', 'status')
-      expect(JSON.parse(who.out)).toMatchObject({ authenticated: false })
+      expect(JSON.parse(who.out)).toMatchObject({ authenticated: true, via: 'credentials' })
       // With a stored token and no SX_TOKEN, calls work.
       const list = await sx(env, 'repo', 'list')
       expect(list.code, list.err).toBe(0)

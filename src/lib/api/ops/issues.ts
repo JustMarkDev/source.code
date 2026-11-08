@@ -5,7 +5,8 @@ import * as S from '../schemas'
 import { issueMarkdown } from '../markdown'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 
-const topic = (p: { owner: string; repo: string }) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
+const topic = (p: { owner: string; repo: string }) =>
+  p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
 const issueParams = repoParams.extend({
   number: z.coerce.number().int().min(1).describe('The issue number'),
 })
@@ -18,6 +19,7 @@ export const listIssues = defineOp({
   method: 'GET',
   path: '/repos/{owner}/{repo}/issues',
   auth: 'optional',
+  scopes: ['issues:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,
@@ -58,6 +60,7 @@ export const getIssue = defineOp({
   method: 'GET',
   path: '/repos/{owner}/{repo}/issues/{number}',
   auth: 'optional',
+  scopes: ['issues:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,

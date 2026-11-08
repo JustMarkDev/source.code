@@ -283,22 +283,14 @@ export class SearchIndex {
       if (this.vocab[mid] < p) lo = mid + 1
       else hi = mid
     }
-    let taken = 0
-    for (let i = lo; i < this.vocab.length && this.vocab[i].startsWith(p) && taken < 100; i++) {
+    for (let i = lo; i < this.vocab.length && this.vocab[i].startsWith(p); i++) {
       const l = this.terms.get(this.vocab[i])
-      if (l) {
-        lists.push(l)
-        taken++
-      }
+      if (l) lists.push(l)
     }
     for (const w of this.vocabNew) {
-      if (taken >= 100) break
       if (w.startsWith(p)) {
         const l = this.terms.get(w)
-        if (l && !lists.includes(l)) {
-          lists.push(l)
-          taken++
-        }
+        if (l && !lists.includes(l)) lists.push(l)
       }
     }
     if (lists.length === 1) return lists[0]

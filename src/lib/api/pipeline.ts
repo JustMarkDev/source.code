@@ -661,7 +661,7 @@ export function createApi(options: ApiOptions) {
     if (!isRead && key) {
       if (key.length > 64)
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
-      scope = principal ? `${principal.tokenId}@${principal.actingAs}` : `ip:${clientAddress(req)}`
+      scope = principal ? `${principal.handle}@${principal.actingAs}` : `ip:${clientAddress(req)}`
       const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
       const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, fingerprintBody))
       if (begun.state === 'conflict')
@@ -714,7 +714,7 @@ export function createApi(options: ApiOptions) {
       if (wantsWait && step.kind === 'not_modified') {
         // Real elapsed time, not the injectable clock: waiting is physical.
         const deadline = performance.now() + waitSeconds * 1000
-        const topic = op.waitOn!(parsedParams)
+        const topic = op.waitOn!(parsedParams, query)
         while (step.kind === 'not_modified' && performance.now() < deadline) {
           await options.events.wait(topic, deadline - performance.now(), req.signal)
           if (req.signal.aborted) break
@@ -811,7 +811,7 @@ export function createApi(options: ApiOptions) {
         }
       }
       headers['content-type'] = wantsMarkdown && status < 300 ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8'
-      if (isRead && (op.markdown || op.shapeable)) headers.vary = 'accept, authorization'
+      if (isRead) headers.vary = 'accept, authorization'
       if (dryRun) {
         headers['sx-dry-run'] = 'true'
         if (status === 201 || status === 202) status = 200
@@ -848,7 +848,8 @@ export function createApi(options: ApiOptions) {
         const to = (e.extra as { to: string }).to
         const from = (e.extra as { from: string }).from
         const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const location = `${url.origin}${mount}${path.replace(new RegExp(`/repos/${escaped}`, 'i'), `/repos/${to}`)}${url.search}`
+        const configured = options.base && !/placeholder/i.test(options.base) ? options.base : `${url.origin}${mount}`
+        const location = `${configured}${path.replace(new RegExp(`/repos/${escaped}`, 'i'), `/repos/${to}`)}${url.search}`
         return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
       }
       throw e

@@ -360,6 +360,12 @@ describe('authorization code with PKCE', () => {
     expect((await h.api.verifyToken(b.json.access_token, 'api')).ok).toBe(true)
     expect((await h.api.verifyToken(b.json.access_token, 'mcp')).ok).toBe(true)
 
+    // A token exchange may narrow the audience even when the grant was wider.
+    const narrow = await h.getCode()
+    const n = await h.exchange({ ...h.tokenRequest(narrow.client, narrow.code, narrow.verifier), resource: 'https://source.code/mcp' })
+    expect((await h.api.verifyToken(n.json.access_token, 'api')).ok).toBe(false)
+    expect((await h.api.verifyToken(n.json.access_token, 'mcp')).ok).toBe(true)
+
     const client = (await h.register()).json.client_id
     const bad = await h.fetchRaw(h.authorizeUrl(client, h.pkce().challenge, { resource: 'https://evil.example.com' }), { headers: { cookie: await h.signIn() } })
     expect(new URL(bad.headers.get('location')!).searchParams.get('error')).toBe('invalid_target')

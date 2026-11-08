@@ -189,6 +189,8 @@ export type OperationRec = {
 
 export type RepoRec = {
   id: string
+  /** The immutable git store key. A rename keeps it; a recreate gets a new one. */
+  storeId: string
   owner: string
   name: string
   description: string
@@ -365,7 +367,7 @@ export class MemoryDomain {
     owner: string,
     name: string,
     init: Partial<
-      Pick<RepoRec, 'id' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>
+      Pick<RepoRec, 'id' | 'storeId' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>
     > & {
       collaborators?: Array<string>
       installs?: Array<string>
@@ -375,21 +377,29 @@ export class MemoryDomain {
     const rec = this.makeRepo(owner, name, init)
     this.repos.set(`${owner}/${name}`, rec)
     this.reposById.set(rec.id, rec)
+    this.svc.git?.setRepo?.(`${owner}/${name}`, rec.storeId)
     return rec
+  }
+
+  /** Point the git reads at every repository's immutable store id. */
+  registerGitStores() {
+    for (const rec of this.repos.values()) this.svc.git?.setRepo?.(`${rec.owner}/${rec.name}`, rec.storeId)
   }
 
   private makeRepo(
     owner: string,
     name: string,
-    init: Partial<Pick<RepoRec, 'id' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>> & {
+    init: Partial<Pick<RepoRec, 'id' | 'storeId' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>> & {
       collaborators?: Array<string>
       installs?: Array<string>
       maintainers?: Array<string>
     } = {},
   ): RepoRec {
     const at = init.created ?? this.now()
+    const id = init.id ?? seededId('repo', at, `${owner}/${name}`)
     const rec: RepoRec = {
-      id: init.id ?? seededId('repo', at, `${owner}/${name}`),
+      id,
+      storeId: init.storeId ?? (init.id ? init.id : name),
       owner,
       name,
       description: init.description ?? '',
@@ -1143,6 +1153,7 @@ export class MemoryDomain {
         created: true,
       }
     const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now() })
+    this.svc.git?.setRepo?.(`${owner}/${input.name}`, rec.storeId)
     this.svc.search?.upsertIfBuilt?.({ key: `repo:${rec.id}`, type: 'repo', id: rec.id, repo: `${owner}/${input.name}`, number: null, title: `${owner}/${input.name}`, text: rec.description, state: rec.visibility, author: owner, labels: [], updated: rec.updated, url: this.repoUrl(rec) })
     return { repo: this.presentRepo(rec), created: true }
   }
@@ -1264,10 +1275,12 @@ export class MemoryDomain {
     return this.presentRun(this.runRec(repo, id))
   }
 
-  /** Whoever started the run, the run's own token, or an admin of the account may act on it. */
+  /** The run's own token, the person who started it, or an admin of the account may act on it. */
   private assertRunOwner(repo: RepoRec, r: RunRec, p: Principal) {
-    if (r.handle === p.handle || p.tokenId === r.tokenId) return
-    this.assertAdmin(repo, p)
+    if (p.tokenId === r.tokenId) return
+    if (p.class === 'human' && r.handle === p.handle) return
+    if (p.class === 'human') return this.assertAdmin(repo, p)
+    throw apiError('forbidden', 'A run token can only control its own run.')
   }
 
   async noteRun(owner: string, name: string, id: string, p: Principal, text: string, dry: boolean) {
@@ -1527,6 +1540,8 @@ export class MemoryDomain {
       repo.name = body.name!
       this.repos.set(to, repo)
       this.svc.auth.renameRepo(from, to)
+      this.svc.git?.setRepo?.(to, repo.storeId)
+      this.svc.git?.dropRepo?.(from)
       // The old address keeps working: it answers 308 with the new one. Any
       // alias that pointed at the old name follows the chain.
       for (const [key, value] of this.aliases)
@@ -1576,6 +1591,7 @@ export class MemoryDomain {
     this.repos.delete(full)
     this.svc.auth.dropRepo(full)
     this.svc.uploads.dropRepo(repo.id)
+    this.svc.git?.dropRepo?.(full)
     this.deleted.set(full, repo.owner)
     this.deletedRepos.set(repo.id, { full, owner: repo.owner })
     this.deletedIds.set(full.toLowerCase(), repo.id)
@@ -1676,7 +1692,11 @@ export class MemoryDomain {
 
   /** The event log's position, for conditional reads of the log itself. */
   eventVersion() {
-    return String(this.events.head)
+    return `${this.events.head}.${this.events.oldest}`
+  }
+
+  async syncVersion(owner: string, name: string, p: Viewer) {
+    return `${this.repoKey(this.resolve(owner, name, p))}.${this.events.oldest}`
   }
 
   /** The repository id behind an address, after checking the caller may read it. */
@@ -1712,16 +1732,20 @@ export class MemoryDomain {
 
   async context(owner: string, name: string, p: Viewer): Promise<z.infer<typeof S.Context>> {
     const r = this.resolve(owner, name, p)
+    const canPull = !p || p.scopes.has('pulls:read')
+    const canIssue = !p || p.scopes.has('issues:read')
     const open: Array<ChangeRec> = []
-    for (let k = r.byUpdated.items.length - 1; k >= 0 && open.length < 50; k--) {
-      const c = r.byUpdated.items[k]
-      if (c.state === 'open' || c.state === 'draft') open.push(c)
-    }
+    if (canPull)
+      for (let k = r.byUpdated.items.length - 1; k >= 0 && open.length < 50; k--) {
+        const c = r.byUpdated.items[k]
+        if (c.state === 'open' || c.state === 'draft') open.push(c)
+      }
     const issues: Array<IssueRec> = []
-    for (let k = r.issuesByNumber.items.length - 1; k >= 0 && issues.length < 50; k--) {
-      const i = r.issuesByNumber.items[k]
-      if (i.state === 'open') issues.push(i)
-    }
+    if (canIssue)
+      for (let k = r.issuesByNumber.items.length - 1; k >= 0 && issues.length < 50; k--) {
+        const i = r.issuesByNumber.items[k]
+        if (i.state === 'open') issues.push(i)
+      }
     return {
       object: 'context',
       repo: this.presentRepo(r),
@@ -2625,7 +2649,7 @@ export class MemoryDomain {
       hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
     })
     const list = this.events.repoEvents(id)
-    return `${id}.${list.at(-1)?.sequence ?? 0}`
+    return `${id}.${list.at(-1)?.sequence ?? 0}.${this.events.oldest}`
   }
 
   /** The stable id behind a repository address, without requiring that it still exists. */
@@ -2650,9 +2674,13 @@ export class MemoryDomain {
     q: { repo?: string; type?: string; after: CursorPosition | null; limit: number },
   ) {
     const can = this.readableRepoIds(p)
+    const canPull = !p || p.scopes.has('pulls:read')
+    const canIssue = !p || p.scopes.has('issues:read')
     const types = q.type ? q.type.split(',') : null
     const typeOk = (t: string) =>
       !types || types.some((x) => (x.endsWith('.*') ? t.startsWith(x.slice(0, -1)) : x === t))
+    const scopeOk = (t: string) =>
+      t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
     // A repository's own list when one is asked for, so a quiet repository is not
     // found by reading everyone else's events. The key is the stable id, so a
     // rename does not split the history.
@@ -2663,7 +2691,7 @@ export class MemoryDomain {
       after: q.after,
       desc: false,
       stored: 'asc',
-      match: (e) => typeOk(e.type) && can(e.repoId),
+      match: (e) => typeOk(e.type) && scopeOk(e.type) && can(e.repoId),
     })
     // An event never changes, so its text is its own version.
     return {
@@ -2678,17 +2706,21 @@ export class MemoryDomain {
   ): Promise<z.infer<typeof S.Sync>> {
     const [owner, name] = q.repo.split('/')
     const repo = this.resolve(owner, name ?? '', p)
+    const canPull = !p || p.scopes.has('pulls:read')
+    const canIssue = !p || p.scopes.has('issues:read')
+    const scopeOk = (t: string) =>
+      t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
     const snapshot = (from: number, head: number, reset: boolean) => {
       const all: Array<Record<string, unknown>> = [
         this.presentRepo(repo),
-        ...[...repo.changes.values()].map((c) => this.presentChange(repo, c, 'event') as unknown as Record<string, unknown>),
-        ...[...repo.issues.values()].map((i) => this.presentIssue(repo, i) as unknown as Record<string, unknown>),
+        ...(canPull ? [...repo.changes.values()].map((c) => this.presentChange(repo, c, 'event') as unknown as Record<string, unknown>) : []),
+        ...(canIssue ? [...repo.issues.values()].map((i) => this.presentIssue(repo, i) as unknown as Record<string, unknown>) : []),
       ]
       const slice = all.slice(from, from + q.limit)
       const more = from + q.limit < all.length
       return {
         object: 'sync' as const,
-        cursor: more ? `s_${head}_${from + q.limit}` : `e_${head}`,
+        cursor: more ? `s_${repo.id}_${head}_${from + q.limit}` : `e_${repo.id}_${head}`,
         objects: slice,
         deleted: [],
         has_more: more,
@@ -2697,15 +2729,23 @@ export class MemoryDomain {
     }
     const c = q.cursor
     if (!c) return snapshot(0, this.events.head, true)
-    const snap = /^s_(\d+)_(\d+)$/.exec(c)
-    if (snap) return snapshot(Number(snap[2]), Number(snap[1]), true)
-    const ev = /^e_(\d+)$/.exec(c)
+    const snap = /^s_(.+)_(\d+)_(\d+)$/.exec(c)
+    if (snap) {
+      if (snap[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
+        errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
+      })
+      return snapshot(Number(snap[3]), Number(snap[2]), false)
+    }
+    const ev = /^e_(.+)_(\d+)$/.exec(c)
     if (!ev) throw apiError('invalid_request', 'The cursor is not valid.', {
       errors: [{ pointer: '/query/cursor', code: 'invalid_cursor', message: 'Use cursor exactly as returned.' }],
     })
-    const after = Number(ev[1])
+    if (ev[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
+      errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
+    })
+    const after = Number(ev[2])
     if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
-    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id)
+    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id && scopeOk(e.type))
     // Keep only the newest state of each object, and remember what was deleted
     // after the cursor so a local copy can remove it.
     const latest = new Map<string, Record<string, unknown>>()
@@ -2722,7 +2762,7 @@ export class MemoryDomain {
     }
     return {
       object: 'sync',
-      cursor: `e_${exhausted ? Math.max(scannedTo, this.events.head) : scannedTo}`,
+      cursor: `e_${repo.id}_${exhausted ? Math.max(scannedTo, this.events.head) : scannedTo}`,
       objects: [...latest.values()],
       deleted: [...deleted.values()],
       has_more: !exhausted,

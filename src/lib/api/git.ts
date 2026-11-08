@@ -26,6 +26,10 @@ export interface GitData {
   commits: (repo: string, limit: number) => Promise<Array<GitCommit>>
   commit: (repo: string, sha: string) => Promise<GitCommit>
   diff: (repo: string, sha: string) => Promise<{ sha: string; base: string | null; files: Array<GitDiffFile> }>
+  /** Point an address at an immutable git store id, when the implementation has one. */
+  setRepo?: (repo: string, storeId: string) => void
+  /** Forget an address whose repository is gone. */
+  dropRepo?: (repo: string) => void
 }
 
 const commitOf = (c: {
@@ -59,10 +63,19 @@ async function guarded<T>(what: string, call: () => Promise<T>): Promise<T> {
 
 /** The store behind `src/git`. A repository's store id is its name until the directory says otherwise. */
 export class StoreGit implements GitData {
+  private readonly stores = new Map<string, string>()
   constructor(private readonly open: (storeId: string) => GitRepo = getGitRepo) {}
 
+  setRepo(repo: string, storeId: string) {
+    this.stores.set(repo.toLowerCase(), storeId)
+  }
+
+  dropRepo(repo: string) {
+    this.stores.delete(repo.toLowerCase())
+  }
+
   private repo(full: string) {
-    return this.open(full.split('/')[1])
+    return this.open(this.stores.get(full.toLowerCase()) ?? full.split('/')[1])
   }
 
   files(repo: string, ref?: string) {

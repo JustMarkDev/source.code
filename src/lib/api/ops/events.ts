@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/require-await */
 import { Effect } from 'effect'
 import { z } from 'zod'
-import { hashToken } from '../auth'
+import { hashToken, principalOf } from '../auth'
 import { Domain, Raw, defineOp } from '../registry'
 import * as S from '../schemas'
 import { afterOf, fp, listOf, pageShape } from './common'
@@ -15,6 +15,7 @@ export const listEvents = defineOp({
   method: 'GET',
   path: '/events',
   auth: 'required',
+  scopes: ['repo:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,
@@ -29,7 +30,10 @@ export const listEvents = defineOp({
   response: S.listOf(S.Event),
   errors: ['cursor_mismatch'],
   shapeable: true,
-  waitOn: () => '*',
+  waitOn: (_p, q) => {
+    const repo = (q as { repo?: string } | undefined)?.repo
+    return repo ? `repo:${repo.toLowerCase()}` : '*'
+  },
   probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -52,6 +56,7 @@ export const syncRepo = defineOp({
   method: 'GET',
   path: '/sync',
   auth: 'optional',
+  scopes: ['repo:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,
@@ -74,10 +79,13 @@ export const syncRepo = defineOp({
   }),
   response: S.Sync,
   errors: ['not_found', 'moved'],
-  waitOn: () => '*',
+  waitOn: (_p, q) => {
+    const repo = (q as { repo?: string } | undefined)?.repo
+    return repo ? `repo:${repo.toLowerCase()}` : '*'
+  },
   probe: (ctx, d) => {
     const [owner, name] = ctx.query.repo.split('/')
-    return d.repoVersion(owner, name ?? '', ctx.principal)
+    return d.syncVersion(owner, name ?? '', ctx.principal)
   },
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -95,6 +103,7 @@ export const streamEvents = defineOp({
   method: 'GET',
   path: '/events/stream',
   auth: 'required',
+  scopes: ['repo:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,
@@ -141,14 +150,20 @@ export const streamEvents = defineOp({
           while (open && !ctx.signal.aborted) {
             // A stream is long-lived; a token revoked or expired mid-stream stops it.
             const bearer = /^Bearer\s+(.+)$/i.exec(ctx.header('authorization') ?? '')?.[1]
-            const valid = bearer ? (await domain.svc.auth.find(hashToken(bearer), 'api', ctx.now())).ok : false
-            if (!valid) break
+            const found = bearer ? await domain.svc.auth.find(hashToken(bearer), 'api', ctx.now()) : null
+            if (!found?.ok) break
+            const current = principalOf(found.record)
             // Re-read access for every batch: a repository may become private,
             // or a membership may be removed, while the stream stays open.
-            const can = domain.canSeeId(ctx.principal)
+            const can = domain.canSeeId(current)
+            const canPull = current.scopes.has('pulls:read')
+            const canIssue = current.scopes.has('issues:read')
+            const scopeOk = (t: string) =>
+              t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
             const { events: batch, scannedTo } = events.since(after, 100, (e) => {
               if (repo && e.repoId !== repoId) return false
               if (!can(e.repoId)) return false
+              if (!scopeOk(e.type)) return false
               return (
                 !types ||
                 types.some((t) => (t.endsWith('.*') ? e.type.startsWith(t.slice(0, -1)) : t === e.type))
@@ -195,13 +210,17 @@ export const getOperation = defineOp({
   method: 'GET',
   path: '/operations/{id}',
   auth: 'required',
+  scopes: ['repo:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,
   params: z.object({ id: z.string().describe('The operation `op_` id') }),
   response: S.Operation,
   errors: ['not_found'],
-  waitOn: () => '*',
+  waitOn: (_p, q) => {
+    const repo = (q as { repo?: string } | undefined)?.repo
+    return repo ? `repo:${repo.toLowerCase()}` : '*'
+  },
   probe: (ctx, d) =>
       d.operationVersion(ctx.params.id, ctx.principal),
   handler: (ctx) =>

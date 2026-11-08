@@ -644,10 +644,12 @@ export class OAuthServer {
     if (!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier) || s256(verifier) !== code.challenge)
       return oauthError('invalid_grant', 'The code_verifier does not match the code_challenge.')
     const asked = f.getAll('resource')
+    let audience = code.audience
     if (asked.length) {
       const aud = this.audienceOf(asked)
       if (!aud || !aud.every((a) => code.audience.includes(a)))
         return oauthError('invalid_target', 'resource was not part of the authorization.')
+      audience = aud
     }
     code.used = true
     const a = this.o.auth.createAuthorization({
@@ -655,10 +657,10 @@ export class OAuthServer {
       clientName: code.client.name,
       handle: code.handle,
       scopes: code.scopes,
-      audience: code.audience,
+      audience,
     })
     code.authorizationId = a.id
-    return this.issue(a.id, code.handle, code.client.name, code.scopes, code.audience, code.client.id)
+    return this.issue(a.id, code.handle, code.client.name, code.scopes, audience, code.client.id)
   }
 
   private refreshGrant(f: URLSearchParams): Response {
@@ -679,9 +681,17 @@ export class OAuthServer {
       if (!asked.every((s) => a.scopes.includes(s))) return oauthError('invalid_scope', 'A refresh cannot widen the scope.')
       scopes = asked
     }
+    let audience = a.audience
+    const resources = f.getAll('resource')
+    if (resources.length) {
+      const aud = this.audienceOf(resources)
+      if (!aud || !aud.every((x) => a.audience.includes(x)))
+        return oauthError('invalid_target', 'resource was not part of the authorization.')
+      audience = aud
+    }
     r.used = true
     a.lastUsedAt = this.now()
-    return this.issue(a.id, a.handle, a.clientName, scopes, a.audience, r.clientId)
+    return this.issue(a.id, a.handle, a.clientName, scopes, audience, r.clientId)
   }
 
   // ----- revocation (RFC 7009) ----------------------------------------------------
