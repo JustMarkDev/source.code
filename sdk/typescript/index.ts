@@ -689,7 +689,7 @@ export type Sync = {
     id: string
   }>
   has_more: boolean
-  /** True when the cursor was too old; objects is a fresh snapshot */
+  /** True when the cursor was too old or ahead of this log; objects is a fresh snapshot */
   reset: boolean
 }
 

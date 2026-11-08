@@ -1074,6 +1074,48 @@ describe('writes', () => {
     expect(fresh.text).not.toContain('Old repo')
   })
 
+  test('routed path variants use the same idempotency identity', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'slash', visibility: 'public' } })
+    const key = { 'idempotency-key': 'slash-delete' }
+    expect((await h.call('DELETE', '/repos/dana/slash/?confirm=dana/slash', { headers: key })).status).toBe(204)
+    const again = await h.call('DELETE', '/repos/dana/slash/?confirm=dana/slash', { headers: key })
+    expect(again.status).toBe(204)
+    expect(again.headers.get('sx-replayed')).toBe('true')
+
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'slashid', visibility: 'public' } })
+    const repo = (await h.call('GET', '/repos/dana/slashid')).json
+    const key2 = { 'idempotency-key': 'slash-id-delete' }
+    expect((await h.call('DELETE', `/repos/${repo.id}/?confirm=dana/slashid`, { headers: key2 })).status).toBe(204)
+    const againId = await h.call('DELETE', `/repos/${repo.id}/?confirm=dana/slashid`, { headers: key2 })
+    expect(againId.status).toBe(204)
+    expect(againId.headers.get('sx-replayed')).toBe('true')
+
+    const alias = await h.call('POST', '/repos/dana/git-fs/issues', { headers: { 'idempotency-key': 'alias-write' }, body: { title: 'Alias write' } })
+    expect(alias.status).toBe(308)
+    const canonical = new URL(alias.headers.get('location')!).pathname.replace(/^\/v1/, '')
+    const headers = { 'idempotency-key': 'alias-write' }
+    expect((await h.call('POST', canonical, { headers, body: { title: 'Alias write' } })).status).toBe(201)
+    const replay = await h.call('POST', canonical, { headers, body: { title: 'Alias write' } })
+    expect(replay.status).toBe(201)
+    expect(replay.headers.get('sx-replayed')).toBe('true')
+  })
+
+  test('an extra slash cannot bypass the replay access stamp', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault3', visibility: 'private' } })
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'vault3-access' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault3-access/repos/northwind/vault3', { body: { permission: 'write' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault3-access/members/stranger')
+    const hook = (await h.call('POST', '/repos/northwind/vault3/webhooks', { body: { endpoint: 'https://hooks.example.com/slash', events: ['*'] } })).json
+    const key = { 'idempotency-key': 'slash-hook-delete' }
+    expect((await h.call('DELETE', `/repos/northwind//vault3/webhooks/${hook.id}`, { token: h.tokens.stranger, headers: key })).status).toBe(204)
+    await h.call('DELETE', '/accounts/northwind/teams/vault3-access/members/stranger')
+    const denied = await h.call('DELETE', `/repos/northwind//vault3/webhooks/${hook.id}`, { token: h.tokens.stranger, headers: key })
+    expect(denied.status).toBe(422)
+    expect(denied.json.code).toBe('idempotency_key_reused')
+  })
+
   test('a conditional write is checked again instead of replayed', async () => {
     const h = harness()
     const made = await h.call('POST', `${REPO}/issues`, { body: { title: 'conditional' } })

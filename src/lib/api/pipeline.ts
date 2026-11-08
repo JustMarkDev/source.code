@@ -667,8 +667,15 @@ export function createApi(options: ApiOptions) {
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
       scope = principal ? `${principal.handle}@${principal.actingAs}:${principal.capId}` : `ip:${clientAddress(req)}`
       const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
-      const replayStamp = principal ? domain.replayStamp(path, principal, op.method) : ''
-      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, fingerprintBody, op.ifMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayStamp))
+      const replayKey = principal ? domain.replayKey(op.id, params, principal) : { id: '', stamp: '' }
+      const stable = { ...params }
+      if (replayKey.id) {
+        delete stable.owner
+        delete stable.repo
+        stable.repo_id = replayKey.id
+      }
+      const identity = `${op.method} ${op.id} ${JSON.stringify(stable, Object.keys(stable).sort())}`
+      const begun = await idem.begin(scope, key, requestFingerprint(op.method, identity, url.search, fingerprintBody, op.ifMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayKey.stamp))
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
       if (begun.state === 'in_progress')

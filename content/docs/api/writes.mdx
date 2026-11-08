@@ -20,7 +20,7 @@ curl -X POST "$SX/repos/dana/gitfs/issues" \
 | Situation                                  | Result                                                                  |
 | ------------------------------------------ | ----------------------------------------------------------------------- |
 | Same key, same request                     | The stored response, `Sx-Replayed: true`                                |
-| Same key, the same request, with `If-Match` | Re-checked against the current ETag; a stale one gets `412 version_mismatch` |
+| Same key, the same conditional update with `If-Match` | Re-checked against the current ETag; a stale one gets `412 version_mismatch` |
 | Same key, a different request              | `422 idempotency_key_reused`                                            |
 | Same key while the first is still running  | `409 request_in_progress` with `Retry-After`. Send it again.            |
 | The first request failed                   | The key is free again. A corrected retry runs.                          |

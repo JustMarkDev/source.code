@@ -81,7 +81,7 @@ webhooks already follow Standard Webhooks; GitLab sends `RateLimit-Remaining`.
   the ETag would change. Waiters are registered per repository, so an event
   wakes only the clients that care. git.cafe has this on one endpoint.
 - **`sync`.** One call for a snapshot, then only what changed, newest state of
-  each object, with a reset when the cursor is older than the log. It replaces
+  each object, with a reset when the cursor is older than the log or ahead of it. It replaces
   polling every list.
 - **`policy/simulate`.** "If this check passed and that finding were resolved,
   could it land?" Plan before acting, nothing written. Possible because

@@ -89,7 +89,7 @@ curl "$SX/sync?repo=dana/gitfs&cursor=e_rep_01m3kkw4m0zvf3zfc9_4811" -H "Authori
 
 - A large snapshot is paged: while `has_more` is true, call again with the new `cursor`.
 - Each object appears once, in its newest state, however many times it changed.
-- If the cursor is older than the retained log, you get `reset: true` and a fresh snapshot. Replace your copy.
+- If the cursor is older than the retained log, or from the future, you get `reset: true` and a fresh snapshot. Replace your copy.
 - Combine it with `wait` to be told the moment something changes.
 
 An agent that keeps a repository's context in memory should use this instead of re-listing changes and issues.

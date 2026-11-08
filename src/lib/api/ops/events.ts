@@ -59,7 +59,7 @@ export const syncRepo = defineOp({
   id: 'sync.get',
   summary: 'Keep a local copy of a repository up to date',
   description:
-    'Call without a cursor for a snapshot of the repository, its changes and its issues. Then call with the returned cursor to get only what changed, newest state of each object. When `reset` is true the cursor was too old and `objects` is a fresh snapshot. One request replaces polling every list.',
+    'Call without a cursor for a snapshot of the repository, its changes and its issues. Then call with the returned cursor to get only what changed, newest state of each object. When `reset` is true the cursor was too old or ahead of this log and `objects` is a fresh snapshot. One request replaces polling every list.',
   tags: ['events', 'agents'],
   method: 'GET',
   path: '/sync',

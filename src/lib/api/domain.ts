@@ -2928,28 +2928,21 @@ export class MemoryDomain {
    * A replay must not survive losing write access, a rename, or a name reused
    * by a different repository. A delete keeps its id so a retry still gets 204.
    */
-  replayStamp(path: string, p: Principal, method: string): string {
-    const idForm = /^\/repos\/(rep_[^/]+)(?:\/|$)/.exec(path)
-    let repo: RepoRec | undefined
-    let id = ''
-    if (idForm) {
-      id = idForm[1]
-      repo = this.reposById.get(id)
-      if (!repo && !this.deletedRepos.has(id)) return 'none'
-    } else {
-      const m = /^\/repos\/([^/]+)\/([^/]+)/.exec(path)
-      if (!m) return ''
-      const owner = m[1]
-      const name = m[2]
-      const canonical = this.canonicalRepoName(`${owner}/${name}`)
-      repo = this.repos.get(canonical) ?? this.byLower(canonical.toLowerCase())
-      id = repo?.id ?? this.deletedIds.get(`${owner}/${name}`.toLowerCase()) ?? ''
-      if (!id) return 'none'
-    }
-    const repoAddress = /^\/repos\/[^/]+(?:\/[^/]+)?$/.test(path)
-    // Deleting a repository is safe to replay without write access: there is
-    // no body to leak, and the address itself still names the repository.
-    return method === 'DELETE' && repoAddress ? id : `${id}:${repo ? this.canWrite(repo, p) : false}`
+  /**
+   * The stable repository identity and access stamp for a keyed write. It is
+   * built from the routed parameters, so empty or extra slashes and rename
+   * aliases cannot change it. A bare repository delete keeps only the id, so a
+   * retry can still replay 204 once the repository is gone.
+   */
+  replayKey(opId: string, params: Record<string, string>, p: Principal): { id: string; stamp: string } {
+    const owner = params.owner
+    const name = params.repo
+    if (!owner || !name) return { id: '', stamp: '' }
+    const id = name === '~' && owner.startsWith('rep_') ? this.repoIdForHistory(owner) : this.repoIdForHistory(`${owner}/${name}`)
+    if (!id) return { id: '', stamp: 'none' }
+    if (opId === 'repos.delete') return { id, stamp: id }
+    const repo = this.reposById.get(id)
+    return { id, stamp: `${id}:${repo ? this.canWrite(repo, p) : false}` }
   }
 
   /** The stable id behind a repository address, without requiring that it still exists. */

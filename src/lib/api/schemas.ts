@@ -275,7 +275,7 @@ export const Sync = named('Sync', obj({
   objects: z.array(z.record(z.string(), z.unknown())),
   deleted: z.array(obj({ object: z.string(), id: z.string() })),
   has_more: z.boolean(),
-  reset: z.boolean().describe('True when the cursor was too old; objects is a fresh snapshot'),
+  reset: z.boolean().describe('True when the cursor was too old or ahead of this log; objects is a fresh snapshot'),
 }))
 
 export const Context = named('Context', obj({
