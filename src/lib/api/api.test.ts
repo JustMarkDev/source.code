@@ -329,9 +329,12 @@ describe('who can see what', () => {
 
   test('the mount is a path segment, not a prefix', async () => {
     const h = harness()
-    expect((await h.call('POST', '/v1batch')).status).toBe(404)
-    expect((await h.call('GET', '/v1repos')).status).toBe(404)
-    expect((await h.call('GET', '/limits')).status).toBe(200)
+    const at = (method: string, pathname: string) =>
+      h.api.fetch(new Request(`https://api.test${pathname}`, { method, headers: { authorization: `Bearer ${h.tokens.dana}` } }))
+    expect((await at('POST', '/v1batch')).status).toBe(404)
+    expect((await at('GET', '/v1repos')).status).toBe(404)
+    expect((await at('GET', '/v1')).status).toBe(200)
+    expect((await at('GET', '/v1/repos')).status).toBe(200)
   })
 
   test('a stack dry run checks every expected tree before landing anything', async () => {
@@ -351,8 +354,10 @@ describe('who can see what', () => {
   })
 
   test('a completed idempotency key cannot evict itself', async () => {
-    const store = new MemoryIdempotencyStore(24 * 3_600_000, Date.now, 10, 100)
+    const store = new MemoryIdempotencyStore(24 * 3_600_000, Date.now, 3, 300)
     await store.begin('s', 'big', 'f')
+    await store.begin('s', 'other', 'f')
+    await store.complete('s', 'other', { status: 200, headers: {}, body: '' })
     await store.complete('s', 'big', { status: 200, headers: {}, body: 'x'.repeat(500) })
     expect((await store.begin('s', 'big', 'f')).state).toBe('replay')
   })
