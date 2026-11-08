@@ -70,7 +70,7 @@ const CORS = {
     'authorization, content-type, idempotency-key, if-match, if-none-match, sx-version, sx-account, sx-agent',
   'access-control-allow-methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
   'access-control-expose-headers':
-    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, sx-dry-run, server-timing',
+    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, sx-dry-run, sx-renamed-from, www-authenticate, server-timing',
   'access-control-max-age': '86400',
 }
 
@@ -661,12 +661,16 @@ export function createApi(options: ApiOptions) {
     const key = req.headers.get('idempotency-key')
     let scope = ''
     let wasReplay = false
+    // `If-Match: *` accepts any version, so it is not a concrete precondition:
+    // a retry must replay rather than run again and overwrite a newer edit.
+    const wildcardIfMatch = ifMatch !== null && ifMatch.split(',').some((t) => t.trim().replace(/^W\//, '') === '*')
+    const checkIfMatch = op.ifMatch === true && ifMatch !== null && !wildcardIfMatch
     if (!isRead && key && op.secretResponse)
       return fail(apiError('invalid_request', 'This operation cannot use Idempotency-Key because its response contains a secret.'))
     if (!isRead && key) {
       if (key.length > 64)
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
-      scope = principal ? `${principal.handle}@${principal.actingAs}:${principal.capId}` : `ip:${clientAddress(req)}`
+      scope = principal ? `${principal.handle}@${principal.actingAs}:${principal.limitKey}` : `ip:${clientAddress(req)}`
       const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
       const replayKey = principal ? domain.replayKey(op.id, params, principal) : { id: '', stamp: '' }
       const stable = { ...params }
@@ -676,15 +680,15 @@ export function createApi(options: ApiOptions) {
         stable.repo_id = replayKey.id
       }
       const identity = `${op.method} ${op.id} ${JSON.stringify(stable, Object.keys(stable).sort())}`
-      const begun = await idem.begin(scope, key, requestFingerprint(op.method, identity, url.search, fingerprintBody, op.ifMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayKey.stamp))
+      const begun = await idem.begin(scope, key, requestFingerprint(op.method, identity, url.search, fingerprintBody, checkIfMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayKey.stamp))
       wasReplay = begun.state === 'replay'
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
       if (begun.state === 'in_progress')
         return fail(apiError('request_in_progress', 'A request with this key is still running.', { retryAfter: 1 }))
-      // An operation that reads If-Match must be checked against the current
-      // version, not answered from the version it saw the first time.
-      if (begun.state === 'replay' && !(op.ifMatch && ifMatch !== null)) {
+      // A concrete If-Match must be checked against the current version, not
+      // answered from the version it saw the first time.
+      if (begun.state === 'replay' && !checkIfMatch) {
         const replayBody = begun.response.status === 204 || begun.response.status === 304 || begun.response.body === '' ? null : begun.response.body
         return new Response(replayBody, {
           status: begun.response.status,
@@ -881,7 +885,7 @@ export function createApi(options: ApiOptions) {
       res.headers.set('server-timing', t.join(', '))
       return res
     } catch (e) {
-      if (!isRead && key && !applied && !(wasReplay && op.ifMatch && ifMatch !== null))
+      if (!isRead && key && !applied && !(wasReplay && checkIfMatch))
         await idem.abort(scope, key)
       if (e instanceof ApiError && e.code === 'moved') {
         const to = (e.extra as { to: string }).to
@@ -889,7 +893,7 @@ export function createApi(options: ApiOptions) {
         // Rebuild the address from its segments, so empty or percent-encoded
         // segments in the request cannot make the redirect point at itself.
         const parts = path.split('/').filter(Boolean)
-        const at = parts.indexOf('repos')
+        const at = op.path.split('/').filter(Boolean).indexOf('repos')
         if (at >= 0 && parts.length > at + 2) parts.splice(at + 1, 2, ...to.split('/'))
         const target = at >= 0 ? `/${parts.join('/')}` : path.replace(new RegExp(`/repos/${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), `/repos/${to}`)
         const configured = options.base && !/placeholder/i.test(options.base) ? options.base : `${url.origin}${mount}`

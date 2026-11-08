@@ -8,7 +8,7 @@ Networks fail halfway. A write that cannot be repeated safely makes every client
 
 ## Idempotency keys
 
-Send `Idempotency-Key` on any `POST` except operations whose response contains a secret; those answer `400` rather than storing the key. The first request runs. A repeat with the same key and the same request returns the first answer, with `Sx-Replayed: true`, and does nothing.
+Send `Idempotency-Key` on any write except operations whose response contains a secret; those answer `400` rather than storing the key. The first request runs. A repeat with the same key and the same request returns the first answer, with `Sx-Replayed: true`, and does nothing.
 
 ```bash
 curl -X POST "$SX/repos/dana/gitfs/issues" \
@@ -27,7 +27,7 @@ curl -X POST "$SX/repos/dana/gitfs/issues" \
 
 Keys are scoped to the account the request acts as and to the token's capabilities, up to 64 characters, and kept 24 hours. Use a UUID per intended action, and keep it across retries of that action.
 
-In the preview the keys are held in memory, bounded to 100,000 keys or 24 MB of responses, oldest first. With `CONVEX_URL` and `API_STORE_SECRET` set they are kept in Convex instead, shared by every API node, so a retry may land on a different node: the first request claims the key in one transaction, a repeat while it runs waits, and a repeat after it finishes gets the stored response. If that store cannot be reached a write that carries a key is refused with `backend_unavailable` rather than risked. The hosted domain will also write the key in the same transaction as the change, so a crash between them cannot leave a key without its effect or the reverse. The store is an interface (`IdempotencyStore`).
+In the preview the keys are held in memory, bounded to 100,000 keys or 24 MB of responses, oldest first. With `CONVEX_URL` and `API_STORE_SECRET` set they are kept in Convex instead, shared by every API node, so a retry may land on a different node: the first request claims the key in one transaction, a repeat while it runs answers `409 request_in_progress` and should be sent again, and a repeat after it finishes gets the stored response. If that store cannot be reached a write that carries a key is refused with `backend_unavailable` rather than risked. The hosted domain will also write the key in the same transaction as the change, so a crash between them cannot leave a key without its effect or the reverse. The store is an interface (`IdempotencyStore`).
 
 ### Some writes are idempotent by nature
 

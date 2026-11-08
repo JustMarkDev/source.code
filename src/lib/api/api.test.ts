@@ -243,6 +243,7 @@ describe('errors', () => {
     const res = await h.api.fetch(new Request('https://api.test/v1/repos', { method: 'OPTIONS' }))
     expect(res.status).toBe(204)
     expect(res.headers.get('access-control-allow-headers')).toContain('idempotency-key')
+    expect(res.headers.get('access-control-expose-headers')).toContain('sx-renamed-from')
   })
 })
 
@@ -1124,6 +1125,47 @@ describe('writes', () => {
     const denied = await h.call('DELETE', `/repos/northwind//vault3/webhooks/${hook.id}`, { token: h.tokens.stranger, headers: key })
     expect(denied.status).toBe(422)
     expect(denied.json.code).toBe('idempotency_key_reused')
+  })
+
+  test('a wildcard If-Match replays instead of overwriting', async () => {
+    const h = harness()
+    const made = await h.call('POST', `${REPO}/issues`, { body: { title: 'wild' } })
+    const n = made.json.number
+    const headers = { 'idempotency-key': 'wild-key', 'if-match': '*' }
+    const body = { title: 'from retry' }
+    expect((await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })).status).toBe(200)
+    await h.call('PATCH', `${REPO}/issues/${n}`, { body: { title: 'concurrent' } })
+    const again = await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })
+    expect(again.status).toBe(200)
+    expect(again.headers.get('sx-replayed')).toBe('true')
+    expect((await h.call('GET', `${REPO}/issues/${n}`)).json.title).toBe('concurrent')
+  })
+
+  test('a repository-limited token keeps its key across a rename', async () => {
+    const h = harness()
+    const made = await h.call('POST', '/repos/dana/tinyqueue/changes', { body: { branch: 'keyed' } })
+    const headers = { 'idempotency-key': 'limited-rename' }
+    const body = { state: 'commented' }
+    const first = await h.call('POST', `/repos/dana/tinyqueue/changes/${made.json.number}/reviews`, { token: h.tokens.limited, headers, body })
+    expect(first.status).toBe(201)
+    await h.call('PATCH', '/repos/dana/tinyqueue', { body: { name: 'tinyqueue2' } })
+    const again = await h.call('POST', `/repos/dana/tinyqueue2/changes/${made.json.number}/reviews`, { token: h.tokens.limited, headers, body })
+    expect(again.status).toBe(201)
+    expect(again.headers.get('sx-replayed')).toBe('true')
+    expect(again.json.id).toBe(first.json.id)
+  })
+
+  test('a team named repos does not confuse rename redirects', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'teamrepo', visibility: 'public' } })
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'repos' } })
+    await h.call('PUT', '/accounts/northwind/teams/repos/repos/northwind/teamrepo', { body: { permission: 'read' } })
+    await h.call('PATCH', '/repos/northwind/teamrepo', { body: { name: 'teamrepo2' } })
+    const old = await h.call('PUT', '/accounts/northwind/teams/repos/repos/northwind/teamrepo', { body: { permission: 'read' } })
+    expect(old.status).toBe(308)
+    const at = new URL(old.headers.get('location')!).pathname.replace(/^\/v1/, '')
+    expect(at).toBe('/accounts/northwind/teams/repos/repos/northwind/teamrepo2')
+    expect((await h.call('PUT', at, { body: { permission: 'read' } })).status).toBe(200)
   })
 
   test('a conditional write is checked again instead of replayed', async () => {

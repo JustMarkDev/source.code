@@ -43,7 +43,7 @@ We read the API documentation of GitHub, GitLab, Forgejo and Gitea, Bitbucket Cl
 | Pagination | Cursor only, 50 by default and 200 at most, both published at `/v1/limits`. Deep pages cost what the first does. |
 | Rate limits | One system. Every limit published. `RateLimit` on every response says what is left. `304` is free. |
 | Errors | `application/problem+json` with a stable `code`, a `hint`, `retryable` and the CLI exit code. One shape everywhere. |
-| Edits and retries | `If-Match` and `ETag`. `Idempotency-Key` on every `POST`. `expected_tree` to land only what was checked. |
+| Edits and retries | `If-Match` and `ETag`. `Idempotency-Key` on every write except secret-bearing responses. `expected_tree` to land only what was checked. |
 | Mergeability | `policy` and `checks` are on the change and always present. A state, not a `null`. |
 | Large diffs | Planned to page per file and never fail whole. Not built. |
 | Webhooks | [Built](/docs/api/webhooks): signed with Standard Webhooks, eight attempts over about 28 hours, replay of any range with one call, redelivery without a limit of twice. |
