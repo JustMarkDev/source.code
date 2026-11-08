@@ -5,14 +5,15 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "convex dev --start 'vite dev'",
-    "typecheck": "bun check",
+    "dev": "convex dev --start 'vp dev'",
+    "check": "vp check && bun run typecheck",
+    "typecheck": "bun check --no-script",
     "build": "bun run typecheck && vp build",
     "start": "node .output/server/index.mjs",
     "format": "vp fmt .",
-    "lint": "bun run typecheck && vp lint",
-    "format:check": "vp fmt --check .",
-    "test": "bun test"
+    "lint": "vp lint",
+    "test": "bun test",
+    "prepare": "vp config"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -71,5 +72,12 @@
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@1.5.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.4",
+      "onFail": "download"
+    }
   }
 }

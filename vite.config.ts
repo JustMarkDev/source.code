@@ -133,6 +133,9 @@ export default defineConfig({
       },
     ],
   },
+  staged: {
+    '*': 'vp check --fix',
+  },
   fmt: {
     semi: false,
     singleQuote: true,
@@ -160,9 +163,30 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  build: {
+    // The chunks over 500 kB are shiki grammars (cpp, emacs-lisp, wasm) that
+    // the diff and code viewers fetch on demand; none of them is on the initial
+    // load.
+    chunkSizeWarningLimit: 800,
+    rolldownOptions: {
+      onLog(level, log, defaultHandler) {
+        // fumadocs-mdx's shared runtime imports node:fs/promises dynamically,
+        // only to read a page's raw text on the server. Nothing in the browser
+        // reaches it.
+        if (
+          log.message.includes('"node:fs/promises" has been externalized') &&
+          log.message.includes('fumadocs-mdx/dist/runtime/server.js')
+        )
+          return
+        defaultHandler(level, log)
+      },
+    },
+  },
   plugins: lazyPlugins(() => [
     fumadocsMdx(),
-    tailwindcss(),
+    // Vite minifies the CSS afterwards. Tailwind's own lightningcss pass only
+    // adds a warning for fumadocs-ui's valid `::highlight()` selectors.
+    tailwindcss({ optimize: false }),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

@@ -53,8 +53,11 @@ const icons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   VariableIcon,
 }
 
+// `async` keeps the compiled pages out of the route's bundle: each one loads on
+// demand (see the docs route's loader) instead of all of them with the first.
 export const docs = defineDocs({
   dir: 'content/docs',
+  docs: { async: true },
 })
 
 export const source = loader({
