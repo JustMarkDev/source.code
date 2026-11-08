@@ -45,7 +45,14 @@ sx auth status
 ```
 
 ```json
-{ "host": "https://api.source.code/v1", "authenticated": true, "via": "SX_TOKEN", "account": "dana", "login": "dana", "scopes": ["pulls:read", "repo:read"] }
+{
+  "host": "https://api.source.code/v1",
+  "authenticated": true,
+  "via": "SX_TOKEN",
+  "account": "dana",
+  "login": "dana",
+  "scopes": ["pulls:read", "repo:read"]
+}
 ```
 
 Over the network it asks the server who the token is, so `scopes` is what the server says, not what you hoped. Exit code `4` means you are not signed in.

@@ -74,12 +74,18 @@ export default defineConfig({
       'use-isnan': 'error',
       'valid-typeof': 'error',
 
-      'typescript/array-type': ['error', { default: 'generic', readonly: 'generic' }],
+      'typescript/array-type': [
+        'error',
+        { default: 'generic', readonly: 'generic' },
+      ],
       'typescript/ban-ts-comment': [
         'error',
         { 'ts-expect-error': false, 'ts-ignore': 'allow-with-description' },
       ],
-      'typescript/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      'typescript/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports' },
+      ],
       'typescript/method-signature-style': ['error', 'property'],
       'typescript/no-duplicate-enum-values': 'error',
       'typescript/no-extra-non-null-assertion': 'error',

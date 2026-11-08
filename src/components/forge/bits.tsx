@@ -64,7 +64,8 @@ export function Tile({
   round?: boolean
 }) {
   const h =
-    hue ?? Array.from(name).reduce((sum, c) => (sum * 31 + c.charCodeAt(0)) % 360, 7)
+    hue ??
+    Array.from(name).reduce((sum, c) => (sum * 31 + c.charCodeAt(0)) % 360, 7)
   return (
     <span
       className={cn(

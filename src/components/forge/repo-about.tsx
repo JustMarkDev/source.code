@@ -36,7 +36,8 @@ function installsFor(repo: Repo): Array<[string, string]> {
   ])
   out.push(['brew', `brew install ${repo.owner}/tap/${repo.name}`])
   const lang = langInstall[repo.language] as
-    [string, (n: string) => string] | undefined
+    | [string, (n: string) => string]
+    | undefined
   if (lang) out.push([lang[0], lang[1](repo.name)])
   out.push(['docker', `docker run --rm source.code/${repo.owner}/${repo.name}`])
   return out

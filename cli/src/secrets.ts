@@ -56,7 +56,10 @@ export function scrub(text: string, secrets: Record<string, string>): string {
       if (f.length < 4) {
         const escaped = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         out = out.replace(
-          new RegExp(`(?<![^\\s()\\[\\]{}"'=,;:!?.])${escaped}(?![^\\s()\\[\\]{}"'=,;:!?.])`, 'g'),
+          new RegExp(
+            `(?<![^\\s()\\[\\]{}"'=,;:!?.])${escaped}(?![^\\s()\\[\\]{}"'=,;:!?.])`,
+            'g',
+          ),
           `«${name}»`,
         )
         continue
@@ -131,19 +134,32 @@ export async function runWithEnv(opts: {
 
   if (opts.dryRun) {
     // Ask the server to run the same access checks without reading or auditing values.
-    await api.get(`${opts.repo.path}/env/${opts.env}/values`, { query: { check_only: 'true' } })
+    await api.get(`${opts.repo.path}/env/${opts.env}/values`, {
+      query: { check_only: 'true' },
+    })
     const canSchema = who.scopes.includes('secrets:schema')
     let vars = canSchema
-      ? ((await api.get(`${opts.repo.path}/env`, {
-          query: { environment: opts.env as 'development' },
-        })).json.data as Array<{ name: string; secret: boolean; set: boolean }>)
+      ? ((
+          await api.get(`${opts.repo.path}/env`, {
+            query: { environment: opts.env as 'development' },
+          })
+        ).json.data as Array<{ name: string; secret: boolean; set: boolean }>)
       : null
     if (vars && who.class !== 'human') {
-      const grants = (await api.get(`${opts.repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
-      const active = grants.find((g) => g.state === 'active' && g.environment === opts.env)
+      const grants = (await api.get(`${opts.repo.path}/env/grants`)).json
+        .data as Array<{
+        state: string
+        environment: string
+        variables: Array<string>
+      }>
+      const active = grants.find(
+        (g) => g.state === 'active' && g.environment === opts.env,
+      )
       if (active) vars = vars.filter((v) => active.variables.includes(v.name))
     }
-    const shown = (vars ?? []).filter((v) => v.set && (!opts.only || opts.only.includes(v.name)))
+    const shown = (vars ?? []).filter(
+      (v) => v.set && (!opts.only || opts.only.includes(v.name)),
+    )
     return {
       env: opts.env,
       injected: shown.map((v) => v.name),

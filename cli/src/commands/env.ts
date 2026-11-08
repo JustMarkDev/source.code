@@ -85,34 +85,61 @@ export const env: Command = async (
 
   if (sub === 'pull') {
     if (dry) {
-      await api.get(`${repo.path}/env/${environment}/values`, { query: { check_only: 'true' } })
+      await api.get(`${repo.path}/env/${environment}/values`, {
+        query: { check_only: 'true' },
+      })
       const who = await whoami(ctx)
       let vars: Array<Var> | null = null
       if (who.scopes.includes('secrets:schema')) {
-        vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+        vars = (await api.get(`${repo.path}/env`, { query: { environment } }))
+          .json.data as Array<Var>
         if (who.class !== 'human') {
-          const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
-          const active = grants.find((g) => g.state === 'active' && g.environment === environment)
-          if (active) vars = vars.filter((v) => active.variables.includes(v.name))
+          const grants = (await api.get(`${repo.path}/env/grants`)).json
+            .data as Array<{
+            state: string
+            environment: string
+            variables: Array<string>
+          }>
+          const active = grants.find(
+            (g) => g.state === 'active' && g.environment === environment,
+          )
+          if (active)
+            vars = vars.filter((v) => active.variables.includes(v.name))
         }
       }
-      const missing = vars ? vars.filter((v) => !v.set).map((v) => v.name) : null
-      print(ctx, { env: environment, written: null, dryRun: true, missing }, () => `would write .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`)
+      const missing = vars
+        ? vars.filter((v) => !v.set).map((v) => v.name)
+        : null
+      print(
+        ctx,
+        { env: environment, written: null, dryRun: true, missing },
+        () =>
+          `would write .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
+      )
       return
     }
-    const values = (
-      await api.get(`${repo.path}/env/${environment}/values`)
-    ).json as { values: Record<string, string> }
-    const text = `${Object.entries(values.values).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join('\n')}\n`
+    const values = (await api.get(`${repo.path}/env/${environment}/values`))
+      .json as { values: Record<string, string> }
+    const text = `${Object.entries(values.values)
+      .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+      .join('\n')}\n`
     writeFileSync('.env.local', text, { mode: 0o600 })
     chmodSync('.env.local', 0o600)
     const who = await whoami(ctx)
     let missing: Array<string> | null = null
     if (who.scopes.includes('secrets:schema')) {
-      let vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      let vars = (await api.get(`${repo.path}/env`, { query: { environment } }))
+        .json.data as Array<Var>
       if (who.class !== 'human') {
-        const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
-        const active = grants.find((g) => g.state === 'active' && g.environment === environment)
+        const grants = (await api.get(`${repo.path}/env/grants`)).json
+          .data as Array<{
+          state: string
+          environment: string
+          variables: Array<string>
+        }>
+        const active = grants.find(
+          (g) => g.state === 'active' && g.environment === environment,
+        )
         if (active) vars = vars.filter((v) => active.variables.includes(v.name))
       }
       missing = vars.filter((v) => !v.set).map((v) => v.name)
@@ -120,7 +147,8 @@ export const env: Command = async (
     print(
       ctx,
       { env: environment, written: '.env.local', dryRun: false, missing },
-      () => `wrote .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
+      () =>
+        `wrote .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
     )
     return
   }
@@ -158,7 +186,10 @@ export const env: Command = async (
       [
         result.stdout.trimEnd(),
         result.stderr.trimEnd(),
-        `(${result.namesKnown === false ? 'variable names unavailable; scrub status unavailable' : dry ? `would inject ${result.injected.length} variables` : `${result.injected.length} variables injected`}, ${result.namesKnown === false ? '' : `${dry ? 'would scrub' : 'scrubbed'} ${result.redacted.length} from output`})`.replace(', )', ')'),
+        `(${result.namesKnown === false ? 'variable names unavailable; scrub status unavailable' : dry ? `would inject ${result.injected.length} variables` : `${result.injected.length} variables injected`}, ${result.namesKnown === false ? '' : `${dry ? 'would scrub' : 'scrubbed'} ${result.redacted.length} from output`})`.replace(
+          ', )',
+          ')',
+        ),
       ]
         .filter(Boolean)
         .join('\n'),
@@ -201,7 +232,12 @@ export const env: Command = async (
       ).json as Grant
       // A request is not access. Someone has to approve it, so this is a stop.
       if (dry) {
-        print(ctx, { ...g, dryRun: true }, () => `would request ${g.id} for ${environment}; a person would need to approve it`)
+        print(
+          ctx,
+          { ...g, dryRun: true },
+          () =>
+            `would request ${g.id} for ${environment}; a person would need to approve it`,
+        )
         return
       }
       throw new SxError(
@@ -225,14 +261,23 @@ export const env: Command = async (
           dryRun: dry,
         })
       ).json as Grant
-      print(ctx, { ...g, dryRun: dry }, () => `${dry ? 'would approve' : 'approved'} ${g.id}${dry ? '' : ` until ${g.expires_at ?? ''}`}`)
+      print(
+        ctx,
+        { ...g, dryRun: dry },
+        () =>
+          `${dry ? 'would approve' : 'approved'} ${g.id}${dry ? '' : ` until ${g.expires_at ?? ''}`}`,
+      )
       return
     }
     if (action === 'revoke') {
       const g = (
         await api.post(`${repo.path}/env/grants/${id}/revoke`, { dryRun: dry })
       ).json as Grant
-      print(ctx, { ...g, dryRun: dry }, () => `${dry ? 'would revoke' : 'revoked'} ${g.id}`)
+      print(
+        ctx,
+        { ...g, dryRun: dry },
+        () => `${dry ? 'would revoke' : 'revoked'} ${g.id}`,
+      )
       return
     }
     throw new SxError(

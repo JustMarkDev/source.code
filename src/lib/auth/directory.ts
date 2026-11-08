@@ -39,7 +39,8 @@ export type Org = {
 
 export type Failure = { code: string; message: string }
 export type Result<T> =
-  { data: T; error: null } | { data: null; error: Failure }
+  | { data: T; error: null }
+  | { data: null; error: Failure }
 
 const ok = <T>(data: T): Result<T> => ({ data, error: null })
 const fail = (code: string, message: string): Result<never> => ({
