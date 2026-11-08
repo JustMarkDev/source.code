@@ -525,6 +525,11 @@ export function createApi(options: ApiOptions) {
       else parsedParams = p.data
     }
 
+    // A HEAD of a live stream must not open one: there is no body to read and
+    // the waiter would outlive the request.
+    if (op.streaming && req.method === 'HEAD')
+      return new Response(null, { status: 200, headers: { 'content-type': 'text/event-stream; charset=utf-8', 'server-timing': 'total;dur=0' } })
+
     // Body.
     let body: unknown = undefined
     let bodyText = ''
@@ -640,7 +645,8 @@ export function createApi(options: ApiOptions) {
       .map(([k, v]) => `${k}=${v}`)
       .join('&')
     const wantsMarkdown = isRead && !!op.markdown && (req.headers.get('accept') ?? '').includes('text/markdown')
-    const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}|${domain.accessRevision}${wantsMarkdown ? '|md' : ''}`
+    const wantsNdjson = isRead && (req.headers.get('accept') ?? '').includes('application/x-ndjson')
+    const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}|${domain.accessRevision}${wantsMarkdown ? '|md' : ''}${wantsNdjson ? '|ndjson' : ''}`
     let variant = variants.get(variantKey)
     if (variant === undefined) {
       variant = hash(variantKey)
@@ -730,16 +736,19 @@ export function createApi(options: ApiOptions) {
         status = step.status
       } else {
         let out = step.out
-        if (out instanceof Raw)
-          return req.method === 'HEAD'
-            ? new Response(null, { status: out.response.status, headers: out.response.headers })
-            : out.response
+        if (out instanceof Raw) {
+          if (req.method === 'HEAD') {
+            await out.response.body?.cancel().catch(() => {})
+            return new Response(null, { status: out.response.status, headers: out.response.headers })
+          }
+          return out.response
+        }
         if (out instanceof Reply) {
           status = out.init.status ?? status
           Object.assign(headers, out.init.headers)
           out = out.body
         }
-        const wantsNdjson = isRead && (req.headers.get('accept') ?? '').includes('application/x-ndjson') && (out as { object?: string })?.object === 'list'
+        const wantsNdjsonList = wantsNdjson && (out as { object?: string })?.object === 'list'
         // Objects that arrive already serialized are sent as they are, unless the
         // caller wants a shape that needs the object. `seed` stands in for the
         // body when an ETag is made, so a long body is not hashed.
@@ -755,7 +764,7 @@ export function createApi(options: ApiOptions) {
         } else {
           const list = out as { object?: string; data?: Array<unknown>; has_more?: boolean; next_cursor?: string | null }
           if (list?.object === 'list' && Array.isArray(list.data) && list.data[0] instanceof Pre) {
-            if (!fieldPaths && !wantsNdjson) {
+            if (!fieldPaths && !wantsNdjsonList) {
               const items = list.data as Array<Pre>
               ready = `{"object":"list","data":[${items.map((i) => i.json).join(',')}],"has_more":${list.has_more === true},"next_cursor":${JSON.stringify(list.next_cursor ?? null)}}`
               seed = `${items.map((i) => i.tag).join('')}|${list.has_more === true}|${list.next_cursor ?? ''}`
@@ -772,7 +781,7 @@ export function createApi(options: ApiOptions) {
               ? { ...list, data: list.data.map((d) => project(d, fieldPaths)) }
               : project(out, fieldPaths)
         }
-        if (wantsNdjson) {
+        if (wantsNdjsonList) {
           const list = out as { data: Array<unknown>; has_more: boolean; next_cursor: string | null }
           const lines = list.data.map((d) => JSON.stringify(d))
           lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
@@ -801,7 +810,7 @@ export function createApi(options: ApiOptions) {
         }
       }
       headers['content-type'] = wantsMarkdown && status < 300 ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8'
-      if (isRead && op.markdown) headers.vary = 'accept, authorization'
+      if (isRead && (op.markdown || op.shapeable)) headers.vary = 'accept, authorization'
       if (dryRun) {
         headers['sx-dry-run'] = 'true'
         if (status === 201 || status === 202) status = 200
@@ -814,14 +823,17 @@ export function createApi(options: ApiOptions) {
         if (loc) headers.location = loc
       }
       const res = new Response(req.method === 'HEAD' || status === 204 ? null : json, { status, headers })
-      if (!isRead && key && !dryRun) {
-        applied = true
-        try {
-          await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
-        } catch (e) {
-          // The write already happened. Do not turn success into a 500; the key
-          // stays in progress, so a retry waits instead of writing again.
-          console.error(`[api] ${requestId} idempotency completion failed`, e)
+      if (!isRead && key) {
+        if (dryRun) await idem.abort(scope, key)
+        else {
+          applied = true
+          try {
+            await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
+          } catch (e) {
+            // The write already happened. Do not turn success into a 500; the key
+            // stays in progress, so a retry waits instead of writing again.
+            console.error(`[api] ${requestId} idempotency completion failed`, e)
+          }
         }
       }
       const t = [`handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`]
@@ -834,7 +846,8 @@ export function createApi(options: ApiOptions) {
       if (e instanceof ApiError && e.code === 'moved') {
         const to = (e.extra as { to: string }).to
         const from = (e.extra as { from: string }).from
-        const location = `${url.origin}${mount}${path.replace(`/repos/${from}`, `/repos/${to}`)}${url.search}`
+        const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const location = `${url.origin}${mount}${path.replace(new RegExp(`/repos/${escaped}`, 'i'), `/repos/${to}`)}${url.search}`
         return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
       }
       throw e

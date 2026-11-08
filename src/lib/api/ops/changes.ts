@@ -62,7 +62,7 @@ export const listChanges = defineOp({
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
   waitOn: topic,
-  probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
+  probe: (ctx, d) => d.changeListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

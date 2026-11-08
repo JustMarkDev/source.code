@@ -125,7 +125,7 @@ const principals = new WeakMap<TokenRecord, Principal>()
 /** One principal per record, built once, so a request does no allocation for it. */
 export function principalOf(record: TokenRecord): Principal {
   let p = principals.get(record)
-  if (!p) {
+  if (!p || p.repos !== record.repos) {
     const scopes = new Set(record.scopes)
     p = {
       tokenId: record.id,
@@ -349,6 +349,23 @@ export class AuthStore implements TokenStore {
     for (const t of this.byHandle.get(handle) ?? [])
       if (t.revokedAt === null && t.kind !== 'oauth' && t.expiresAt > now) n++
     return n
+  }
+
+  /** A renamed repository keeps its name in every limited token. */
+  renameRepo(from: string, to: string) {
+    for (const t of this.byId.values()) {
+      if (!t.repos) continue
+      if (t.repos.includes(from)) t.repos = t.repos.map((r) => (r === from ? to : r))
+      // A different repository moving into a name this token holds is not the
+      // repository the token was granted, so remove the name it collides with.
+      else if (t.repos.includes(to)) t.repos = t.repos.filter((r) => r !== to)
+    }
+  }
+
+  /** A deleted repository stops being reachable through any limited token. */
+  dropRepo(full: string) {
+    for (const t of this.byId.values())
+      if (t.repos?.includes(full)) t.repos = t.repos.filter((r) => r !== full)
   }
 
   /** Drop expired and long-revoked tokens, and authorizations revoked long ago. */

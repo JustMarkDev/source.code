@@ -469,6 +469,12 @@ export class WebhookService {
       'sx-event': d.event.type,
     }
     await this.slot()
+    // The delivery may have been evicted, or the endpoint deleted, while it
+    // waited for a slot.
+    if (!this.hooks.has(hook.id) || this.deliveries.get(d.id) !== d) {
+      this.release()
+      return
+    }
     const sentAt = performance.now()
     let result: SendResult
     try {
@@ -484,6 +490,8 @@ export class WebhookService {
     } finally {
       this.release()
     }
+    // Evicted during the send: do not count the result on a record no one keeps.
+    if (this.deliveries.get(d.id) !== d) return
     const attempt: Attempt = { number: d.attempts.length + 1, at: t, status: result.status, error: result.error, ms: result.ms }
     d.attempts.push(attempt)
     if (result.status !== null && result.status >= 200 && result.status < 300) {

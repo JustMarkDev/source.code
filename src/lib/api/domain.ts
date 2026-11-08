@@ -200,6 +200,9 @@ export type RepoRec = {
   version: number
   /** Bumped by every event in the repository. Anything derived from many objects keys on it. */
   rev: number
+  /** Per-collection counters, so a changes list is not invalidated by an issue event. */
+  changeRev: number
+  issueRev: number
   nextNumber: number
   collaborators: Set<string>
   installs: Set<string>
@@ -397,6 +400,8 @@ export class MemoryDomain {
       updated: at,
       version: 1,
       rev: 0,
+      changeRev: 0,
+      issueRev: 0,
       nextNumber: 1,
       collaborators: new Set(init.collaborators ?? []),
       installs: new Set(init.installs ?? []),
@@ -495,9 +500,18 @@ export class MemoryDomain {
       const key = `${owner}/${name}`.toLowerCase()
       repo = this.repos.get(key) ?? this.byLower(key)
       if (!repo) {
-        const to = this.aliases.get(key)
-        if (to && this.repos.has(to) && this.canRead(this.repos.get(to)!, p))
-          throw new Moved(key, to)
+        let target = key
+        const seen = new Set<string>([target])
+        for (let i = 0; i < 10; i++) {
+          const next = this.aliases.get(target)
+          if (!next || seen.has(next)) break
+          seen.add(next)
+          target = next
+        }
+        if (target !== key) {
+          const moved = this.repos.get(target) ?? this.byLower(target.toLowerCase())
+          if (moved && this.canRead(moved, p)) throw new Moved(key, target)
+        }
       }
     }
     if (!repo || !this.canRead(repo, p))
@@ -1025,6 +1039,7 @@ export class MemoryDomain {
     by: ActorRec,
     changes: Array<string>,
   ) {
+    repo.changeRev++
     this.emit(
       repo,
       type,
@@ -1120,7 +1135,7 @@ export class MemoryDomain {
         hint: 'Ask an owner or admin, or create it in an account you manage. GET /v1/accounts shows your role in each.',
       })
     if (p.repos) throw apiError('forbidden', 'A token limited to repositories cannot create new ones.')
-    const existing = this.repos.get(`${owner}/${input.name}`)
+    const existing = this.repos.get(`${owner}/${input.name}`) ?? this.byLower(`${owner}/${input.name}`.toLowerCase())
     if (existing) return { repo: this.presentRepo(existing), created: false }
     if (dry)
       return {
@@ -1298,6 +1313,10 @@ export class MemoryDomain {
       throw apiError('forbidden', `Only an owner or admin of ${handle} can change its teams.`, {
         hint: 'GET /v1/accounts shows your role in each account.',
       })
+    if (need === 'admin' && p.repos)
+      throw apiError('forbidden', 'A token limited to repositories cannot administer teams.', {
+        hint: 'Use a token that is not limited to repositories.',
+      })
     return acct
   }
 
@@ -1473,16 +1492,20 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     this.assertAdmin(repo, p)
-    this.assertMatch(ifMatch, this.repoKey(repo), () => this.presentRepo(repo))
+    this.assertMatch(ifMatch, `${repo.id}.${repo.version}`, () => this.presentRepo(repo))
     const renaming = body.name !== undefined && body.name !== repo.name
     if (renaming && p.repos)
       throw apiError('forbidden', 'A token limited to repositories cannot rename one.', {
         hint: 'Use a token that is not limited to repositories.',
       })
-    if (renaming && this.repos.has(`${repo.owner}/${body.name}`))
-      throw apiError('invalid_state', `${repo.owner}/${body.name} already exists.`, {
-        hint: 'Pick another name, or delete the repository that has it.',
-      })
+    if (renaming) {
+      const target = `${repo.owner}/${body.name}`
+      const taken = this.repos.get(target) ?? this.byLower(target.toLowerCase())
+      if (taken && taken !== repo)
+        throw apiError('invalid_state', `${target} already exists.`, {
+          hint: 'Pick another name, or delete the repository that has it.',
+        })
+    }
     if (dry) return this.presentRepo(repo)
     const from = `${repo.owner}/${repo.name}`
     const changed: Array<string> = []
@@ -1503,7 +1526,11 @@ export class MemoryDomain {
       this.repos.delete(from)
       repo.name = body.name!
       this.repos.set(to, repo)
-      // The old address keeps working: it answers 308 with the new one.
+      this.svc.auth.renameRepo(from, to)
+      // The old address keeps working: it answers 308 with the new one. Any
+      // alias that pointed at the old name follows the chain.
+      for (const [key, value] of this.aliases)
+        if (value === from || value.toLowerCase() === from.toLowerCase()) this.aliases.set(key, to)
       this.aliases.set(from.toLowerCase(), to)
       this.aliases.delete(to.toLowerCase())
       this.svc.hooks?.rename(from, to)
@@ -1547,6 +1574,8 @@ export class MemoryDomain {
     // The event is written first, while the repository still exists to be named.
     this.emit(repo, 'repo.deleted', this.asActor(p), { object: 'repo', id: repo.id, number: null }, ['deleted'], null)
     this.repos.delete(full)
+    this.svc.auth.dropRepo(full)
+    this.svc.uploads.dropRepo(repo.id)
     this.deleted.set(full, repo.owner)
     this.deletedRepos.set(repo.id, { full, owner: repo.owner })
     this.deletedIds.set(full.toLowerCase(), repo.id)
@@ -1629,6 +1658,16 @@ export class MemoryDomain {
 
   async repoVersion(owner: string, name: string, p: Viewer) {
     return this.repoKey(this.resolve(owner, name, p))
+  }
+
+  async changeListVersion(owner: string, name: string, p: Viewer) {
+    const r = this.resolve(owner, name, p)
+    return `${r.id}.${r.changeRev}.${r.version}.${this.accessRevision}`
+  }
+
+  async issueListVersion(owner: string, name: string, p: Viewer) {
+    const r = this.resolve(owner, name, p)
+    return `${r.id}.${r.issueRev}.${r.version}.${this.accessRevision}`
   }
 
   private repoKey(r: RepoRec) {
@@ -1922,7 +1961,7 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
-    this.assertMatch(ifMatch, this.changeKey(repo, c), () => this.presentChange(repo, c, p))
+    this.assertMatch(ifMatch, `${c.id}.${c.version}`, () => this.presentChange(repo, c, p))
     if (!dry) {
       const by = this.asActor(p!)
       const changed = Object.keys(body)
@@ -2478,6 +2517,7 @@ export class MemoryDomain {
     const shown = this.presentIssue(repo, issue)
     if (!dry) {
       repo.nextNumber++
+      repo.issueRev++
       this.seedIssue(repo, issue)
       this.emit(repo, 'issue.created', by, { object: 'issue', id: issue.id, number: issue.number }, ['state'], shown)
     }
@@ -2496,7 +2536,7 @@ export class MemoryDomain {
     const repo = this.resolve(owner, name, p, 'write')
     const i = repo.issues.get(n)
     if (!i) throw apiError('not_found', `No issue #${n} in ${owner}/${name}.`)
-    this.assertMatch(ifMatch, `${i.id}.${i.version}.${repo.version}.${this.accessRevision}`, () => this.presentIssue(repo, i))
+    this.assertMatch(ifMatch, `${i.id}.${i.version}`, () => this.presentIssue(repo, i))
     if (!dry) {
       if (repo.openIssueByTitle.get(i.title) === i) repo.openIssueByTitle.delete(i.title)
       if (body.title !== undefined) i.title = body.title
@@ -2510,6 +2550,7 @@ export class MemoryDomain {
       i.updated = this.now()
       i.version++
       const shown = this.presentIssue(repo, i)
+      repo.issueRev++
       this.emit(repo, i.state === 'closed' ? 'issue.closed' : 'issue.updated', this.asActor(p!),
         { object: 'issue', id: i.id, number: i.number }, Object.keys(body), shown)
       return shown
@@ -2531,6 +2572,7 @@ export class MemoryDomain {
 
   private administered(full: string, p: Viewer): boolean {
     if (!p) return false
+    if (p.repos && !p.repos.includes(full)) return false
     const owner = this.deleted.get(full)
     if (!owner) return false
     const role = owner === p.handle ? 'owner' : this.accounts.get(owner)?.members.get(p.handle)
@@ -2582,16 +2624,24 @@ export class MemoryDomain {
     if (!this.readableRepoIds(p)(id)) throw apiError('not_found', `No repository ${full}.`, {
       hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
     })
-    return `${id}.${this.events.head}`
+    const list = this.events.repoEvents(id)
+    return `${id}.${list.at(-1)?.sequence ?? 0}`
   }
 
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
-    const key = full.toLowerCase()
+    let key = full.toLowerCase()
+    const seen = new Set<string>([key])
+    for (let i = 0; i < 10; i++) {
+      const next = this.aliases.get(key)
+      if (!next || seen.has(next.toLowerCase())) break
+      key = next.toLowerCase()
+      seen.add(key)
+    }
     const repo = this.repos.get(key) ?? this.byLower(key)
     if (repo) return repo.id
     const to = this.aliases.get(key)
-    if (to) return this.repos.get(to)?.id ?? this.deletedIds.get(to) ?? null
+    if (to) return this.repos.get(to)?.id ?? this.deletedIds.get(to.toLowerCase()) ?? null
     return this.deletedIds.get(key) ?? null
   }
 

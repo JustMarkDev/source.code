@@ -347,6 +347,19 @@ describe('generations and reuse', () => {
     expect((await h.api.fetch(new Request(url))).status).toBe(404)
   })
 
+  test('deleting a repository frees its attached upload bytes', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'mem', visibility: 'private' } })
+    const change = await h.call('POST', '/repos/dana/mem/changes', { body: { branch: 'b' } })
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 9, 9, 9])
+    const up = (await h.call('POST', '/uploads', { body: { filename: 'm.png', content_type: 'image/png', size: png.length } })).json
+    await h.api.fetch(new Request(up.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))
+    await h.call('POST', `/repos/dana/mem/changes/${change.json.number}/evidence`, { body: { upload: up.id, kind: 'image' } })
+    const before = h.api.domain.svc.uploads.blobs.bytes
+    await h.call('DELETE', '/repos/dana/mem?confirm=dana/mem')
+    expect(h.api.domain.svc.uploads.blobs.bytes).toBe(before - png.length)
+  })
+
   test('event history follows a rename', async () => {
     const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'history', visibility: 'public' } })
@@ -380,6 +393,101 @@ describe('generations and reuse', () => {
     await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'private' } })
     expect((await h.call('GET', '/accounts/northwind/teams/private', { token: h.tokens.stranger, headers: { 'if-none-match': '*' } })).status).toBe(404)
     expect((await h.call('GET', '/sync?repo=dana/notes', { token: h.tokens.stranger, headers: { 'if-none-match': '*' } })).status).toBe(404)
+  })
+
+  test('a repository-limited token cannot read deleted history', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault', visibility: 'private' } })
+    await h.call('POST', '/repos/northwind/vault/issues', { body: { title: 'Deleted private event' } })
+    const token = (await h.call('POST', '/tokens', { body: { name: 'scoped', scopes: ['repo:read', 'issues:read'], repos: ['northwind/vault'] } })).json.secret as string
+    expect((await h.call('GET', '/events?repo=northwind/vault', { token })).status).toBe(200)
+    await h.call('DELETE', '/repos/northwind/vault?confirm=northwind/vault')
+    expect((await h.call('GET', '/events?repo=northwind/vault', { token })).status).toBe(404)
+  })
+
+  test('a repository-limited token follows a rename but not a reused name', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'w-a', visibility: 'private' } })
+    const token = (await h.call('POST', '/tokens', { body: { name: 'scoped', scopes: ['repo:read'], repos: ['dana/w-a'] } })).json.secret as string
+    await h.call('PATCH', '/repos/dana/w-a', { body: { name: 'w-b' } })
+    expect((await h.call('GET', '/repos/dana/w-b', { token })).status).toBe(200)
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'w-a', visibility: 'private' } })
+    expect((await h.call('GET', '/repos/dana/w-a', { token })).status).toBe(404)
+  })
+
+  test('a repository-limited token cannot administer teams', async () => {
+    const h = harness()
+    expect((await h.call('POST', '/accounts/northwind/teams', { token: h.tokens.limited, body: { slug: 'nope' } })).status).toBe(403)
+  })
+
+  test('a repeated dry run with the same key is not left in progress', async () => {
+    const h = harness()
+    const body = { name: 'dry-run', scopes: ['repo:read'] }
+    const key = 'dry-run-key'
+    expect((await h.call('POST', '/tokens?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
+    expect((await h.call('POST', '/tokens?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
+  })
+
+  test('NDJSON is not replaced by a cached JSON body', async () => {
+    const h = harness()
+    const json = await h.call('GET', `${REPO}/changes?state=all`)
+    expect(json.headers.get('vary')).toContain('accept')
+    const nd = await h.call('GET', `${REPO}/changes?state=all`, { headers: { accept: 'application/x-ndjson' } })
+    expect(nd.headers.get('content-type')).toContain('x-ndjson')
+  })
+
+  test('a HEAD on the event stream opens no waiter', async () => {
+    const h = harness()
+    const r = await h.call('HEAD', '/events/stream')
+    expect(r.status).toBe(200)
+    expect(h.api.events.waiting).toBe(0)
+  })
+
+  test('an unrelated repository event does not change a scoped events ETag', async () => {
+    const h = harness()
+    const etag = (await h.call('GET', '/events?repo=dana/gitfs')).headers.get('etag')!
+    await h.call('POST', '/repos/northwind/relay/issues', { body: { title: 'Elsewhere' } })
+    expect((await h.call('GET', '/events?repo=dana/gitfs', { headers: { 'if-none-match': etag } })).status).toBe(304)
+    const changes = (await h.call('GET', `${REPO}/changes?state=all`)).headers.get('etag')!
+    await h.call('POST', `${REPO}/issues`, { body: { title: 'Not a change event' } })
+    expect((await h.call('GET', `${REPO}/changes?state=all`, { headers: { 'if-none-match': changes } })).status).toBe(304)
+  })
+
+  test('a chain of renames keeps every old address working', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'chain', visibility: 'public' } })
+    await h.call('PATCH', '/repos/dana/chain', { body: { name: 'chain2' } })
+    await h.call('PATCH', '/repos/dana/chain2', { body: { name: 'chain3' } })
+    const old = await h.call('GET', '/repos/dana/chain')
+    expect(old.status).toBe(308)
+    expect(old.headers.get('location')).toContain('/repos/dana/chain3')
+    const mixed = await h.call('GET', '/repos/Dana/Chain')
+    expect(mixed.status).toBe(308)
+    expect(mixed.headers.get('location')).toContain('/repos/dana/chain3')
+    const events = await h.call('GET', '/events?repo=dana/chain')
+    expect(events.status).toBe(200)
+  })
+
+  test('repository names are unique without regard to case', async () => {
+    const h = harness()
+    const first = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'CaseRepo', visibility: 'private' } })
+    expect(first.status).toBe(201)
+    const second = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'caserepo', visibility: 'public' } })
+    expect(second.status).toBe(200)
+    expect(second.json.visibility).toBe('private')
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'other' } })
+    expect((await h.call('PATCH', '/repos/dana/other', { body: { name: 'GITFS' } })).status).toBe(409)
+  })
+
+  test('If-Match ignores unrelated repository and ACL changes', async () => {
+    const h = harness()
+    const etag = (await h.call('GET', `${REPO}/changes/216`)).headers.get('etag')!
+    await h.call('PATCH', REPO, { body: { description: 'unrelated edit' } })
+    expect((await h.call('PATCH', `${REPO}/changes/216`, { body: { title: 'still mine' }, headers: { 'if-match': etag } })).status).toBe(200)
+    const issue = (await h.call('POST', `${REPO}/issues`, { body: { title: 'issue' } })).json
+    const issueTag = (await h.call('GET', `${REPO}/issues/${issue.number}`)).headers.get('etag')!
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'acl' } })
+    expect((await h.call('PATCH', `${REPO}/issues/${issue.number}`, { body: { title: 'still mine' }, headers: { 'if-match': issueTag } })).status).toBe(200)
   })
 })
 

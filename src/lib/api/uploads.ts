@@ -203,6 +203,15 @@ export class UploadService {
     this.sweep()
   }
 
+  /** A deleted repository takes its attached blobs with it. */
+  dropRepo(repoId: string) {
+    for (const [id, rec] of this.uploads)
+      if (rec.attachedRepoId === repoId) {
+        this.uploads.delete(id)
+        this.blobs.delete?.(id)
+      }
+  }
+
   get(id: string) {
     return this.uploads.get(id) ?? null
   }

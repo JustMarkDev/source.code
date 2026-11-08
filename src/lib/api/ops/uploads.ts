@@ -76,6 +76,9 @@ export const createUpload = defineOp({
         if (b.size > ALLOWED[b.content_type].max)
           throw apiError('payload_too_large', `${b.content_type} files are limited to ${ALLOWED[b.content_type].max} bytes.`)
         const owner = ctx.principal!.handle
+        const store = d.svc.uploads.blobs
+        if (store.capacity !== undefined && store.bytes + b.size > store.capacity)
+          throw apiError('limit_reached', 'Upload storage is full. Try again after old uploads expire.')
         const pending = d.svc.uploads.countPending(owner)
         if (pending >= MAX_PENDING) throw apiError('limit_reached', `You can have ${MAX_PENDING} uploads waiting for their file.`)
         const rec = ctx.dryRun
