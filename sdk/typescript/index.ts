@@ -580,7 +580,7 @@ export type Repo = {
   visibility: 'public' | 'private'
   default_branch: string
   stars: number
-  /** People who can approve core-path changes */
+  /** People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. */
   maintainers: Array<string>
   open_changes: number
   open_issues: number
@@ -1510,7 +1510,7 @@ export interface Operations {
         owner?: string
         description?: string
         visibility?: 'public' | 'private'
-        /** People who can approve core-path changes. Default: the account owners/admins and you. */
+        /** People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. Default: the account owners/admins and you. */
         maintainers?: Array<string>
       }
     }
@@ -1576,7 +1576,7 @@ export interface Operations {
         description?: string
         visibility?: 'public' | 'private'
         default_branch?: string
-        /** People who can approve core-path changes */
+        /** People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. */
         maintainers?: Array<string>
       }
     }

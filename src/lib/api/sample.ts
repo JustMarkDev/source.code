@@ -205,6 +205,7 @@ export function seedStack(d: MemoryDomain) {
     description: 'A stack that is ready to land.',
     maintainers: ['dana', 'hollis'],
     collaborators: ['hollis'],
+    maintainerGrants: ['hollis'],
     created: days(2),
   })
   const dana = d.actors.get('dana')!

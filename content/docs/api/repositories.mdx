@@ -13,7 +13,9 @@ sxcurl -X PATCH $SX/repos/dana/gitfs -H 'If-Match: "7"' \
   -d '{"name":"gitfs-core","description":"A filesystem over git","visibility":"private"}'
 ```
 
-Only owners of the account and admins of the organization can do this. A token limited to repositories can change a repository's description, visibility and default branch, but cannot rename or delete one: those change which repository the token means.
+Only owners of the account and admins of the organization can do this. A token limited to repositories can change a repository's description, visibility and default branch, but cannot rename or delete one, or change its maintainers: those change which repository the token means or who can write to it.
+
+**Changing maintainers is an access-control change.** Each name must be a person. Adding one also grants repository write access, and removing one revokes the write access that the maintainer list granted, unless the person has another grant. The same applies when a repository is created with `maintainers`.
 
 **A rename keeps the old address working.** `GET /repos/dana/gitfs` answers `308` with the new address in `Location` and `Sx-Renamed-From`, on every method, so a client that follows redirects never notices. The repository keeps its `rep_` id, and webhooks, mirrors, variables, team access and runs move with it. Taking a name that exists answers `invalid_state` (409).
 

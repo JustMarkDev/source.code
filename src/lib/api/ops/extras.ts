@@ -34,7 +34,13 @@ export const createRepo = defineOp({
     owner: z.string().optional().describe('Account handle. Default: the account you act as'),
     description: z.string().max(500).optional(),
     visibility: z.enum(['public', 'private']).default('public'),
-    maintainers: z.array(z.string()).max(50).optional().describe('People who can approve core-path changes. Default: the account owners/admins and you.'),
+    maintainers: z
+      .array(z.string())
+      .max(50)
+      .optional()
+      .describe(
+        'People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. Default: the account owners/admins and you.',
+      ),
   }),
   response: S.Repo,
   status: 201,

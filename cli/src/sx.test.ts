@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { parse } from './args'
 import { run } from './main'
+import { scrub } from './secrets'
 
 async function sx(...argv: Array<string>) {
   let out = ''
@@ -20,6 +21,28 @@ describe('parse', () => {
     const p = parse(['change', 'view', '-R', 'dana/gitfs', '--json', 'ch_1'])
     expect(p.positionals).toEqual(['change', 'view', 'ch_1'])
     expect(p.flags).toEqual({ repo: 'dana/gitfs', json: true })
+  })
+})
+
+describe('scrub', () => {
+  test('replaces long values and their encodings everywhere', () => {
+    expect(scrub('token=hunter2 again hunter2', { TOKEN: 'hunter2' })).toBe(
+      'token=«TOKEN» again «TOKEN»',
+    )
+    expect(
+      scrub(Buffer.from('hunter2').toString('base64'), { TOKEN: 'hunter2' }),
+    ).toBe('«TOKEN»')
+  })
+
+  test('redacts short values only where they stand alone', () => {
+    expect(scrub('pin 42 port 421 42x', { PIN: '42' })).toBe(
+      'pin «PIN» port 421 42x',
+    )
+    expect(scrub('a cat', { A: 'a' })).toBe('«A» cat')
+  })
+
+  test('leaves empty values alone', () => {
+    expect(scrub('text', { EMPTY: '' })).toBe('text')
   })
 })
 

@@ -88,7 +88,7 @@ export function createSxMcpServer(
           argv(a as z.infer<z.ZodObject<TShape>>),
           options.client,
         )
-        if (r.code === 0 || hint.allowExit?.includes(r.code))
+        if (r.code === 0 || (hint.allowExit?.includes(r.code) && r.out.trim() !== ''))
           return { content: [{ type: 'text' as const, text: r.out || r.err }] }
         return {
           isError: true,

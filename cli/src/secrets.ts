@@ -50,7 +50,20 @@ export function scrub(text: string, secrets: Record<string, string>): string {
       Buffer.from(value).toString('base64'),
       encodeURIComponent(value),
     ])
-    for (const f of forms) out = out.split(f).join(`«${name}»`)
+    for (const f of forms) {
+      // A very short value would rewrite ordinary text, so redact it only
+      // where it stands alone; anything longer is replaced everywhere.
+      if (f.length < 4) {
+        const escaped = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const lead = /^\w/.test(f) ? '(?<!\\w)' : ''
+        const trail = /\w$/.test(f) ? '(?!\\w)' : ''
+        if (lead || trail) {
+          out = out.replace(new RegExp(`${lead}${escaped}${trail}`, 'g'), `«${name}»`)
+          continue
+        }
+      }
+      out = out.split(f).join(`«${name}»`)
+    }
   }
   return out
 }

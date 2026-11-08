@@ -11139,7 +11139,7 @@
                     "maxLength": 200
                   },
                   "maintainers": {
-                    "description": "People who can approve core-path changes",
+                    "description": "People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant.",
                     "maxItems": 50,
                     "type": "array",
                     "items": {
@@ -11412,7 +11412,7 @@
                     ]
                   },
                   "maintainers": {
-                    "description": "People who can approve core-path changes. Default: the account owners/admins and you.",
+                    "description": "People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. Default: the account owners/admins and you.",
                     "maxItems": 50,
                     "type": "array",
                     "items": {
@@ -13954,7 +13954,7 @@
             "items": {
               "type": "string"
             },
-            "description": "People who can approve core-path changes"
+            "description": "People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant."
           },
           "open_changes": {
             "type": "integer",

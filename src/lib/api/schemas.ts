@@ -48,7 +48,11 @@ export const Repo = named('Repo', obj({
   visibility: z.enum(['public', 'private']),
   default_branch: z.string(),
   stars: z.number().int(),
-  maintainers: z.array(z.string()).describe('People who can approve core-path changes'),
+  maintainers: z
+    .array(z.string())
+    .describe(
+      'People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant.',
+    ),
   open_changes: z.number().int(),
   open_issues: z.number().int(),
   url: z.string(),

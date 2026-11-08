@@ -330,6 +330,8 @@ describe('who can see what', () => {
   test('maintainer changes are ACL changes: limited tokens cannot grant and removal revokes write', async () => {
     const h = harness()
     expect((await h.call('PATCH', '/repos/dana/tinyqueue', { token: h.tokens.limited, body: { maintainers: ['stranger'] } })).status).toBe(403)
+    // Echoing the current list back is not a change, so a limited token may send it.
+    expect((await h.call('PATCH', '/repos/dana/tinyqueue', { token: h.tokens.limited, body: { maintainers: ['dana'] } })).status).toBe(200)
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'aclrepo', maintainers: ['hollis'] } })
     const change = await h.call('POST', '/repos/dana/aclrepo/changes', { body: { branch: 'a' } })
     await h.call('PATCH', '/repos/dana/aclrepo', { body: { maintainers: ['dana'] } })
@@ -351,6 +353,7 @@ describe('who can see what', () => {
     const policy = await h.call('GET', '/repos/dana/stacky/changes/1/policy')
     expect(policy.json.requirements.find((r: { id: string }) => r.id === 'core-paths').state).toBe('pass')
     await h.call('PATCH', '/repos/dana/stacky', { body: { maintainers: ['dana'] } })
+    expect((await h.call('POST', '/repos/dana/stacky/changes/1/reviews', { token: h.tokens.hollis, body: { state: 'approved' } })).status).toBe(403)
     const after = await h.call('GET', '/repos/dana/stacky/changes/1/policy')
     expect(after.json.requirements.find((r: { id: string }) => r.id === 'core-paths').state).toBe('pending')
     const land = await h.call('POST', '/repos/dana/stacky/changes/1/land', { body: { expected_tree: '1111111' } })

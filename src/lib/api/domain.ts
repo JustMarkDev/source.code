@@ -374,6 +374,7 @@ export class MemoryDomain {
       collaborators?: Array<string>
       installs?: Array<string>
       maintainers?: Array<string>
+      maintainerGrants?: Array<string>
     } = {},
   ): RepoRec {
     const rec = this.makeRepo(owner, name, init)
@@ -395,6 +396,7 @@ export class MemoryDomain {
       collaborators?: Array<string>
       installs?: Array<string>
       maintainers?: Array<string>
+      maintainerGrants?: Array<string>
     } = {},
   ): RepoRec {
     const at = init.created ?? this.now()
@@ -418,7 +420,7 @@ export class MemoryDomain {
       collaborators: new Set(init.collaborators ?? []),
       installs: new Set(init.installs ?? []),
       maintainers: new Set(init.maintainers ?? [owner]),
-      maintainerGrants: new Set(),
+      maintainerGrants: new Set(init.maintainerGrants ?? []),
       changes: new Map(),
       issues: new Map(),
       stacks: new Map(),
@@ -1574,10 +1576,6 @@ export class MemoryDomain {
       throw apiError('forbidden', 'A token limited to repositories cannot rename one.', {
         hint: 'Use a token that is not limited to repositories.',
       })
-    if (body.maintainers !== undefined && p.repos)
-      throw apiError('forbidden', 'A token limited to repositories cannot change maintainers.', {
-        hint: 'Use a token that is not limited to repositories.',
-      })
     if (renaming) {
       const target = `${repo.owner}/${body.name}`
       const taken = this.repos.get(target) ?? this.byLower(target.toLowerCase())
@@ -1586,6 +1584,15 @@ export class MemoryDomain {
           hint: 'Pick another name, or delete the repository that has it.',
         })
     }
+    const nextMaintainers =
+      body.maintainers !== undefined ? [...new Set(body.maintainers)].sort() : undefined
+    const maintainersChanged =
+      nextMaintainers !== undefined &&
+      JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify(nextMaintainers)
+    if (maintainersChanged && p.repos)
+      throw apiError('forbidden', 'A token limited to repositories cannot change maintainers.', {
+        hint: 'Use a token that is not limited to repositories.',
+      })
     if (body.maintainers !== undefined) {
       if (body.maintainers.length === 0)
         throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
@@ -1603,7 +1610,7 @@ export class MemoryDomain {
         description: body.description ?? repo.description,
         visibility: body.visibility ?? repo.visibility,
         defaultBranch: body.default_branch ?? repo.defaultBranch,
-        maintainers: body.maintainers ? new Set(body.maintainers) : repo.maintainers,
+        maintainers: nextMaintainers ? new Set(nextMaintainers) : repo.maintainers,
       })
     const from = `${repo.owner}/${repo.name}`
     const changed: Array<string> = []
@@ -1619,23 +1626,20 @@ export class MemoryDomain {
       repo.defaultBranch = body.default_branch
       changed.push('default_branch')
     }
-    if (body.maintainers !== undefined) {
-      const next = [...new Set(body.maintainers)].sort()
-      if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify(next)) {
-        const removed = [...repo.maintainers].filter((h) => !next.includes(h))
-        for (const h of removed)
-          if (repo.maintainerGrants.delete(h)) repo.collaborators.delete(h)
-        for (const h of next)
-          if (!repo.collaborators.has(h)) {
-            repo.collaborators.add(h)
-            repo.maintainerGrants.add(h)
-          }
-        repo.maintainers = new Set(next)
-        for (const c of repo.changes.values()) c.policyMemo = undefined
-        this.accessRevision++
-        this.svc.search?.reset()
-        changed.push('maintainers')
-      }
+    if (maintainersChanged && nextMaintainers) {
+      const removed = [...repo.maintainers].filter((h) => !nextMaintainers.includes(h))
+      for (const h of removed)
+        if (repo.maintainerGrants.delete(h)) repo.collaborators.delete(h)
+      for (const h of nextMaintainers)
+        if (!repo.collaborators.has(h)) {
+          repo.collaborators.add(h)
+          repo.maintainerGrants.add(h)
+        }
+      repo.maintainers = new Set(nextMaintainers)
+      for (const c of repo.changes.values()) c.policyMemo = undefined
+      this.accessRevision++
+      this.svc.search?.reset()
+      changed.push('maintainers')
     }
     if (renaming) {
       const to = `${repo.owner}/${body.name}`
