@@ -96,6 +96,7 @@ export const updateTeam = defineOp({
   method: 'PATCH',
   path: '/accounts/{handle}/teams/{slug}',
   params: team,
+  ifMatch: true,
   body: z.strictObject({ name: z.string().min(1).max(100).optional(), description: z.string().max(500).optional() }),
   response: S.Team,
   errors: ['not_found', 'forbidden', 'version_mismatch'],

@@ -2929,18 +2929,27 @@ export class MemoryDomain {
    * by a different repository. A delete keeps its id so a retry still gets 204.
    */
   replayStamp(path: string, p: Principal, method: string): string {
-    const m = /^\/repos\/([^/]+)\/([^/]+)/.exec(path)
-    if (!m) return ''
-    const owner = m[1]
-    const name = m[2]
-    let repo = owner.startsWith('rep_') && name === '~' ? this.reposById.get(owner) : undefined
-    if (!repo) {
+    const idForm = /^\/repos\/(rep_[^/]+)(?:\/|$)/.exec(path)
+    let repo: RepoRec | undefined
+    let id = ''
+    if (idForm) {
+      id = idForm[1]
+      repo = this.reposById.get(id)
+      if (!repo && !this.deletedRepos.has(id)) return 'none'
+    } else {
+      const m = /^\/repos\/([^/]+)\/([^/]+)/.exec(path)
+      if (!m) return ''
+      const owner = m[1]
+      const name = m[2]
       const canonical = this.canonicalRepoName(`${owner}/${name}`)
       repo = this.repos.get(canonical) ?? this.byLower(canonical.toLowerCase())
+      id = repo?.id ?? this.deletedIds.get(`${owner}/${name}`.toLowerCase()) ?? ''
+      if (!id) return 'none'
     }
-    const id = repo?.id ?? this.deletedIds.get(`${owner}/${name}`.toLowerCase()) ?? ''
-    if (!id) return 'none'
-    return method === 'DELETE' ? id : `${id}:${repo ? this.canWrite(repo, p) : false}`
+    const repoAddress = /^\/repos\/[^/]+(?:\/[^/]+)?$/.test(path)
+    // Deleting a repository is safe to replay without write access: there is
+    // no body to leak, and the address itself still names the repository.
+    return method === 'DELETE' && repoAddress ? id : `${id}:${repo ? this.canWrite(repo, p) : false}`
   }
 
   /** The stable id behind a repository address, without requiring that it still exists. */
@@ -3029,6 +3038,7 @@ export class MemoryDomain {
       if (snap[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
         errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
       })
+      if (Number(snap[2]) > this.events.head) return snapshot(0, this.events.head, true)
       return snapshot(Number(snap[3]), Math.min(Number(snap[2]), this.events.head), false)
     }
     const ev = /^e_(.+)_(\d+)$/.exec(c)

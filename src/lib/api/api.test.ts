@@ -562,6 +562,8 @@ describe('generations and reuse', () => {
     const repo = (await h.call('GET', REPO)).json.id as string
     const future = (await h.call('GET', `/sync?repo=dana/gitfs&cursor=e_${repo}_999999`)).json
     expect(future.reset).toBe(true)
+    const futureSnap = (await h.call('GET', `/sync?repo=dana/gitfs&cursor=s_${repo}_999999_0&limit=1`)).json
+    expect(futureSnap.reset).toBe(true)
     await h.call('POST', `${REPO}/issues`, { body: { title: 'After the future' } })
     const delta = (await h.call('GET', `/sync?repo=dana/gitfs&cursor=${future.cursor}`)).json
     expect(delta.objects.some((o: { title?: string }) => o.title === 'After the future')).toBe(true)
@@ -1083,6 +1085,51 @@ describe('writes', () => {
     const again = await h.call('PATCH', `${REPO}/issues/${made.json.number}`, { body, headers })
     expect(again.status).toBe(412)
     expect(again.headers.get('sx-replayed')).toBeNull()
+  })
+
+  test('If-Match does not defeat idempotency on operations that ignore it', async () => {
+    const h = harness()
+    const hook = (await h.call('POST', `${REPO}/webhooks`, { body: { endpoint: 'https://hooks.example.com/ping', events: ['*'] } })).json
+    const headers = { 'idempotency-key': 'ping-key', 'if-match': '"1"' }
+    const first = await h.call('POST', `${REPO}/webhooks/${hook.id}/ping`, { headers })
+    expect(first.status).toBe(202)
+    const again = await h.call('POST', `${REPO}/webhooks/${hook.id}/ping`, { headers })
+    expect(again.status).toBe(202)
+    expect(again.headers.get('sx-replayed')).toBe('true')
+    expect((await h.call('GET', `${REPO}/webhooks/${hook.id}/deliveries`)).json.data.length).toBe(1)
+  })
+
+  test('a repository delete by id replays, but other deletes need write access', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'byid', visibility: 'public' } })
+    const repo = (await h.call('GET', '/repos/dana/byid')).json
+    const key = { 'idempotency-key': 'delete-by-id' }
+    expect((await h.call('DELETE', `/repos/${repo.id}?confirm=dana/byid`, { headers: key })).status).toBe(204)
+    const again = await h.call('DELETE', `/repos/${repo.id}?confirm=dana/byid`, { headers: key })
+    expect(again.status).toBe(204)
+    expect(again.headers.get('sx-replayed')).toBe('true')
+
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault2', visibility: 'private' } })
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'vault2-access' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault2-access/repos/northwind/vault2', { body: { permission: 'write' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault2-access/members/stranger')
+    const hook = (await h.call('POST', '/repos/northwind/vault2/webhooks', { body: { endpoint: 'https://hooks.example.com/delete', events: ['*'] } })).json
+    const hookKey = { 'idempotency-key': 'delete-hook' }
+    expect((await h.call('DELETE', `/repos/northwind/vault2/webhooks/${hook.id}`, { token: h.tokens.stranger, headers: hookKey })).status).toBe(204)
+    await h.call('DELETE', '/accounts/northwind/teams/vault2-access/members/stranger')
+    const denied = await h.call('DELETE', `/repos/northwind/vault2/webhooks/${hook.id}`, { token: h.tokens.stranger, headers: hookKey })
+    expect(denied.status).toBe(422)
+    expect(denied.json.code).toBe('idempotency_key_reused')
+  })
+
+  test('a renamed private repository is not disclosed through a token alias', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'leak', visibility: 'private' } })
+    await h.call('PATCH', '/repos/dana/leak', { body: { name: 'leak-renamed' } })
+    const r = await h.call('POST', '/tokens', { token: h.tokens.stranger, body: { name: 'probe', scopes: ['repo:read'], repos: ['dana/leak'] } })
+    expect(r.status).toBe(404)
+    expect(r.json.detail).toContain('dana/leak')
+    expect(r.text).not.toContain('leak-renamed')
   })
 
   test('token repositories are stored under their current name', async () => {

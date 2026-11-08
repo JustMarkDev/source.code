@@ -170,6 +170,7 @@ export const updateChange = defineOp({
   params: changeParams,
   scopes: ['pulls:write'],
   idempotent: true,
+  ifMatch: true,
   body: z.strictObject({
     title: z.string().min(1).max(300).optional(),
     description: z.string().max(65536).optional(),

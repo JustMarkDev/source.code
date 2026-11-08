@@ -10450,7 +10450,7 @@
       "patch": {
         "operationId": "webhooks.update",
         "summary": "Change a webhook",
-        "description": "Set `active: true` to turn a disabled endpoint back on. That also clears the failure count.",
+        "description": "Set `active: true` to turn a disabled endpoint back on. That also clears the failure count. Send If-Match with the ETag you read.",
         "tags": [
           "webhooks"
         ],

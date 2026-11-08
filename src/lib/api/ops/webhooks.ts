@@ -157,11 +157,12 @@ export const updateWebhook = defineOp({
   ...write,
   id: 'webhooks.update',
   summary: 'Change a webhook',
-  description: 'Set `active: true` to turn a disabled endpoint back on. That also clears the failure count.',
+  description: 'Set `active: true` to turn a disabled endpoint back on. That also clears the failure count. Send If-Match with the ETag you read.',
   method: 'PATCH',
   path: '/repos/{owner}/{repo}/webhooks/{webhook}',
   params: hookParams,
   idempotent: true,
+  ifMatch: true,
   dryRun: true,
   body: z.strictObject({
     endpoint: z.string().max(2000).optional(),

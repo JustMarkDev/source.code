@@ -133,6 +133,7 @@ export const updateIssue = defineOp({
   scopes: ['issues:write'],
   pool: 'write',
   safety: 'write',
+  ifMatch: true,
   idempotent: true,
   dryRun: true,
   params: issueParams,
