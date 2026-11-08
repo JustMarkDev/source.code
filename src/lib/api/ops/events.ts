@@ -104,9 +104,10 @@ export const streamEvents = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const { events, domain } = yield* run(async (d) => ({
+      const { events, domain, repoId } = yield* run(async (d) => ({
         events: d.events,
         domain: d,
+        repoId: ctx.query.repo ? d.repoIdForHistory(ctx.query.repo) : null,
       }))
       const last = ctx.header('last-event-id')
       let after = last && /^\d+$/.test(last) ? Number(last) : events.head
@@ -138,7 +139,7 @@ export const streamEvents = defineOp({
             // or a membership may be removed, while the stream stays open.
             const can = domain.canSeeId(ctx.principal)
             const { events: batch, scannedTo } = events.since(after, 100, (e) => {
-              if (repo && e.repo !== repo) return false
+              if (repo && e.repoId !== repoId) return false
               if (!can(e.repoId)) return false
               return (
                 !types ||
@@ -194,7 +195,7 @@ export const getOperation = defineOp({
   errors: ['not_found'],
   waitOn: () => '*',
   probe: (ctx, d) =>
-      d.operationVersion(ctx.params.id),
+      d.operationVersion(ctx.params.id, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

@@ -345,6 +345,17 @@ describe('generations and reuse', () => {
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'media', visibility: 'public' } })
     expect((await h.api.fetch(new Request(url))).status).toBe(404)
   })
+
+  test('event history follows a rename', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'history', visibility: 'public' } })
+    await h.call('POST', '/repos/dana/history/issues', { body: { title: 'Before the rename' } })
+    await h.call('PATCH', '/repos/dana/history', { body: { name: 'history2' } })
+    const current = await h.call('GET', '/events?repo=dana/history2')
+    expect(current.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Before the rename')).toBe(true)
+    const old = await h.call('GET', '/events?repo=dana/history')
+    expect(old.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Before the rename')).toBe(true)
+  })
 })
 
 describe('If-Match', () => {
@@ -357,6 +368,18 @@ describe('If-Match', () => {
     await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'etag' } })
     const team = await h.call('GET', '/accounts/northwind/teams/etag')
     expect((await h.call('PATCH', '/accounts/northwind/teams/etag', { body: { description: 'etag team' }, headers: { 'if-match': team.headers.get('etag')! } })).status).toBe(200)
+  })
+
+  test('an operation ETag is unique and does not answer 304 to someone who cannot read it', async () => {
+    const h = harness({ seed: (d) => seedStack(d) })
+    const started = await h.call('POST', `/repos/dana/stacky/stacks/${STACK_ID}/land`, { body: { expected_trees: { 1: '1111111', 2: '2222222', 3: '3333333' } } })
+    expect(started.status, started.text).toBe(202)
+    const id = started.json.id as string
+    const op = await h.call('GET', `/operations/${id}`)
+    expect(op.status).toBe(200)
+    expect((await h.call('GET', `/operations/${id}`, { headers: { 'if-none-match': op.headers.get('etag')! } })).status).toBe(304)
+    await h.call('PATCH', '/repos/dana/stacky', { body: { visibility: 'private' } })
+    expect((await h.call('GET', `/operations/${id}`, { token: h.tokens.stranger, headers: { 'if-none-match': op.headers.get('etag')! } })).status).toBe(404)
   })
 })
 
@@ -553,6 +576,7 @@ describe('conditional requests', () => {
     expect(md.status, md.text.slice(0, 200)).toBe(200)
     expect(md.headers.get('content-type')).toContain('text/markdown')
     expect((await h.call('GET', `${REPO}/changes/216?fields=head.tree`)).status).toBe(200)
+    expect((await h.call('GET', `${REPO}/changes/216?fields=repo.full_name`)).status).toBe(200)
     expect((await h.call('GET', `${REPO}/changes/216?fields=head.nope`)).status).toBe(400)
     expect((await h.call('GET', `${REPO}/changes/216?fields=head.tree.nope`)).status).toBe(400)
   })
@@ -1009,6 +1033,11 @@ describe('OpenAPI', () => {
     // Requests are strict, and the document says so: the server rejects
     // unknown members, so a generated client must not be told they are fine.
     expect(JSON.stringify(doc.paths['/repos'].post.requestBody)).toContain('"additionalProperties":false')
+  })
+
+  test('binary responses say they are binary', () => {
+    expect(doc.paths['/repos/{owner}/{repo}/git/raw'].get.responses['200'].content['application/octet-stream'].schema).toEqual({ type: 'string', format: 'binary' })
+    expect(doc.paths['/uploads/{id}/content'].get.responses['200'].content['*/*'].schema).toEqual({ type: 'string', format: 'binary' })
   })
 
   test('v1 only adds: the committed snapshot is still satisfied', () => {

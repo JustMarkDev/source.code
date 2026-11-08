@@ -61,7 +61,7 @@ function stamp(ms: number) {
 
 export class EventLog {
   private events: Array<StoredEvent> = []
-  /** The same events, one list per repository, for reading one repository's history. */
+  /** The same events, one list per repository id, for reading one repository's history. */
   private byRepo = new Map<string, Array<StoredEvent>>()
   private firstSequence = 1
   private next = 1
@@ -112,9 +112,9 @@ export class EventLog {
     }
     this.held += stored.json.length
     this.events.push(stored)
-    if (stored.repo) {
-      let list = this.byRepo.get(stored.repo)
-      if (!list) this.byRepo.set(stored.repo, (list = []))
+    if (stored.repoId) {
+      let list = this.byRepo.get(stored.repoId)
+      if (!list) this.byRepo.set(stored.repoId, (list = []))
       list.push(stored)
     }
     for (const l of this.listeners) l(record)
@@ -170,8 +170,8 @@ export class EventLog {
     return this.events
   }
 
-  repoEvents(repo: string): ReadonlyArray<StoredEvent> {
-    return this.byRepo.get(repo) ?? []
+  repoEvents(repoId: string): ReadonlyArray<StoredEvent> {
+    return this.byRepo.get(repoId) ?? []
   }
 
   /** Resolves when something happens on the topic, or after `ms`. */

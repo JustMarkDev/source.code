@@ -6962,7 +6962,8 @@
             "content": {
               "application/octet-stream": {
                 "schema": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -11980,7 +11981,8 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }

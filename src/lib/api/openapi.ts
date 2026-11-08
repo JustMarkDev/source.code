@@ -160,7 +160,10 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
           },
           content: {
             [op.responseContentType ?? 'application/json']: {
-              schema: jsonSchema(op.response, 'output', outputDefs),
+              schema:
+                op.responseContentType === 'application/octet-stream' || op.responseContentType === '*/*'
+                  ? { type: 'string', format: 'binary' }
+                  : jsonSchema(op.response, 'output', outputDefs),
             },
             ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),
           },

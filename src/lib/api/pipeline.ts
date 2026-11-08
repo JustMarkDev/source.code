@@ -165,14 +165,14 @@ function unwrap(schema: z.ZodType): z.ZodType {
 
 /** Whether a dotted path names a real member, all the way down. */
 function hasSchemaPath(schema: z.ZodType | undefined, path: string): boolean {
-  let s = schema
-  for (const segment of path.split('.')) {
-    if (!s) return false
-    const shape = (unwrap(s) as { shape?: Record<string, z.ZodType> }).shape
-    if (!shape || !(segment in shape)) return false
-    s = shape[segment]
-  }
-  return true
+  if (!schema) return false
+  const [head, ...rest] = path.split('.')
+  const s = unwrap(schema)
+  const options = (s as { options?: ReadonlyArray<z.ZodType> }).options
+  if (options) return options.some((option) => hasSchemaPath(option, path))
+  const shape = (s as { shape?: Record<string, z.ZodType> }).shape
+  if (!shape || !(head in shape)) return false
+  return rest.length === 0 || hasSchemaPath(shape[head], rest.join('.'))
 }
 
 /** Keeps only the listed dotted paths of an object. */

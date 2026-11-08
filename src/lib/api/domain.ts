@@ -1540,6 +1540,7 @@ export class MemoryDomain {
     this.repos.delete(full)
     this.deleted.set(full, repo.owner)
     this.deletedRepos.set(repo.id, { full, owner: repo.owner })
+    this.deletedIds.set(full.toLowerCase(), repo.id)
     this.reposById.delete(repo.id)
     this.svc.hooks?.dropRepo(full)
     this.svc.extras?.drop(full)
@@ -2390,9 +2391,10 @@ export class MemoryDomain {
     return this.presentOp(op)
   }
 
-  async operationVersion(id: string) {
+  async operationVersion(id: string, p: Viewer) {
     const op = this.operations.get(id)
-    return op ? `${op.state}.${op.done}` : null
+    if (!op || !p || !this.mayReadId(op.repoId, p)) return null
+    return `${id}.${op.state}.${op.done}`
   }
 
   // ----- issues -----------------------------------------------------------
@@ -2508,6 +2510,7 @@ export class MemoryDomain {
   /** Names of deleted repositories, with the account that owned each. */
   private readonly deleted = new Map<string, string>()
   private readonly deletedRepos = new Map<string, { full: string; owner: string }>()
+  private readonly deletedIds = new Map<string, string>()
 
   private administered(full: string, p: Viewer): boolean {
     if (!p) return false
@@ -2555,6 +2558,16 @@ export class MemoryDomain {
     return this.readableRepoIds(p)
   }
 
+  /** The stable id behind a repository address, without requiring that it still exists. */
+  repoIdForHistory(full: string): string | null {
+    const key = full.toLowerCase()
+    const repo = this.repos.get(key) ?? this.byLower(key)
+    if (repo) return repo.id
+    const to = this.aliases.get(key)
+    if (to) return this.repos.get(to)?.id ?? this.deletedIds.get(to) ?? null
+    return this.deletedIds.get(key) ?? null
+  }
+
   async listEvents(
     p: Viewer,
     q: { repo?: string; type?: string; after: CursorPosition | null; limit: number },
@@ -2564,8 +2577,10 @@ export class MemoryDomain {
     const typeOk = (t: string) =>
       !types || types.some((x) => (x.endsWith('.*') ? t.startsWith(x.slice(0, -1)) : x === t))
     // A repository's own list when one is asked for, so a quiet repository is not
-    // found by reading everyone else's events.
-    const source = q.repo ? this.events.repoEvents(q.repo) : this.events.all()
+    // found by reading everyone else's events. The key is the stable id, so a
+    // rename does not split the history.
+    const repoId = q.repo ? this.repoIdForHistory(q.repo) : null
+    const source = q.repo ? (repoId ? this.events.repoEvents(repoId) : []) : this.events.all()
     const page = pageSorted(source, (e) => e.sequence, seqId, {
       limit: q.limit,
       after: q.after,
