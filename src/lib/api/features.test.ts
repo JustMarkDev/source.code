@@ -136,7 +136,7 @@ describe('webhooks: deliveries', () => {
     expect(verify(made.secret, sent)).toBe(true)
     // Not a valid signature for another secret or a tampered body.
     expect(verify(made.secret, { ...sent, body: sent.body.replace('Hooked', 'Hacked') })).toBe(false)
-    expect(verify('whsec_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', sent)).toBe(false)
+    expect(verify(`whsec_${'A'.repeat(32)}`, sent)).toBe(false)
     const payload = JSON.parse(sent.body)
     const event = (await h.call('GET', '/events?type=issue.created')).json.data.at(-1)
     expect(payload).toEqual(event)

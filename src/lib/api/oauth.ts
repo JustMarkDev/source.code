@@ -222,6 +222,8 @@ const oauthError = (error: string, description: string, status = 400, headers: R
 
 const s256 = (verifier: string) => createHash('sha256').update(verifier).digest('base64url')
 
+const dangerousSchemes = new Set(['javascript:', 'data:', 'vbscript:', 'file:', 'blob:', 'about:'])
+
 function validRedirect(uri: string): boolean {
   if (uri.length > 2000 || /[\s*]/.test(uri)) return false
   let u: URL
@@ -235,7 +237,9 @@ function validRedirect(uri: string): boolean {
   if (u.protocol === 'http:')
     return ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname) && !u.username
   // A native app's reverse-DNS scheme, such as com.example.app:/callback.
-  return /^[a-z][a-z0-9+.-]*\.[a-z0-9+.-]+:$/.test(u.protocol) && !uri.startsWith('javascript:')
+  // The dot requirement already excludes bare schemes; the list is defence in depth.
+  if (dangerousSchemes.has(u.protocol)) return false
+  return /^[a-z][a-z0-9+.-]*\.[a-z0-9+.-]+:$/.test(u.protocol)
 }
 
 const page = (title: string, body: string, status = 200, extra: Record<string, string> = {}) =>

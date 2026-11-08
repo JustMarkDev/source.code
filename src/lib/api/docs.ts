@@ -315,7 +315,7 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
 // ---------------------------------------------------------------------------
 // Rendering.
 
-const cell = (text: string) => text.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+const cell = (text: string) => text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')
 
 function typeOf(schema: Json | undefined): string {
   if (!schema) return 'any'
@@ -389,7 +389,7 @@ function trim(value: unknown, depth = 0): unknown {
 function curl(rec: Recorded) {
   const path = rec.path.replace(/([?&]sig=)[^&]+/g, '$1…')
   const escaped = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-  const lines = [`curl ${rec.method === 'GET' ? '' : `-X ${rec.method} `}"${BASE}${path}"`.replace('curl "', 'curl "')]
+  const lines = [`curl ${rec.method === 'GET' ? '' : `-X ${rec.method} `}"${BASE}${path}"`]
   if (rec.token) lines.push('  -H "Authorization: Bearer $SX_TOKEN"')
   for (const [k, v] of Object.entries(rec.headers)) lines.push(`  -H "${escaped(k)}: ${escaped(v)}"`)
   if (rec.raw) lines.push('  --data-binary @after.png')
@@ -591,7 +591,7 @@ function mdxSafe(text: string) {
     return `\`${m.slice(0, m.length - trail.length)}\`${trail}`
   })
   for (const tok of ['Authorization: Bearer <token>', 'Content-Type: application/json', 'errors[]', 'Sx-Version', 'Retry-After', 'Idempotency-Key', 'If-Match', 'Location', 'Allow', 'request_id', 'upload_url', 'required_scopes', 'current'])
-    out = out.replace(new RegExp(`(?<![\\w\`])${tok.replace(/[[\]]/g, '\\$&')}(?![\\w\`])`, 'g'), `\`${tok}\``)
+    out = out.replace(new RegExp(`(?<![\\w\`])${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w\`])`, 'g'), `\`${tok}\``)
   return out.replace('`sxp_, sxb_, sxr_ or sxo_`', '`sxp_`, `sxb_`, `sxr_` or `sxo_`').replace('sxp_, sxb_, sxr_ or sxo_', '`sxp_`, `sxb_`, `sxr_` or `sxo_`')
 }
 
