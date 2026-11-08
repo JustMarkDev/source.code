@@ -70,7 +70,7 @@ const CORS = {
     'authorization, content-type, idempotency-key, if-match, if-none-match, sx-version, sx-account, sx-agent',
   'access-control-allow-methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
   'access-control-expose-headers':
-    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, sx-dry-run, sx-renamed-from, www-authenticate, server-timing',
+    'etag, location, link, retry-after, ratelimit, ratelimit-policy, allow, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, sx-dry-run, sx-renamed-from, www-authenticate, server-timing',
   'access-control-max-age': '86400',
 }
 

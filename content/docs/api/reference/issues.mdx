@@ -344,7 +344,7 @@ Send If-Match with the ETag you read. `state: closed` closes.
 ```bash
 curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/issues/4" \
   -H "Authorization: Bearer $SX_TOKEN" \
-  -H "if-match: W/"iss_01m60vspm0e27awv79.1.1.0-XjUqJ0UQpx9VvKrt"" \
+  -H "if-match: W/\"iss_01m60vspm0e27awv79.1.1.0-XjUqJ0UQpx9VvKrt\"" \
   -H "Content-Type: application/json" \
   -d '{"state":"closed"}'
 ```

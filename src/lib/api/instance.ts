@@ -21,6 +21,19 @@ export const API_MOUNT = '/api/v1'
 
 let current: ReturnType<typeof createSampleApi> | undefined
 
+/**
+ * The shared Convex store caller, or null for one-node memory stores. A
+ * deployment that names Convex but supplies a missing or short secret is a
+ * configuration error: silently falling back would make retries duplicate
+ * writes and rate limits per-node.
+ */
+export function sharedStore(url: string | undefined, secret: string | undefined) {
+  if (!url) return null
+  if (!secret || secret.length < 16)
+    throw new Error('CONVEX_URL is set, so API_STORE_SECRET must be at least 16 characters. Refusing to fall back to per-node memory stores.')
+  return convexCaller(url)
+}
+
 export function getApi(requestUrl: string) {
   if (current) return current
   // Links in responses point at the public address. SX_PUBLIC_URL overrides the
@@ -29,7 +42,7 @@ export function getApi(requestUrl: string) {
   const live = import.meta.env.DEV || process.env.SX_API_SAMPLE_TOKENS === '1'
   const url = process.env.CONVEX_URL ?? process.env.VITE_CONVEX_URL
   const secret = process.env.API_STORE_SECRET
-  const shared = url && secret && secret.length >= 16 ? convexCaller(url) : null
+  const shared = sharedStore(url, secret)
   current = createSampleApi({
     mount: API_MOUNT,
     base: `${origin}${API_MOUNT}`,

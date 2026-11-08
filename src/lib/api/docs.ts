@@ -388,9 +388,10 @@ function trim(value: unknown, depth = 0): unknown {
 
 function curl(rec: Recorded) {
   const path = rec.path.replace(/([?&]sig=)[^&]+/g, '$1…')
+  const escaped = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   const lines = [`curl ${rec.method === 'GET' ? '' : `-X ${rec.method} `}"${BASE}${path}"`.replace('curl "', 'curl "')]
   if (rec.token) lines.push('  -H "Authorization: Bearer $SX_TOKEN"')
-  for (const [k, v] of Object.entries(rec.headers)) lines.push(`  -H "${k}: ${v}"`)
+  for (const [k, v] of Object.entries(rec.headers)) lines.push(`  -H "${escaped(k)}: ${escaped(v)}"`)
   if (rec.raw) lines.push('  --data-binary @after.png')
   else if (rec.body !== undefined) {
     lines.push('  -H "Content-Type: application/json"')

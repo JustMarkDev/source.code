@@ -9,9 +9,11 @@ The [reference](/docs/api/reference/accounts-and-repositories) lists every opera
 ## Rename, hide, delete
 
 ```bash
-sxcurl -X PATCH $SX/repos/dana/gitfs -H 'If-Match: "7"' \
+sxcurl -X PATCH $SX/repos/dana/gitfs -H "If-Match: $ETAG" \
   -d '{"name":"gitfs-core","description":"A filesystem over git","visibility":"private"}'
 ```
+
+Read the repository first and send the `ETag` it returned as `If-Match`; it is a value like `W/"rep_…"`, not a number.
 
 Only owners of the account and admins of the organization can do this. A token limited to repositories can change a repository's description, visibility and default branch, but cannot rename or delete one, or change its maintainers: those change which repository the token means or who can write to it.
 

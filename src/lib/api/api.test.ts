@@ -244,6 +244,7 @@ describe('errors', () => {
     expect(res.status).toBe(204)
     expect(res.headers.get('access-control-allow-headers')).toContain('idempotency-key')
     expect(res.headers.get('access-control-expose-headers')).toContain('sx-renamed-from')
+    expect(res.headers.get('access-control-expose-headers')).toContain('allow')
   })
 })
 
