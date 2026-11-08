@@ -17,13 +17,42 @@ const randomBytes = (n: number) => Buffer.from(randomSource.bytes(n))
  */
 export type Purpose = 'evidence'
 
-export const ALLOWED: Record<string, { max: number; check: (b: Uint8Array) => boolean; inline: boolean }> = {
-  'image/png': { max: 10 << 20, check: (b) => eq(b, [0x89, 0x50, 0x4e, 0x47]), inline: true },
-  'image/jpeg': { max: 10 << 20, check: (b) => eq(b, [0xff, 0xd8, 0xff]), inline: true },
-  'image/gif': { max: 10 << 20, check: (b) => eq(b, [0x47, 0x49, 0x46, 0x38]), inline: true },
-  'image/webp': { max: 10 << 20, check: (b) => eq(b, [0x52, 0x49, 0x46, 0x46]) && eq(b.subarray(8), [0x57, 0x45, 0x42, 0x50]), inline: true },
-  'video/mp4': { max: 50 << 20, check: (b) => eq(b.subarray(4), [0x66, 0x74, 0x79, 0x70]), inline: true },
-  'video/webm': { max: 50 << 20, check: (b) => eq(b, [0x1a, 0x45, 0xdf, 0xa3]), inline: true },
+export const ALLOWED: Record<
+  string,
+  { max: number; check: (b: Uint8Array) => boolean; inline: boolean }
+> = {
+  'image/png': {
+    max: 10 << 20,
+    check: (b) => eq(b, [0x89, 0x50, 0x4e, 0x47]),
+    inline: true,
+  },
+  'image/jpeg': {
+    max: 10 << 20,
+    check: (b) => eq(b, [0xff, 0xd8, 0xff]),
+    inline: true,
+  },
+  'image/gif': {
+    max: 10 << 20,
+    check: (b) => eq(b, [0x47, 0x49, 0x46, 0x38]),
+    inline: true,
+  },
+  'image/webp': {
+    max: 10 << 20,
+    check: (b) =>
+      eq(b, [0x52, 0x49, 0x46, 0x46]) &&
+      eq(b.subarray(8), [0x57, 0x45, 0x42, 0x50]),
+    inline: true,
+  },
+  'video/mp4': {
+    max: 50 << 20,
+    check: (b) => eq(b.subarray(4), [0x66, 0x74, 0x79, 0x70]),
+    inline: true,
+  },
+  'video/webm': {
+    max: 50 << 20,
+    check: (b) => eq(b, [0x1a, 0x45, 0xdf, 0xa3]),
+    inline: true,
+  },
   'application/json': { max: 5 << 20, check: (b) => parses(b), inline: false },
   'text/plain': { max: 5 << 20, check: (b) => utf8(b), inline: false },
   // A preview page. It is only ever served sandboxed, as a download.
@@ -125,10 +154,20 @@ export class UploadService {
   }
 
   private mac(id: string, exp: number, type: string, size: number) {
-    return createHmac('sha256', this.secret).update(`${id}.${exp}.${type}.${size}`).digest()
+    return createHmac('sha256', this.secret)
+      .update(`${id}.${exp}.${type}.${size}`)
+      .digest()
   }
 
-  create(owner: string, input: { filename: string; contentType: string; size: number; purpose: Purpose }): UploadRec | null {
+  create(
+    owner: string,
+    input: {
+      filename: string
+      contentType: string
+      size: number
+      purpose: Purpose
+    },
+  ): UploadRec | null {
     if (this.uploads.size >= MAX_UPLOADS) {
       this.sweep()
       // Uploaded files that were never attached cannot be reached by anyone but
@@ -174,7 +213,10 @@ export class UploadService {
   /** Forgets announced uploads whose time ran out without a file. */
   private sweep() {
     const t = this.now()
-    while (this.waitingFrom < this.waiting.length && this.waiting[this.waitingFrom].expires <= t) {
+    while (
+      this.waitingFrom < this.waiting.length &&
+      this.waiting[this.waitingFrom].expires <= t
+    ) {
       const rec = this.waiting[this.waitingFrom++]
       this.settle(rec)
       if (rec.state === 'pending') this.uploads.delete(rec.id)
@@ -185,14 +227,20 @@ export class UploadService {
     }
     // A file that is uploaded but never attached keeps its bytes forever. Give
     // the owner a day after the upload address expires, then drop both.
-    while (this.completedFrom < this.completed.length && this.completed[this.completedFrom].expires + 86_400_000 <= t) {
+    while (
+      this.completedFrom < this.completed.length &&
+      this.completed[this.completedFrom].expires + 86_400_000 <= t
+    ) {
       const rec = this.completed[this.completedFrom++]
       if (rec.state === 'uploaded' && rec.attachedTo === null) {
         this.uploads.delete(rec.id)
         this.blobs.delete?.(rec.id)
       }
     }
-    if (this.completedFrom > 1024 && this.completedFrom * 2 > this.completed.length) {
+    if (
+      this.completedFrom > 1024 &&
+      this.completedFrom * 2 > this.completed.length
+    ) {
       this.completed = this.completed.slice(this.completedFrom)
       this.completedFrom = 0
     }
@@ -236,11 +284,17 @@ export class UploadService {
   /** Stores the bytes. Returns an error message, or null. */
   put(rec: UploadRec, bytes: Uint8Array, contentType: string): string | null {
     if (rec.state === 'uploaded') return 'This upload already has its file.'
-    if (contentType.split(';')[0].trim().toLowerCase() !== rec.contentType) return `Send Content-Type: ${rec.contentType}.`
-    if (bytes.byteLength !== rec.size) return `Expected ${rec.size} bytes, got ${bytes.byteLength}.`
+    if (contentType.split(';')[0].trim().toLowerCase() !== rec.contentType)
+      return `Send Content-Type: ${rec.contentType}.`
+    if (bytes.byteLength !== rec.size)
+      return `Expected ${rec.size} bytes, got ${bytes.byteLength}.`
     const rule = ALLOWED[rec.contentType]
     if (!rule.check(bytes)) return `The file is not a valid ${rec.contentType}.`
-    if (this.blobs.capacity !== undefined && this.blobs.bytes + bytes.byteLength > this.blobs.capacity) return 'full'
+    if (
+      this.blobs.capacity !== undefined &&
+      this.blobs.bytes + bytes.byteLength > this.blobs.capacity
+    )
+      return 'full'
     this.blobs.put(rec.id, bytes)
     rec.sha256 = createHash('sha256').update(bytes).digest('hex')
     this.settle(rec)

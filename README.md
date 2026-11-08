@@ -39,4 +39,4 @@ Third-party components keep their own licenses: see `THIRD_PARTY_NOTICES.md`.
 
 ## Contributing
 
-Outside contributions are accepted under the terms in `CLA.md`. You keep ownership of your work but grant the project the rights to include it under BSL-1.1, Apache-2.0 (on Change Date, or immediately for `cli/` and `sdk/typescript/`), and any commercial license, so only the project owner can sell hosting.
+Read `CONTRIBUTING.md`. Outside contributions are accepted under `CLA.md`: you keep ownership of your work, and grant the project the rights to include it under BSL-1.1, Apache-2.0 (on Change Date, or immediately for `cli/` and `sdk/typescript/`), and any commercial license, so only the project owner can sell hosting. Sign by adding yourself to `CONTRIBUTORS.md` in your first pull request. Report security problems as `SECURITY.md` says. `CODE_OF_CONDUCT.md` applies.

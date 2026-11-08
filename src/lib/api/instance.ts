@@ -1,5 +1,9 @@
 import { MemoryTokenStore } from './auth'
-import { ConvexIdempotencyStore, ConvexLimitStore, convexCaller } from './stores/convex'
+import {
+  ConvexIdempotencyStore,
+  ConvexLimitStore,
+  convexCaller,
+} from './stores/convex'
 import { createSampleApi } from './index'
 
 /**
@@ -27,10 +31,15 @@ let current: ReturnType<typeof createSampleApi> | undefined
  * configuration error: silently falling back would make retries duplicate
  * writes and rate limits per-node.
  */
-export function sharedStore(url: string | undefined, secret: string | undefined) {
+export function sharedStore(
+  url: string | undefined,
+  secret: string | undefined,
+) {
   if (!url) return null
   if (!secret || secret.length < 16)
-    throw new Error('CONVEX_URL is set, so API_STORE_SECRET must be at least 16 characters. Refusing to fall back to per-node memory stores.')
+    throw new Error(
+      'CONVEX_URL is set, so API_STORE_SECRET must be at least 16 characters. Refusing to fall back to per-node memory stores.',
+    )
   return convexCaller(url)
 }
 
@@ -56,7 +65,11 @@ export function getApi(requestUrl: string) {
   const origin = process.env.SX_PUBLIC_URL ?? new URL(requestUrl).origin
   const live = import.meta.env.DEV || process.env.SX_API_SAMPLE_TOKENS === '1'
   const secret = process.env.API_STORE_SECRET
-  const url = storeConfig(process.env.CONVEX_URL, process.env.VITE_CONVEX_URL, secret)
+  const url = storeConfig(
+    process.env.CONVEX_URL,
+    process.env.VITE_CONVEX_URL,
+    secret,
+  )
   const shared = sharedStore(url, secret)
   current = createSampleApi({
     mount: API_MOUNT,
@@ -64,7 +77,12 @@ export function getApi(requestUrl: string) {
     htmlBase: origin,
     sampleLogins: live,
     ...(live ? {} : { tokens: new MemoryTokenStore() }),
-    ...(shared && secret ? { limitStore: new ConvexLimitStore(shared, secret), idempotency: new ConvexIdempotencyStore(shared, secret) } : {}),
+    ...(shared && secret
+      ? {
+          limitStore: new ConvexLimitStore(shared, secret),
+          idempotency: new ConvexIdempotencyStore(shared, secret),
+        }
+      : {}),
   })
   return current
 }

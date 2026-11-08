@@ -8,21 +8,27 @@ description: The rules every endpoint follows, so you learn them once.
 
 `https://api.source.code/v1`. JSON only, UTF-8, `snake_case` names. Send `Content-Type: application/json` on anything with a body. Bodies are limited to 1 MiB.
 
-| Thing         | Format                                                              |
-| ------------- | ------------------------------------------------------------------- |
-| Timestamps    | RFC 3339 in UTC: `2026-11-07T09:14:03Z`                             |
-| Sizes         | Bytes                                                               |
-| Durations     | Milliseconds, or seconds when the name says `_seconds`              |
-| Enums         | Lowercase `snake_case` strings                                      |
-| Empty values  | `null` or `[]`, never left out. A response always has the same shape. |
-| State         | One `state` enum, not a pile of booleans                            |
+| Thing        | Format                                                                |
+| ------------ | --------------------------------------------------------------------- |
+| Timestamps   | RFC 3339 in UTC: `2026-11-07T09:14:03Z`                               |
+| Sizes        | Bytes                                                                 |
+| Durations    | Milliseconds, or seconds when the name says `_seconds`                |
+| Enums        | Lowercase `snake_case` strings                                        |
+| Empty values | `null` or `[]`, never left out. A response always has the same shape. |
+| State        | One `state` enum, not a pile of booleans                              |
 
 **Clients must ignore members they do not know.** That is what lets us add fields without a new version.
 
 ## Every object says what it is
 
 ```json
-{ "object": "issue", "id": "iss_01m6…", "number": 4, "url": "https://api.source.code/v1/repos/dana/gitfs/issues/4", "version": 1 }
+{
+  "object": "issue",
+  "id": "iss_01m6…",
+  "number": 4,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/issues/4",
+  "version": 1
+}
 ```
 
 - `object` names the type. A list, an event and a webhook body all use the same object shapes.
@@ -33,13 +39,13 @@ description: The rules every endpoint follows, so you learn them once.
 
 One ID system. Every object has an immutable, typed ID, and IDs sort in the order things were created.
 
-| Prefix | Object        | Prefix | Object      |
-| ------ | ------------- | ------ | ----------- |
-| `acc_` | Account       | `chk_` | Check run   |
-| `rep_` | Repository    | `rev_` | Review      |
-| `chg_` | Change        | `stk_` | Stack       |
-| `iss_` | Issue         | `op_`  | Operation   |
-| `fnd_` | Finding       | `evt_` | Event       |
+| Prefix | Object     | Prefix | Object    |
+| ------ | ---------- | ------ | --------- |
+| `acc_` | Account    | `chk_` | Check run |
+| `rep_` | Repository | `rev_` | Review    |
+| `chg_` | Change     | `stk_` | Stack     |
+| `iss_` | Issue      | `op_`  | Operation |
+| `fnd_` | Finding    | `evt_` | Event     |
 
 IDs are ours. They are stored beside the database's own and never derived from it, so a change of storage never changes an ID you saved.
 
@@ -59,12 +65,12 @@ Changes and issues share one counter in a repository, so `#216` is never ambiguo
 
 ## Shaping a response
 
-| Parameter   | Does                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| `fields`    | Only these members: `fields=number,title,head.tree`. `object` and `id` always stay. On a list it applies to each item. An unknown field is a `400` that lists the known ones. |
-| `expand`    | Inline a relation or a heavy member. On a change: `repo`, `findings`, `check_runs`. Without it a heavy member is `null`. |
-| `wait`      | Hold the request until it would change. See [Events and sync](/docs/api/events-and-sync#waiting-instead-of-polling). |
-| `dry_run`   | On writes. See [Writes](/docs/api/writes#dry-run).                                              |
+| Parameter | Does                                                                                                                                                                          |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fields`  | Only these members: `fields=number,title,head.tree`. `object` and `id` always stay. On a list it applies to each item. An unknown field is a `400` that lists the known ones. |
+| `expand`  | Inline a relation or a heavy member. On a change: `repo`, `findings`, `check_runs`. Without it a heavy member is `null`.                                                      |
+| `wait`    | Hold the request until it would change. See [Events and sync](/docs/api/events-and-sync#waiting-instead-of-polling).                                                          |
+| `dry_run` | On writes. See [Writes](/docs/api/writes#dry-run).                                                                                                                            |
 
 An unknown query parameter is a `400`, not ignored. A misspelled filter that quietly returned everything would be worse than an error, especially for an agent.
 
@@ -72,13 +78,13 @@ An unknown query parameter is a `400`, not ignored. A misspelled filter that qui
 
 Every response carries:
 
-| Header              | Meaning                                                                                  |
-| ------------------- | ---------------------------------------------------------------------------------------- |
-| `Sx-Request-Id`     | Quote it when you report a problem. It is also `request_id` in an error body.            |
-| `Sx-Version`        | The API version that answered. See [Versioning](/docs/api/versioning).                   |
-| `Server-Timing`     | Where the time went: `handler`, `cache`, `total`. Use it to see whether slow is you or us. |
-| `ETag`              | On cacheable reads; live streams and `git.raw` do not carry one. Upload content carries its SHA-256 ETag. Send it back as `If-None-Match`. |
-| `RateLimit`, `RateLimit-Policy` | What is left and the limit. See [Rate limits](/docs/api/rate-limits).        |
+| Header                          | Meaning                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Sx-Request-Id`                 | Quote it when you report a problem. It is also `request_id` in an error body.                                                              |
+| `Sx-Version`                    | The API version that answered. See [Versioning](/docs/api/versioning).                                                                     |
+| `Server-Timing`                 | Where the time went: `handler`, `cache`, `total`. Use it to see whether slow is you or us.                                                 |
+| `ETag`                          | On cacheable reads; live streams and `git.raw` do not carry one. Upload content carries its SHA-256 ETag. Send it back as `If-None-Match`. |
+| `RateLimit`, `RateLimit-Policy` | What is left and the limit. See [Rate limits](/docs/api/rate-limits).                                                                      |
 
 Some responses add `Sx-Outcome` (what a repeat-safe create did: `created`, `unchanged`, `patch_set_added`, `updated`), `Sx-Replayed` (the answer came from an idempotency key), `Sx-Dry-Run`, and `Sx-Limit-Applied` (your `limit` was clamped).
 
@@ -86,23 +92,23 @@ Request headers: `Authorization`, `Content-Type`, `Idempotency-Key`, `If-Match`,
 
 ## Status codes
 
-| Code        | Used for                                                                                            |
-| ----------- | --------------------------------------------------------------------------------------------------- |
-| `200`, `201`| Read or update. Created, with `Location`.                                                           |
-| `202`       | Accepted. The body is an [operation](/docs/api/writes#long-running-work).                          |
-| `304`       | Not modified. Costs nothing.                                                                        |
-| `308`       | Renamed. Follow `Location`.                                                                         |
-| `400`       | The request is not valid. `errors` names each field.                                                |
-| `401`       | No token, a bad one, or an expired one.                                                             |
-| `403`       | You can see it but may not do this.                                                                 |
-| `404`       | Does not exist, **or is private and not yours**. Same answer, so nothing leaks.                     |
-| `405`       | Wrong method. `Allow` lists the right ones.                                                         |
-| `409`       | The thing's state refuses this: policy, a moved head, a request still running.                      |
-| `412`       | `If-Match` did not match. The body has the current object.                                          |
-| `413`, `415`| Body too large. Not JSON.                                                                           |
-| `422`       | Understood and cannot be honoured: an idempotency key reused for a different request.               |
-| `429`       | A rate limit. Always with `Retry-After`.                                                            |
-| `503`       | A service we depend on is down or a repository is waking up. Always with `Retry-After`.             |
+| Code         | Used for                                                                                |
+| ------------ | --------------------------------------------------------------------------------------- |
+| `200`, `201` | Read or update. Created, with `Location`.                                               |
+| `202`        | Accepted. The body is an [operation](/docs/api/writes#long-running-work).               |
+| `304`        | Not modified. Costs nothing.                                                            |
+| `308`        | Renamed. Follow `Location`.                                                             |
+| `400`        | The request is not valid. `errors` names each field.                                    |
+| `401`        | No token, a bad one, or an expired one.                                                 |
+| `403`        | You can see it but may not do this.                                                     |
+| `404`        | Does not exist, **or is private and not yours**. Same answer, so nothing leaks.         |
+| `405`        | Wrong method. `Allow` lists the right ones.                                             |
+| `409`        | The thing's state refuses this: policy, a moved head, a request still running.          |
+| `412`        | `If-Match` did not match. The body has the current object.                              |
+| `413`, `415` | Body too large. Not JSON.                                                               |
+| `422`        | Understood and cannot be honoured: an idempotency key reused for a different request.   |
+| `429`        | A rate limit. Always with `Retry-After`.                                                |
+| `503`        | A service we depend on is down or a repository is waking up. Always with `Retry-After`. |
 
 `500` means a bug on our side. It carries a `request_id`.
 

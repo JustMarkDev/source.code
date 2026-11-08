@@ -22,27 +22,45 @@ const write = {
   tags: ['teams'],
 }
 
-const org = z.object({ handle: z.string().describe('Handle of the organization') })
+const org = z.object({
+  handle: z.string().describe('Handle of the organization'),
+})
 const team = org.extend({ slug: z.string().describe('The team slug') })
 const slugRule = z
   .string()
-  .regex(/^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/, 'Lower-case letters, digits and dashes; up to 40')
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/,
+    'Lower-case letters, digits and dashes; up to 40',
+  )
 
 export const listTeams = defineOp({
   ...read,
   id: 'teams.list',
   summary: "An organization's teams",
-  description: 'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
+  description:
+    'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
   method: 'GET',
   path: '/accounts/{handle}/teams',
   params: org,
-  response: z.strictObject({ object: z.literal('list'), data: z.array(S.Team), has_more: z.literal(false), next_cursor: z.null() }),
+  response: z.strictObject({
+    object: z.literal('list'),
+    data: z.array(S.Team),
+    has_more: z.literal(false),
+    next_cursor: z.null(),
+  }),
   errors: ['not_found', 'forbidden'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run((d) => d.listTeams(ctx.params.handle, ctx.principal!))
-      return { object: 'list' as const, data, has_more: false as const, next_cursor: null }
+      const data = yield* run((d) =>
+        d.listTeams(ctx.params.handle, ctx.principal!),
+      )
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false as const,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -55,17 +73,26 @@ export const createTeam = defineOp({
   method: 'POST',
   path: '/accounts/{handle}/teams',
   params: org,
-  body: z.strictObject({ slug: slugRule, name: z.string().min(1).max(100).optional(), description: z.string().max(500).optional() }),
+  body: z.strictObject({
+    slug: slugRule,
+    name: z.string().min(1).max(100).optional(),
+    description: z.string().max(500).optional(),
+  }),
   response: S.Team,
   status: 201,
   errors: ['not_found', 'forbidden'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const r = yield* run((d) => d.createTeam(ctx.params.handle, ctx.principal!, ctx.body, ctx.dryRun))
+      const r = yield* run((d) =>
+        d.createTeam(ctx.params.handle, ctx.principal!, ctx.body, ctx.dryRun),
+      )
       return reply(r.team, {
         status: r.created ? 201 : 200,
-        headers: { 'sx-outcome': r.created ? 'created' : 'unchanged', ...(r.created ? { location: r.team.url } : {}) },
+        headers: {
+          'sx-outcome': r.created ? 'created' : 'unchanged',
+          ...(r.created ? { location: r.team.url } : {}),
+        },
       })
     }),
 })
@@ -74,17 +101,21 @@ export const getTeam = defineOp({
   ...read,
   id: 'teams.get',
   summary: 'One team, with its members and repositories',
-  description: 'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
+  description:
+    'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
   method: 'GET',
   path: '/accounts/{handle}/teams/{slug}',
   params: team,
   response: S.Team,
   errors: ['not_found', 'forbidden'],
-  probe: (ctx, d) => d.teamVersion(ctx.params.handle, ctx.params.slug, ctx.principal!),
+  probe: (ctx, d) =>
+    d.teamVersion(ctx.params.handle, ctx.params.slug, ctx.principal!),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.getTeam(ctx.params.handle, ctx.params.slug, ctx.principal!))
+      return yield* run((d) =>
+        d.getTeam(ctx.params.handle, ctx.params.slug, ctx.principal!),
+      )
     }),
 })
 
@@ -97,13 +128,25 @@ export const updateTeam = defineOp({
   path: '/accounts/{handle}/teams/{slug}',
   params: team,
   ifMatch: true,
-  body: z.strictObject({ name: z.string().min(1).max(100).optional(), description: z.string().max(500).optional() }),
+  body: z.strictObject({
+    name: z.string().min(1).max(100).optional(),
+    description: z.string().max(500).optional(),
+  }),
   response: S.Team,
   errors: ['not_found', 'forbidden', 'version_mismatch'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.updateTeam(ctx.params.handle, ctx.params.slug, ctx.principal!, ctx.body, ctx.ifMatch, ctx.dryRun))
+      return yield* run((d) =>
+        d.updateTeam(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.principal!,
+          ctx.body,
+          ctx.ifMatch,
+          ctx.dryRun,
+        ),
+      )
     }),
 })
 
@@ -111,7 +154,8 @@ export const deleteTeam = defineOp({
   ...write,
   id: 'teams.delete',
   summary: 'Delete a team',
-  description: 'Its members lose the access it gave them. Repositories are not touched.',
+  description:
+    'Its members lose the access it gave them. Repositories are not touched.',
   method: 'DELETE',
   path: '/accounts/{handle}/teams/{slug}',
   params: team,
@@ -123,7 +167,14 @@ export const deleteTeam = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run((d) => d.deleteTeam(ctx.params.handle, ctx.params.slug, ctx.principal!, ctx.dryRun))
+      yield* run((d) =>
+        d.deleteTeam(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.principal!,
+          ctx.dryRun,
+        ),
+      )
       return reply(null, { status: 204 })
     }),
 })
@@ -132,7 +183,8 @@ export const addTeamMember = defineOp({
   ...write,
   id: 'teams.members.add',
   summary: 'Add a person to a team',
-  description: 'Adding someone who is already in the team changes nothing. A team has at most 500 members.',
+  description:
+    'Adding someone who is already in the team changes nothing. A team has at most 500 members.',
   method: 'PUT',
   path: '/accounts/{handle}/teams/{slug}/members/{login}',
   params: team.extend({ login: z.string().describe('Handle of the person') }),
@@ -141,7 +193,15 @@ export const addTeamMember = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.setTeamMember(ctx.params.handle, ctx.params.slug, ctx.params.login, ctx.principal!, ctx.dryRun))
+      return yield* run((d) =>
+        d.setTeamMember(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.params.login,
+          ctx.principal!,
+          ctx.dryRun,
+        ),
+      )
     }),
 })
 
@@ -160,7 +220,15 @@ export const removeTeamMember = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run((d) => d.removeTeamMember(ctx.params.handle, ctx.params.slug, ctx.params.login, ctx.principal!, ctx.dryRun))
+      yield* run((d) =>
+        d.removeTeamMember(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.params.login,
+          ctx.principal!,
+          ctx.dryRun,
+        ),
+      )
       return reply(null, { status: 204 })
     }),
 })
@@ -169,7 +237,8 @@ export const setTeamRepo = defineOp({
   ...write,
   id: 'teams.repos.set',
   summary: 'Give a team a repository',
-  description: '`read` lets members read it, including a private one; `write` lets them change it. Only repositories of the team\'s own organization. Setting it again changes the permission.',
+  description:
+    "`read` lets members read it, including a private one; `write` lets them change it. Only repositories of the team's own organization. Setting it again changes the permission.",
   method: 'PUT',
   path: '/accounts/{handle}/teams/{slug}/repos/{owner}/{repo}',
   params: team.extend(repoParams.shape),
@@ -180,7 +249,15 @@ export const setTeamRepo = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.setTeamRepo(ctx.params.handle, ctx.params.slug, ctx.params.owner, ctx.params.repo, ctx.body.permission, ctx.principal!, ctx.dryRun),
+        d.setTeamRepo(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.body.permission,
+          ctx.principal!,
+          ctx.dryRun,
+        ),
       )
     }),
 })
@@ -188,7 +265,7 @@ export const setTeamRepo = defineOp({
 export const removeTeamRepo = defineOp({
   ...write,
   id: 'teams.repos.remove',
-  summary: "Take a repository away from a team",
+  summary: 'Take a repository away from a team',
   method: 'DELETE',
   path: '/accounts/{handle}/teams/{slug}/repos/{owner}/{repo}',
   params: team.extend(repoParams.shape),
@@ -200,9 +277,28 @@ export const removeTeamRepo = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run((d) => d.removeTeamRepo(ctx.params.handle, ctx.params.slug, ctx.params.owner, ctx.params.repo, ctx.principal!, ctx.dryRun))
+      yield* run((d) =>
+        d.removeTeamRepo(
+          ctx.params.handle,
+          ctx.params.slug,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal!,
+          ctx.dryRun,
+        ),
+      )
       return reply(null, { status: 204 })
     }),
 })
 
-export const teamOps = [listTeams, createTeam, getTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, setTeamRepo, removeTeamRepo]
+export const teamOps = [
+  listTeams,
+  createTeam,
+  getTeam,
+  updateTeam,
+  deleteTeam,
+  addTeamMember,
+  removeTeamMember,
+  setTeamRepo,
+  removeTeamRepo,
+]

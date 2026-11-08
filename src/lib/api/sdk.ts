@@ -9,17 +9,25 @@
  */
 type Json = Record<string, any>
 
-const identifier = (s: string) => (/^[A-Za-z_$][\w$]*$/.test(s) ? s : JSON.stringify(s))
+const identifier = (s: string) =>
+  /^[A-Za-z_$][\w$]*$/.test(s) ? s : JSON.stringify(s)
 
 /** A JSON Schema, as TypeScript. `$ref` becomes the name of a generated type. */
 export function tsOf(schema: Json | undefined, indent = ''): string {
   if (!schema || Object.keys(schema).length === 0) return 'unknown'
   if (schema.$ref) return String(schema.$ref).split('/').pop()!
   if ('const' in schema) return JSON.stringify(schema.const)
-  if (schema.enum) return (schema.enum as Array<unknown>).map((v) => JSON.stringify(v)).join(' | ')
+  if (schema.enum)
+    return (schema.enum as Array<unknown>)
+      .map((v) => JSON.stringify(v))
+      .join(' | ')
   const union = schema.anyOf ?? schema.oneOf
-  if (union) return (union as Array<Json>).map((s) => tsOf(s, indent)).join(' | ')
-  if (Array.isArray(schema.type)) return (schema.type as Array<string>).map((t) => tsOf({ ...schema, type: t }, indent)).join(' | ')
+  if (union)
+    return (union as Array<Json>).map((s) => tsOf(s, indent)).join(' | ')
+  if (Array.isArray(schema.type))
+    return (schema.type as Array<string>)
+      .map((t) => tsOf({ ...schema, type: t }, indent))
+      .join(' | ')
   switch (schema.type) {
     case 'string':
       return 'string'
@@ -37,13 +45,18 @@ export function tsOf(schema: Json | undefined, indent = ''): string {
       const required = new Set<string>(schema.required ?? [])
       const keys = Object.keys(props)
       if (keys.length === 0) {
-        if (schema.additionalProperties && typeof schema.additionalProperties === 'object')
+        if (
+          schema.additionalProperties &&
+          typeof schema.additionalProperties === 'object'
+        )
           return `Record<string, ${tsOf(schema.additionalProperties, indent)}>`
         return 'Record<string, unknown>'
       }
       const inner = `${indent}  `
       const lines = keys.map((k) => {
-        const doc = props[k].description ? `${inner}/** ${String(props[k].description).replace(/\*\//g, '* /').replace(/\n/g, ' ')} */\n` : ''
+        const doc = props[k].description
+          ? `${inner}/** ${String(props[k].description).replace(/\*\//g, '* /').replace(/\n/g, ' ')} */\n`
+          : ''
         return `${doc}${inner}${identifier(k)}${required.has(k) ? '' : '?'}: ${tsOf(props[k], inner)}`
       })
       return `{\n${lines.join('\n')}\n${indent}}`
@@ -59,7 +72,12 @@ type Op = {
   path: string
   summary: string
   pathParams: Array<{ name: string; type: string }>
-  queryParams: Array<{ name: string; type: string; required: boolean; doc: string }>
+  queryParams: Array<{
+    name: string
+    type: string
+    required: boolean
+    doc: string
+  }>
   body: string | null
   bodyRequired: boolean
   response: string | null
@@ -77,7 +95,9 @@ function readOps(doc: Json): Array<Op> {
     for (const [method, op] of Object.entries<Json>(item)) {
       if (!op.operationId) continue
       const params = (op.parameters ?? []) as Array<Json>
-      const ok = Object.entries<Json>(op.responses ?? {}).find(([code]) => code.startsWith('2'))
+      const ok = Object.entries<Json>(op.responses ?? {}).find(([code]) =>
+        code.startsWith('2'),
+      )
       const content = (ok?.[1].content ?? {}) as Json
       const json = content['application/json']
       const bodyContent = op.requestBody?.content as Json | undefined
@@ -86,11 +106,20 @@ function readOps(doc: Json): Array<Op> {
         method: method.toUpperCase(),
         path,
         summary: op.summary ?? '',
-        pathParams: params.filter((p) => p.in === 'path').map((p) => ({ name: p.name, type: tsOf(p.schema) })),
+        pathParams: params
+          .filter((p) => p.in === 'path')
+          .map((p) => ({ name: p.name, type: tsOf(p.schema) })),
         queryParams: params
           .filter((p) => p.in === 'query')
-          .map((p) => ({ name: p.name, type: tsOf(p.schema), required: !!p.required, doc: String(p.schema?.description ?? p.description ?? '') })),
-        body: bodyContent?.['application/json'] ? tsOf(bodyContent['application/json'].schema) : null,
+          .map((p) => ({
+            name: p.name,
+            type: tsOf(p.schema),
+            required: !!p.required,
+            doc: String(p.schema?.description ?? p.description ?? ''),
+          })),
+        body: bodyContent?.['application/json']
+          ? tsOf(bodyContent['application/json'].schema)
+          : null,
         bodyRequired: !!op.requestBody?.required,
         response: json ? tsOf(json.schema) : null,
         raw: !!ok && !json && Object.keys(content).length > 0,
@@ -111,7 +140,9 @@ function inputOf(op: Op): string {
   for (const q of op.queryParams) {
     // `dry_run` is a request option, not an input.
     if (q.name === 'dry_run') continue
-    fields.push(`${q.doc ? `/** ${q.doc.replace(/\*\//g, '* /').replace(/\n/g, ' ')} */\n` : ''}${identifier(q.name)}${q.required ? '' : '?'}: ${q.type}`)
+    fields.push(
+      `${q.doc ? `/** ${q.doc.replace(/\*\//g, '* /').replace(/\n/g, ' ')} */\n` : ''}${identifier(q.name)}${q.required ? '' : '?'}: ${q.type}`,
+    )
   }
   if (op.body) fields.push(`body${op.bodyRequired ? '' : '?'}: ${op.body}`)
   else if (op.rawBody) fields.push('body: BodyInit', 'contentType?: string')
@@ -122,8 +153,7 @@ export function generateSdk(doc: Json): string {
   const ops = readOps(doc)
   const schemas = doc.components.schemas as Record<string, Json>
   const out: Array<string> = []
-  out.push(`/* eslint-disable */
-// Generated by \`bun scripts/api-sdk.ts\` from the OpenAPI document. Do not edit.
+  out.push(`// Generated by \`bun scripts/api-sdk.ts\` from the OpenAPI document. Do not edit.
 //
 // A typed client for the source.code API. No dependencies: it uses \`fetch\`.
 //
@@ -134,17 +164,24 @@ export function generateSdk(doc: Json): string {
   out.push(`export const API_VERSION = ${JSON.stringify(doc.info.version)}`)
   out.push('')
   out.push('// ----- Objects')
-  for (const name of Object.keys(schemas).sort()) out.push(`export type ${name} = ${tsOf(schemas[name])}\n`)
+  for (const name of Object.keys(schemas).sort())
+    out.push(`export type ${name} = ${tsOf(schemas[name])}\n`)
 
   out.push('// ----- Operations')
   out.push('export interface Operations {')
   for (const op of ops) {
-    out.push(`  /** ${op.summary.replace(/\*\//g, '* /')} (\`${op.method} ${op.path}\`) */`)
-    out.push(`  ${JSON.stringify(op.id)}: {\n    input: ${inputOf(op).replace(/\n/g, '\n    ')}\n    output: ${op.raw ? 'Response' : (op.response ?? 'void')}\n  }`)
+    out.push(
+      `  /** ${op.summary.replace(/\*\//g, '* /')} (\`${op.method} ${op.path}\`) */`,
+    )
+    out.push(
+      `  ${JSON.stringify(op.id)}: {\n    input: ${inputOf(op).replace(/\n/g, '\n    ')}\n    output: ${op.raw ? 'Response' : (op.response ?? 'void')}\n  }`,
+    )
   }
   out.push('}')
   out.push('')
-  out.push('/** The facts about each operation that the client needs at run time. */')
+  out.push(
+    '/** The facts about each operation that the client needs at run time. */',
+  )
   out.push('const OPERATIONS = {')
   for (const op of ops)
     out.push(
@@ -181,12 +218,16 @@ export function generateSdk(doc: Json): string {
     }
     for (const o of direct) {
       const verb = o.id.split('.')[depth]
-      lines.push(`${identifier(verb)}: (${inputIsEmpty(o) ? 'input?: Operations["' + o.id + '"]["input"]' : 'input: Operations["' + o.id + '"]["input"]'}, options?: RequestOptions) => Promise<Operations["${o.id}"]["output"]>`)
+      lines.push(
+        `${identifier(verb)}: (${inputIsEmpty(o) ? 'input?: Operations["' + o.id + '"]["input"]' : 'input: Operations["' + o.id + '"]["input"]'}, options?: RequestOptions) => Promise<Operations["${o.id}"]["output"]>`,
+      )
     }
-    for (const [k, sub] of deeper) lines.push(`${identifier(k)}: {\n${nest(sub, depth + 1).join('\n')}\n}`)
+    for (const [k, sub] of deeper)
+      lines.push(`${identifier(k)}: {\n${nest(sub, depth + 1).join('\n')}\n}`)
     return lines
   }
-  for (const [g, list] of groups) out.push(`  ${identifier(g)}: {\n${nest(list, 1).join('\n')}\n  }`)
+  for (const [g, list] of groups)
+    out.push(`  ${identifier(g)}: {\n${nest(list, 1).join('\n')}\n  }`)
   out.push('}')
   out.push('')
   out.push(RUNTIME)
@@ -194,7 +235,13 @@ export function generateSdk(doc: Json): string {
 }
 
 function inputIsEmpty(op: Op) {
-  return op.pathParams.length === 0 && op.queryParams.filter((q) => q.name !== 'dry_run' && q.required).length === 0 && !op.bodyRequired && !op.rawBody
+  return (
+    op.pathParams.length === 0 &&
+    op.queryParams.filter((q) => q.name !== 'dry_run' && q.required).length ===
+      0 &&
+    !op.bodyRequired &&
+    !op.rawBody
+  )
 }
 
 /** The part of the client that is not generated. */

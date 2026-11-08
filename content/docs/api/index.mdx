@@ -44,8 +44,8 @@ curl "$SX/repos/dana/gitfs/context" -H "Authorization: Bearer $SX_TOKEN"
     Idempotency keys, `If-Match`, and landing only the tree that was checked.
   </Card>
   <Card title="Honest limits" href="/docs/api/rate-limits">
-    Every limit is published and every response says how much is left. No
-    hidden throttles.
+    Every limit is published and every response says how much is left. No hidden
+    throttles.
   </Card>
   <Card title="Made for agents" href="/docs/api/agents">
     Errors say what to do next, objects say what you can do now, and every
@@ -82,7 +82,10 @@ Every object says what it is, where it lives and which version it is.
   "checks": { "state": "pending", "passed": 0, "failed": 0, "pending": 1 },
   "policy": { "state": "blocked", "blocking": 2 },
   "actions": {
-    "land": { "allowed": false, "reasons": ["policy:ci-evidence pending", "policy:findings fail"] }
+    "land": {
+      "allowed": false,
+      "reasons": ["policy:ci-evidence pending", "policy:findings fail"]
+    }
   },
   "version": 1
 }
@@ -92,21 +95,21 @@ Every object says what it is, where it lives and which version it is.
 
 ## Where to go next
 
-| You want to                                   | Read                                                                |
-| --------------------------------------------- | ------------------------------------------------------------------- |
-| Make a first call and land a change           | [Quickstart](/docs/api/quickstart)                                  |
-| Get a token and understand scopes             | [Authentication](/docs/api/authentication)                          |
-| Sign in an application, an agent or the CLI   | [OAuth](/docs/api/oauth)                                            |
-| Get told when something happens               | [Webhooks](/docs/api/webhooks)                                      |
-| Find things                                   | [Search](/docs/api/search)                                          |
-| Show what a change does with a picture        | [Uploads and evidence](/docs/api/uploads)                           |
-| Know the rules every endpoint follows         | [Requests and responses](/docs/api/requests-and-responses)          |
-| Page through a long list                      | [Pagination and filters](/docs/api/pagination-and-filters)          |
-| Handle a failure                              | [Errors](/docs/api/errors)                                          |
-| Write without fear of a retry                 | [Writes: retries, edits and long work](/docs/api/writes)            |
-| Stop polling                                  | [Events and sync](/docs/api/events-and-sync)                        |
-| Build an agent on it                          | [Agents](/docs/api/agents)                                          |
-| Look up an endpoint                           | [Reference](/docs/api/reference/changes)                            |
-| See how it differs from other hosts' APIs     | [Compared with other hosts](/docs/api/compared)                     |
+| You want to                                 | Read                                                       |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| Make a first call and land a change         | [Quickstart](/docs/api/quickstart)                         |
+| Get a token and understand scopes           | [Authentication](/docs/api/authentication)                 |
+| Sign in an application, an agent or the CLI | [OAuth](/docs/api/oauth)                                   |
+| Get told when something happens             | [Webhooks](/docs/api/webhooks)                             |
+| Find things                                 | [Search](/docs/api/search)                                 |
+| Show what a change does with a picture      | [Uploads and evidence](/docs/api/uploads)                  |
+| Know the rules every endpoint follows       | [Requests and responses](/docs/api/requests-and-responses) |
+| Page through a long list                    | [Pagination and filters](/docs/api/pagination-and-filters) |
+| Handle a failure                            | [Errors](/docs/api/errors)                                 |
+| Write without fear of a retry               | [Writes: retries, edits and long work](/docs/api/writes)   |
+| Stop polling                                | [Events and sync](/docs/api/events-and-sync)               |
+| Build an agent on it                        | [Agents](/docs/api/agents)                                 |
+| Look up an endpoint                         | [Reference](/docs/api/reference/changes)                   |
+| See how it differs from other hosts' APIs   | [Compared with other hosts](/docs/api/compared)            |
 
 The whole API is also one OpenAPI 3.1 document, generated from the same definitions the server runs: `GET /v1/openapi.json`.

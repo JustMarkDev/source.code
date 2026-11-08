@@ -37,14 +37,19 @@ const SESSION_TTL = 28_800_000
 const MAX_SESSIONS = 10_000
 
 export class MemorySessions implements SessionResolver {
-  private readonly sessions = new Map<string, { user: SessionUser; csrf: string; expires: number }>()
+  private readonly sessions = new Map<
+    string,
+    { user: SessionUser; csrf: string; expires: number }
+  >()
   constructor(
     private readonly users: ReadonlyArray<SessionUser>,
     private readonly secure: boolean,
   ) {}
 
   private sid(req: Request) {
-    return /(?:^|;\s*)sx_session=([A-Za-z0-9_-]+)/.exec(req.headers.get('cookie') ?? '')?.[1]
+    return /(?:^|;\s*)sx_session=([A-Za-z0-9_-]+)/.exec(
+      req.headers.get('cookie') ?? '',
+    )?.[1]
   }
 
   private live(sid: string | undefined) {
@@ -108,9 +113,18 @@ type Pending = {
   expires: number
 }
 
-type Code = Pending & { handle: string; used: boolean; authorizationId: string | null }
+type Code = Pending & {
+  handle: string
+  used: boolean
+  authorizationId: string | null
+}
 
-type Refresh = { authorizationId: string; used: boolean; expires: number; clientId: string }
+type Refresh = {
+  authorizationId: string
+  used: boolean
+  expires: number
+  clientId: string
+}
 
 type Device = {
   userCode: string
@@ -152,14 +166,28 @@ const CODE_TTL = 60_000
 const PENDING_TTL = 10 * 60_000
 const DEVICE_TTL = 15 * 60_000
 const USER_CODE_CHARS = 'BCDFGHJKLMNPQRSTVWXZ'
-const DEFAULT_SCOPES: ReadonlyArray<Scope> = ['repo:read', 'issues:read', 'pulls:read']
+const DEFAULT_SCOPES: ReadonlyArray<Scope> = [
+  'repo:read',
+  'issues:read',
+  'pulls:read',
+]
 
 const esc = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+  s.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
+        c
+      ]!,
+  )
 
 const noStore = { 'cache-control': 'no-store', pragma: 'no-cache' }
 
-const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
+const json = (
+  body: unknown,
+  status = 200,
+  headers: Record<string, string> = {},
+) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json', ...noStore, ...headers },
@@ -205,24 +233,40 @@ async function formOf(req: Request): Promise<URLSearchParams | null> {
 
 /** A `return_to` must stay on this origin. Backslashes and control bytes are not paths. */
 function localReturn(to: string): boolean {
-  if (!to.startsWith('/') || to.startsWith('//') || to.includes('\\')) return false
+  if (!to.startsWith('/') || to.startsWith('//') || to.includes('\\'))
+    return false
   for (const ch of to) {
     const code = ch.charCodeAt(0)
     if (code <= 0x1f || code === 0x7f) return false
   }
   try {
-    return new URL(to, 'https://example.invalid').origin === 'https://example.invalid'
+    return (
+      new URL(to, 'https://example.invalid').origin ===
+      'https://example.invalid'
+    )
   } catch {
     return false
   }
 }
 
-const oauthError = (error: string, description: string, status = 400, headers: Record<string, string> = {}) =>
-  json({ error, error_description: description }, status, headers)
+const oauthError = (
+  error: string,
+  description: string,
+  status = 400,
+  headers: Record<string, string> = {},
+) => json({ error, error_description: description }, status, headers)
 
-const s256 = (verifier: string) => createHash('sha256').update(verifier).digest('base64url')
+const s256 = (verifier: string) =>
+  createHash('sha256').update(verifier).digest('base64url')
 
-const dangerousSchemes = new Set(['javascript:', 'data:', 'vbscript:', 'file:', 'blob:', 'about:'])
+const dangerousSchemes = new Set([
+  'javascript:',
+  'data:',
+  'vbscript:',
+  'file:',
+  'blob:',
+  'about:',
+])
 
 function validRedirect(uri: string): boolean {
   if (uri.length > 2000 || /[\s*]/.test(uri)) return false
@@ -235,21 +279,29 @@ function validRedirect(uri: string): boolean {
   if (u.hash) return false
   if (u.protocol === 'https:') return !u.username && !u.password
   if (u.protocol === 'http:')
-    return ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname) && !u.username
+    return (
+      ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname) && !u.username
+    )
   // A native app's reverse-DNS scheme, such as com.example.app:/callback.
   // The dot requirement already excludes bare schemes; the list is defence in depth.
   if (dangerousSchemes.has(u.protocol)) return false
   return /^[a-z][a-z0-9+.-]*\.[a-z0-9+.-]+:$/.test(u.protocol)
 }
 
-const page = (title: string, body: string, status = 200, extra: Record<string, string> = {}) =>
+const page = (
+  title: string,
+  body: string,
+  status = 200,
+  extra: Record<string, string> = {},
+) =>
   new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>:root{color-scheme:light dark}body{font:16px/1.5 system-ui,sans-serif;max-width:30rem;margin:4rem auto;padding:0 1rem}h1{font-size:1.25rem}code{background:#8882;padding:.1em .3em;border-radius:3px}ul{padding-left:1.2rem}button{font:inherit;padding:.5rem 1rem;margin:.25rem .25rem .25rem 0;cursor:pointer}.muted{opacity:.7}input[type=text]{font:inherit;padding:.4rem;letter-spacing:.15em;text-transform:uppercase}</style></head><body>${body}</body></html>`,
     {
       status,
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+        'content-security-policy':
+          "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
         'x-frame-options': 'DENY',
         'x-content-type-options': 'nosniff',
         'referrer-policy': 'no-referrer',
@@ -326,11 +378,14 @@ export class OAuthServer {
     const m = req.method
     this.sweep()
     if (rest === '/register' && m === 'POST') return this.register(req)
-    if (rest === '/authorize' && (m === 'GET' || m === 'POST')) return this.authorize(req)
+    if (rest === '/authorize' && (m === 'GET' || m === 'POST'))
+      return this.authorize(req)
     if (rest === '/token' && m === 'POST') return this.token(req)
     if (rest === '/revoke' && m === 'POST') return this.revoke(req)
-    if (rest === '/device_authorization' && m === 'POST') return this.deviceAuthorization(req)
-    if (rest === '/device' && (m === 'GET' || m === 'POST')) return this.devicePage(req)
+    if (rest === '/device_authorization' && m === 'POST')
+      return this.deviceAuthorization(req)
+    if (rest === '/device' && (m === 'GET' || m === 'POST'))
+      return this.devicePage(req)
     if (rest === '/session' && m === 'POST') return this.signIn(req)
     return null
   }
@@ -338,7 +393,12 @@ export class OAuthServer {
   /** Set by the API that mounts this server, so limits share its limiter. */
   guardWith: Guard | undefined
 
-  private async guard(req: Request, bucket: string, limit: number, windowMs: number) {
+  private async guard(
+    req: Request,
+    bucket: string,
+    limit: number,
+    windowMs: number,
+  ) {
     const g = this.guardWith ?? this.o.guard
     return g ? g(req, bucket, limit, windowMs) : null
   }
@@ -349,13 +409,21 @@ export class OAuthServer {
 
   private sweep() {
     const t = this.now()
-    if (this.pending.size + this.codes.size + this.devices.size + this.refresh.size < 200) return
+    if (
+      this.pending.size +
+        this.codes.size +
+        this.devices.size +
+        this.refresh.size <
+      200
+    )
+      return
     for (const [k, v] of this.pending) if (v.expires < t) this.pending.delete(k)
     for (const [k, v] of this.codes) if (v.expires < t) this.codes.delete(k)
-    for (const [k, v] of this.devices) if (v.expires < t) {
-      this.devices.delete(k)
-      this.userCodes.delete(v.userCode)
-    }
+    for (const [k, v] of this.devices)
+      if (v.expires < t) {
+        this.devices.delete(k)
+        this.userCodes.delete(v.userCode)
+      }
     for (const [k, v] of this.refresh) if (v.expires < t) this.refresh.delete(k)
   }
 
@@ -367,7 +435,12 @@ export class OAuthServer {
     let parsed: unknown
     try {
       const text = await readText(req)
-      if (text === null) return oauthError('invalid_client_metadata', 'The body is too large.', 413)
+      if (text === null)
+        return oauthError(
+          'invalid_client_metadata',
+          'The body is too large.',
+          413,
+        )
       parsed = JSON.parse(text)
     } catch {
       return oauthError('invalid_client_metadata', 'The body is not JSON.')
@@ -375,19 +448,40 @@ export class OAuthServer {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
       return oauthError('invalid_client_metadata', 'Send a JSON object.')
     const body = parsed as Record<string, unknown>
-    const name = typeof body.client_name === 'string' ? body.client_name.trim() : ''
-    const uris = Array.isArray(body.redirect_uris) ? (body.redirect_uris as Array<unknown>) : []
+    const name =
+      typeof body.client_name === 'string' ? body.client_name.trim() : ''
+    const uris = Array.isArray(body.redirect_uris)
+      ? (body.redirect_uris as Array<unknown>)
+      : []
     if (!name || name.length > 100)
-      return oauthError('invalid_client_metadata', 'client_name is required, up to 100 characters.')
-    if (uris.length < 1 || uris.length > 5 || !uris.every((u) => typeof u === 'string' && validRedirect(u)))
+      return oauthError(
+        'invalid_client_metadata',
+        'client_name is required, up to 100 characters.',
+      )
+    if (
+      uris.length < 1 ||
+      uris.length > 5 ||
+      !uris.every((u) => typeof u === 'string' && validRedirect(u))
+    )
       return oauthError(
         'invalid_redirect_uri',
         'Give 1 to 5 redirect_uris. Each must be https, or http on a loopback address, with no fragment or wildcard.',
       )
-    if (body.token_endpoint_auth_method !== undefined && body.token_endpoint_auth_method !== 'none')
-      return oauthError('invalid_client_metadata', 'Only public clients are supported: token_endpoint_auth_method must be none.')
+    if (
+      body.token_endpoint_auth_method !== undefined &&
+      body.token_endpoint_auth_method !== 'none'
+    )
+      return oauthError(
+        'invalid_client_metadata',
+        'Only public clients are supported: token_endpoint_auth_method must be none.',
+      )
     if (this.clients.size >= 20_000)
-      return oauthError('temporarily_unavailable', 'Too many registered clients. Try again later.', 503, { 'retry-after': '60' })
+      return oauthError(
+        'temporarily_unavailable',
+        'Too many registered clients. Try again later.',
+        503,
+        { 'retry-after': '60' },
+      )
     const client: Client = {
       id: `cl_${randomBytes(15).toString('base64url')}`,
       name,
@@ -401,7 +495,11 @@ export class OAuthServer {
         client_id_issued_at: Math.floor(client.createdAt / 1000),
         client_name: client.name,
         redirect_uris: client.redirectUris,
-        grant_types: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:device_code'],
+        grant_types: [
+          'authorization_code',
+          'refresh_token',
+          'urn:ietf:params:oauth:grant-type:device_code',
+        ],
         response_types: ['code'],
         token_endpoint_auth_method: 'none',
       },
@@ -417,10 +515,12 @@ export class OAuthServer {
   ): { error: string } | { scopes: Array<Scope> } {
     const asked = raw ? raw.split(/\s+/).filter(Boolean) : DEFAULT_SCOPES
     const bad = asked.filter((s) => !oauthScopes.includes(s as Scope))
-    if (bad.length) return { error: `Unknown or ungrantable scope: ${bad.join(' ')}.` }
+    if (bad.length)
+      return { error: `Unknown or ungrantable scope: ${bad.join(' ')}.` }
     const scopes = asked as Array<Scope>
     const over = scopes.filter((s) => !max.includes(s))
-    if (over.length) return { error: `You may not delegate: ${over.join(' ')}.` }
+    if (over.length)
+      return { error: `You may not delegate: ${over.join(' ')}.` }
     return { scopes: [...new Set(scopes)] }
   }
 
@@ -441,22 +541,25 @@ export class OAuthServer {
 
   private describeScope(s: Scope) {
     return (
-      {
-        'repo:read': 'Read your repositories',
-        'repo:write': 'Change repository data',
-        'issues:read': 'Read issues',
-        'issues:comment': 'Comment on issues',
-        'issues:write': 'Open, edit and close issues',
-        'pulls:read': 'Read changes',
-        'pulls:comment': 'Review and comment on changes',
-        'pulls:write': 'Create and edit changes',
-        'pulls:merge': 'Land changes',
-        'secrets:schema': 'See the names of environment variables, never their values',
-        'secrets:write': 'Set environment variables',
-        'webhooks:read': 'Read webhooks',
-        'webhooks:write': 'Create and change webhooks',
-      } as Record<string, string>
-    )[s] ?? s
+      (
+        {
+          'repo:read': 'Read your repositories',
+          'repo:write': 'Change repository data',
+          'issues:read': 'Read issues',
+          'issues:comment': 'Comment on issues',
+          'issues:write': 'Open, edit and close issues',
+          'pulls:read': 'Read changes',
+          'pulls:comment': 'Review and comment on changes',
+          'pulls:write': 'Create and edit changes',
+          'pulls:merge': 'Land changes',
+          'secrets:schema':
+            'See the names of environment variables, never their values',
+          'secrets:write': 'Set environment variables',
+          'webhooks:read': 'Read webhooks',
+          'webhooks:write': 'Create and change webhooks',
+        } as Record<string, string>
+      )[s] ?? s
+    )
   }
 
   private signInPage(_req: Request, returnTo: string) {
@@ -483,7 +586,8 @@ export class OAuthServer {
     if (limited) return limited
     // A state-changing form must come from this origin. Browsers always send
     // Origin on a POST; a request without one is not a browser sign-in.
-    if (req.headers.get('origin') !== this.o.issuer) return page('Error', '<h1>Request refused</h1>', 403)
+    if (req.headers.get('origin') !== this.o.issuer)
+      return page('Error', '<h1>Request refused</h1>', 403)
     const form = await formOf(req)
     const handle = String(form?.get('handle') ?? '')
     const returnTo = String(form?.get('return_to') ?? '/')
@@ -513,30 +617,59 @@ export class OAuthServer {
     const redirectUri = p.get('redirect_uri') ?? ''
     // Until the client and redirect are known to be good, never redirect.
     if (!client || !client.redirectUris.includes(redirectUri))
-      return page('Error', '<h1>This link is not valid</h1><p>The application is not registered, or its redirect address does not match.</p>', 400)
+      return page(
+        'Error',
+        '<h1>This link is not valid</h1><p>The application is not registered, or its redirect address does not match.</p>',
+        400,
+      )
     const fail = (error: string, description: string) => {
       const to = new URL(redirectUri)
       to.searchParams.set('error', error)
       to.searchParams.set('error_description', description)
       if (p.get('state')) to.searchParams.set('state', p.get('state')!)
       to.searchParams.set('iss', this.o.issuer)
-      return new Response(null, { status: 302, headers: { location: to.toString(), ...noStore } })
+      return new Response(null, {
+        status: 302,
+        headers: { location: to.toString(), ...noStore },
+      })
     }
-    if (p.get('response_type') !== 'code') return fail('unsupported_response_type', 'Only response_type=code is supported.')
+    if (p.get('response_type') !== 'code')
+      return fail(
+        'unsupported_response_type',
+        'Only response_type=code is supported.',
+      )
     const challenge = p.get('code_challenge') ?? ''
-    if (!/^[A-Za-z0-9_-]{43}$/.test(challenge) || p.get('code_challenge_method') !== 'S256')
-      return fail('invalid_request', 'PKCE is required: send code_challenge and code_challenge_method=S256.')
+    if (
+      !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
+      p.get('code_challenge_method') !== 'S256'
+    )
+      return fail(
+        'invalid_request',
+        'PKCE is required: send code_challenge and code_challenge_method=S256.',
+      )
     const audience = this.audienceOf(p.getAll('resource'))
-    if (!audience) return fail('invalid_target', 'resource must be one of the resources this server protects.')
+    if (!audience)
+      return fail(
+        'invalid_target',
+        'resource must be one of the resources this server protects.',
+      )
 
     const user = await this.o.sessions.current(req)
-    const scopeParse = this.parseScopes(p.get('scope'), user ? this.maxScopes(user.handle) : oauthScopes)
+    const scopeParse = this.parseScopes(
+      p.get('scope'),
+      user ? this.maxScopes(user.handle) : oauthScopes,
+    )
     if ('error' in scopeParse) return fail('invalid_scope', scopeParse.error)
 
     if (this.pending.size >= 10_000) {
       this.sweep()
       if (this.pending.size >= 10_000)
-        return page('Error', '<h1>Too many sign-in attempts</h1><p>Try again later.</p>', 503, { 'retry-after': '60' })
+        return page(
+          'Error',
+          '<h1>Too many sign-in attempts</h1><p>Try again later.</p>',
+          503,
+          { 'retry-after': '60' },
+        )
     }
     const pending: Pending = {
       id: `oar_${randomBytes(18).toString('base64url')}`,
@@ -566,12 +699,17 @@ export class OAuthServer {
   }
 
   private async decide(req: Request): Promise<Response> {
-    if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
+    if (!this.sameOrigin(req))
+      return page('Error', '<h1>Request refused</h1>', 403)
     const user = await this.o.sessions.current(req)
     const form = await formOf(req)
     const pending = this.pending.get(String(form?.get('request_id') ?? ''))
     if (!user || !form || !pending || pending.expires < this.now())
-      return page('Error', '<h1>This request expired</h1><p>Go back to the application and start again.</p>', 400)
+      return page(
+        'Error',
+        '<h1>This request expired</h1><p>Go back to the application and start again.</p>',
+        400,
+      )
     if (form.get('csrf') !== this.o.sessions.csrf(req) || !form.get('csrf'))
       return page('Error', '<h1>Request refused</h1>', 403)
     this.pending.delete(pending.id)
@@ -580,18 +718,40 @@ export class OAuthServer {
     to.searchParams.set('iss', this.o.issuer)
     if (form.get('decision') !== 'approve') {
       to.searchParams.set('error', 'access_denied')
-      return new Response(null, { status: 302, headers: { location: to.toString(), ...noStore } })
+      return new Response(null, {
+        status: 302,
+        headers: { location: to.toString(), ...noStore },
+      })
     }
-    const scopes = pending.scopes.filter((s) => this.maxScopes(user.handle).includes(s))
+    const scopes = pending.scopes.filter((s) =>
+      this.maxScopes(user.handle).includes(s),
+    )
     const code = `oac_${randomBytes(24).toString('base64url')}`
-    this.codes.set(code, { ...pending, scopes, handle: user.handle, used: false, authorizationId: null, expires: this.now() + CODE_TTL })
+    this.codes.set(code, {
+      ...pending,
+      scopes,
+      handle: user.handle,
+      used: false,
+      authorizationId: null,
+      expires: this.now() + CODE_TTL,
+    })
     to.searchParams.set('code', code)
-    return new Response(null, { status: 302, headers: { location: to.toString(), ...noStore } })
+    return new Response(null, {
+      status: 302,
+      headers: { location: to.toString(), ...noStore },
+    })
   }
 
   // ----- tokens ---------------------------------------------------------------
 
-  private issue(authorizationId: string, handle: string, clientName: string, scopes: ReadonlyArray<Scope>, audience: ReadonlyArray<Audience>, clientId: string) {
+  private issue(
+    authorizationId: string,
+    handle: string,
+    clientName: string,
+    scopes: ReadonlyArray<Scope>,
+    audience: ReadonlyArray<Audience>,
+    clientId: string,
+  ) {
     const { secret } = this.o.auth.create({
       name: clientName,
       kind: 'oauth',
@@ -624,35 +784,60 @@ export class OAuthServer {
     if (limited) return limited
     const type = req.headers.get('content-type') ?? ''
     if (!type.includes('application/x-www-form-urlencoded'))
-      return oauthError('invalid_request', 'Send application/x-www-form-urlencoded.')
+      return oauthError(
+        'invalid_request',
+        'Send application/x-www-form-urlencoded.',
+      )
     const f = await formOf(req)
     if (!f) return oauthError('invalid_request', 'The body is too large.', 413)
     const grant = f.get('grant_type')
     if (grant === 'authorization_code') return this.codeGrant(f)
     if (grant === 'refresh_token') return this.refreshGrant(f)
-    if (grant === 'urn:ietf:params:oauth:grant-type:device_code') return this.deviceGrant(f)
-    return oauthError('unsupported_grant_type', 'Use authorization_code, refresh_token or the device code grant.')
+    if (grant === 'urn:ietf:params:oauth:grant-type:device_code')
+      return this.deviceGrant(f)
+    return oauthError(
+      'unsupported_grant_type',
+      'Use authorization_code, refresh_token or the device code grant.',
+    )
   }
 
   private codeGrant(f: URLSearchParams): Response {
     const code = this.codes.get(f.get('code') ?? '')
-    const bad = () => oauthError('invalid_grant', 'The code is not valid, has expired, or was already used.')
+    const bad = () =>
+      oauthError(
+        'invalid_grant',
+        'The code is not valid, has expired, or was already used.',
+      )
     if (!code || code.expires < this.now()) return bad()
     if (code.used) {
       // A code used twice means it leaked: take back what it produced.
-      if (code.authorizationId) this.o.auth.revokeAuthorization(code.authorizationId)
+      if (code.authorizationId)
+        this.o.auth.revokeAuthorization(code.authorizationId)
       return bad()
     }
-    if (f.get('client_id') !== code.client.id || f.get('redirect_uri') !== code.redirectUri) return bad()
+    if (
+      f.get('client_id') !== code.client.id ||
+      f.get('redirect_uri') !== code.redirectUri
+    )
+      return bad()
     const verifier = f.get('code_verifier') ?? ''
-    if (!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier) || s256(verifier) !== code.challenge)
-      return oauthError('invalid_grant', 'The code_verifier does not match the code_challenge.')
+    if (
+      !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier) ||
+      s256(verifier) !== code.challenge
+    )
+      return oauthError(
+        'invalid_grant',
+        'The code_verifier does not match the code_challenge.',
+      )
     const asked = f.getAll('resource')
     let audience = code.audience
     if (asked.length) {
       const aud = this.audienceOf(asked)
       if (!aud || !aud.every((a) => code.audience.includes(a)))
-        return oauthError('invalid_target', 'resource was not part of the authorization.')
+        return oauthError(
+          'invalid_target',
+          'resource was not part of the authorization.',
+        )
       audience = aud
     }
     code.used = true
@@ -664,14 +849,29 @@ export class OAuthServer {
       audience,
     })
     code.authorizationId = a.id
-    return this.issue(a.id, code.handle, code.client.name, code.scopes, audience, code.client.id)
+    return this.issue(
+      a.id,
+      code.handle,
+      code.client.name,
+      code.scopes,
+      audience,
+      code.client.id,
+    )
   }
 
   private refreshGrant(f: URLSearchParams): Response {
-    const hash = createHash('sha256').update(f.get('refresh_token') ?? '').digest('hex')
+    const hash = createHash('sha256')
+      .update(f.get('refresh_token') ?? '')
+      .digest('hex')
     const r = this.refresh.get(hash)
-    const bad = () => oauthError('invalid_grant', 'The refresh token is not valid.')
-    if (!r || r.expires < this.now() || (f.get('client_id') && f.get('client_id') !== r.clientId)) return bad()
+    const bad = () =>
+      oauthError('invalid_grant', 'The refresh token is not valid.')
+    if (
+      !r ||
+      r.expires < this.now() ||
+      (f.get('client_id') && f.get('client_id') !== r.clientId)
+    )
+      return bad()
     const a = this.o.auth.authorizations.get(r.authorizationId)
     if (!a || a.revokedAt !== null) return bad()
     if (r.used) {
@@ -682,7 +882,8 @@ export class OAuthServer {
     let scopes = a.scopes
     if (f.get('scope')) {
       const asked = f.get('scope')!.split(/\s+/).filter(Boolean) as Array<Scope>
-      if (!asked.every((s) => a.scopes.includes(s))) return oauthError('invalid_scope', 'A refresh cannot widen the scope.')
+      if (!asked.every((s) => a.scopes.includes(s)))
+        return oauthError('invalid_scope', 'A refresh cannot widen the scope.')
       scopes = asked
     }
     let audience = a.audience
@@ -690,12 +891,22 @@ export class OAuthServer {
     if (resources.length) {
       const aud = this.audienceOf(resources)
       if (!aud || !aud.every((x) => a.audience.includes(x)))
-        return oauthError('invalid_target', 'resource was not part of the authorization.')
+        return oauthError(
+          'invalid_target',
+          'resource was not part of the authorization.',
+        )
       audience = aud
     }
     r.used = true
     a.lastUsedAt = this.now()
-    return this.issue(a.id, a.handle, a.clientName, scopes, audience, r.clientId)
+    return this.issue(
+      a.id,
+      a.handle,
+      a.clientName,
+      scopes,
+      audience,
+      r.clientId,
+    )
   }
 
   // ----- revocation (RFC 7009) ----------------------------------------------------
@@ -712,7 +923,11 @@ export class OAuthServer {
     else {
       let found = this.o.auth.find(hash, 'api', this.now())
       if (!found.ok) found = this.o.auth.find(hash, 'mcp', this.now())
-      if (found.ok && found.record.kind === 'oauth' && found.record.authorizationId)
+      if (
+        found.ok &&
+        found.record.kind === 'oauth' &&
+        found.record.authorizationId
+      )
         this.o.auth.revokeAuthorization(found.record.authorizationId)
     }
     // Always 200: the caller learns nothing about which tokens exist.
@@ -727,13 +942,23 @@ export class OAuthServer {
     const f = await formOf(req)
     if (!f) return oauthError('invalid_request', 'The body is too large.', 413)
     const client = this.clients.get(f.get('client_id') ?? '')
-    if (!client) return oauthError('invalid_client', 'Unknown client_id. Register one at the registration endpoint.', 401)
+    if (!client)
+      return oauthError(
+        'invalid_client',
+        'Unknown client_id. Register one at the registration endpoint.',
+        401,
+      )
     const audience = this.audienceOf(f.getAll('resource'))
-    if (!audience) return oauthError('invalid_target', 'resource must be one this server protects.')
+    if (!audience)
+      return oauthError(
+        'invalid_target',
+        'resource must be one this server protects.',
+      )
     const parsed = this.parseScopes(f.get('scope'), oauthScopes)
     if ('error' in parsed) return oauthError('invalid_scope', parsed.error)
     let userCode = ''
-    for (let i = 0; i < 8; i++) userCode += USER_CODE_CHARS[randomBytes(1)[0] % USER_CODE_CHARS.length]
+    for (let i = 0; i < 8; i++)
+      userCode += USER_CODE_CHARS[randomBytes(1)[0] % USER_CODE_CHARS.length]
     const deviceCode = `sxd_${randomBytes(32).toString('base64url')}`
     const device: Device = {
       userCode,
@@ -746,8 +971,14 @@ export class OAuthServer {
       status: 'pending',
       handle: null,
     }
-    this.devices.set(createHash('sha256').update(deviceCode).digest('hex'), device)
-    this.userCodes.set(userCode, createHash('sha256').update(deviceCode).digest('hex'))
+    this.devices.set(
+      createHash('sha256').update(deviceCode).digest('hex'),
+      device,
+    )
+    this.userCodes.set(
+      userCode,
+      createHash('sha256').update(deviceCode).digest('hex'),
+    )
     const shown = `${userCode.slice(0, 4)}-${userCode.slice(4)}`
     const uri = this.url('/device')
     return json({
@@ -761,23 +992,36 @@ export class OAuthServer {
   }
 
   private deviceGrant(f: URLSearchParams): Response {
-    const hash = createHash('sha256').update(f.get('device_code') ?? '').digest('hex')
+    const hash = createHash('sha256')
+      .update(f.get('device_code') ?? '')
+      .digest('hex')
     const d = this.devices.get(hash)
     if (!d || (f.get('client_id') && f.get('client_id') !== d.client.id))
       return oauthError('invalid_grant', 'The device code is not valid.')
     const t = this.now()
-    if (d.expires < t) return oauthError('expired_token', 'The device code expired. Start again.')
+    if (d.expires < t)
+      return oauthError(
+        'expired_token',
+        'The device code expired. Start again.',
+      )
     if (t - d.lastPoll < d.interval * 1000 - 200) {
       d.interval += 5
       d.lastPoll = t
-      return oauthError('slow_down', `Poll no faster than every ${d.interval} seconds.`)
+      return oauthError(
+        'slow_down',
+        `Poll no faster than every ${d.interval} seconds.`,
+      )
     }
     d.lastPoll = t
     if (d.status === 'denied') {
       this.devices.delete(hash)
       return oauthError('access_denied', 'The person said no.')
     }
-    if (d.status === 'pending') return oauthError('authorization_pending', 'Waiting for the person to approve.')
+    if (d.status === 'pending')
+      return oauthError(
+        'authorization_pending',
+        'Waiting for the person to approve.',
+      )
     this.devices.delete(hash)
     this.userCodes.delete(d.userCode)
     const a = this.o.auth.createAuthorization({
@@ -787,7 +1031,14 @@ export class OAuthServer {
       scopes: d.scopes,
       audience: d.audience,
     })
-    return this.issue(a.id, d.handle!, d.client.name, d.scopes, d.audience, d.client.id)
+    return this.issue(
+      a.id,
+      d.handle!,
+      d.client.name,
+      d.scopes,
+      d.audience,
+      d.client.id,
+    )
   }
 
   private async devicePage(req: Request): Promise<Response> {
@@ -802,24 +1053,40 @@ export class OAuthServer {
       if (!user) return this.signInPage(req, `${url.pathname}${url.search}`)
       return entry()
     }
-    if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
+    if (!this.sameOrigin(req))
+      return page('Error', '<h1>Request refused</h1>', 403)
     if (!user) return this.signInPage(req, url.pathname)
     const form = await formOf(req)
-    if (!form || !form.get('csrf') || form.get('csrf') !== this.o.sessions.csrf(req))
+    if (
+      !form ||
+      !form.get('csrf') ||
+      form.get('csrf') !== this.o.sessions.csrf(req)
+    )
       return page('Error', '<h1>Request refused</h1>', 403)
     // Guessing codes is the attack here: slow it down per address.
     const limited = await this.guard(req, 'oauth-user-code', 10, 15 * 60_000)
-    if (limited) return page('Too many tries', '<h1>Too many tries</h1><p>Wait a few minutes.</p>', 429)
-    const code = String(form.get('user_code') ?? '').toUpperCase().replace(/[^A-Z]/g, '')
+    if (limited)
+      return page(
+        'Too many tries',
+        '<h1>Too many tries</h1><p>Wait a few minutes.</p>',
+        429,
+      )
+    const code = String(form.get('user_code') ?? '')
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
     const hash = this.userCodes.get(code)
     const d = hash ? this.devices.get(hash) : undefined
-    if (!d || d.expires < this.now() || d.status !== 'pending') return entry('That code was not found or has expired.')
+    if (!d || d.expires < this.now() || d.status !== 'pending')
+      return entry('That code was not found or has expired.')
     const decision = form.get('decision')
     if (decision === 'approve' || decision === 'deny') {
       d.status = decision === 'approve' ? 'approved' : 'denied'
       d.handle = user.handle
       d.scopes = d.scopes.filter((s) => this.maxScopes(user.handle).includes(s))
-      return page('Done', `<h1>${decision === 'approve' ? 'Device connected' : 'Request denied'}</h1><p>You can close this window.</p>`)
+      return page(
+        'Done',
+        `<h1>${decision === 'approve' ? 'Device connected' : 'Request denied'}</h1><p>You can close this window.</p>`,
+      )
     }
     return page(
       'Connect a device',
@@ -827,4 +1094,3 @@ export class OAuthServer {
     )
   }
 }
-

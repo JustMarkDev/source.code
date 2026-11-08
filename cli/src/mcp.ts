@@ -4,7 +4,6 @@
  * same data, same blockers, same error codes and hints.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { run } from './main'
 import { skillFile } from './skill'
@@ -318,9 +317,4 @@ export function createSxMcpServer(
   )
 
   return server
-}
-
-/** `sx mcp`: serve over stdio, for agents that start a local command. */
-export async function serveStdio() {
-  await createSxMcpServer().connect(new StdioServerTransport())
 }

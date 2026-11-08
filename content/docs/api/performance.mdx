@@ -19,31 +19,31 @@ description: What we measured, against what, how it compares with other forges, 
 
 Apple M5, Bun 1.4.4, one server process. "Before" is the first version of the API that passed its tests, measured with exactly the same harness (`docs/bench/baseline.json`). "Now" is the current code (`docs/bench/after.json`). `bun scripts/api-bench.ts --compare docs/bench/baseline.json` reproduces the table on your machine.
 
-| Scenario | before req/s | now req/s | change | p99 before | p99 now |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `GET /v1` (anonymous) | 90,788 | 111,923 | +23% | 2.09 ms | 1.68 ms |
-| One change, from the body cache | 58,635 | 111,633 | +90% | 3.16 ms | 1.68 ms |
-| One change, `If-None-Match` (304) | 59,978 | 121,267 | +102% | 3.04 ms | 1.55 ms |
-| One of 10,000 changes (cache misses) | 42,718 | 68,739 | +61% | 4.26 ms | 2.75 ms |
-| The same change, 1,000 different tokens | 37,720 | 57,642 | +53% | 4.34 ms | 3.10 ms |
-| Policy of a change | 57,803 | 69,914 | +21% | 3.16 ms | 2.65 ms |
-| `GET …/context` (the agent start-up bundle) | 46,821 | 58,571 | +25% | 3.86 ms | 3.16 ms |
-| `GET /sync` with nothing new | 59,406 | 69,444 | +17% | 3.10 ms | 2.65 ms |
-| 50 changes of 10,000 | 7,751 | 29,330 | +278% | 15.4 ms | 5.40 ms |
-| 50 changes, `fields=number,title,policy` | 12,276 | 27,341 | +123% | 12.2 ms | 5.96 ms |
-| 50 changes, author filter | 7,682 | 26,915 | +250% | 13.7 ms | 6.08 ms |
-| 50 issues of 2,000 | 16,611 | 37,424 | +125% | 9.04 ms | 4.70 ms |
-| Event log, 50 newest | 57,518 | 65,254 | +13% | 3.36 ms | 2.87 ms |
-| Search, one query (10,000 matches) | 27,318 | 40,807 | +49% | 6.58 ms | 4.43 ms |
-| Search, 500 different queries | 35,993 | 34,464 | −4% | 4.99 ms | 9.59 ms |
-| `openapi.json`, conditional | 2,063 | 104,708 | +4,977% | 49.6 ms | 1.78 ms |
-| `POST /batch`, three reads | 13,339 | 14,316 | +7% | 9.40 ms | 17.4 ms |
-| Mixed: 80% change reads, 15% lists, 5% writes | 21,143 | 44,542 | +111% | 8.35 ms | 4.52 ms |
-| `POST` an issue | 3,512 | 43,742 | +1,145% | 43.2 ms | 8.52 ms |
-| `POST` an issue with an `Idempotency-Key` | 4,070 | 41,375 | +917% | 41.5 ms | 12.4 ms |
-| `POST` a review | 23,671 | 40,006 | +69% | 11.9 ms | 6.45 ms |
-| `POST` a check run | 31,643 | 42,000 | +33% | 9.40 ms | 6.33 ms |
-| `POST` a token, then revoke it | 7,073 | 8,903 | +26% | 11.9 ms | 9.59 ms |
+| Scenario                                      | before req/s | now req/s |  change | p99 before | p99 now |
+| --------------------------------------------- | -----------: | --------: | ------: | ---------: | ------: |
+| `GET /v1` (anonymous)                         |       90,788 |   111,923 |    +23% |    2.09 ms | 1.68 ms |
+| One change, from the body cache               |       58,635 |   111,633 |    +90% |    3.16 ms | 1.68 ms |
+| One change, `If-None-Match` (304)             |       59,978 |   121,267 |   +102% |    3.04 ms | 1.55 ms |
+| One of 10,000 changes (cache misses)          |       42,718 |    68,739 |    +61% |    4.26 ms | 2.75 ms |
+| The same change, 1,000 different tokens       |       37,720 |    57,642 |    +53% |    4.34 ms | 3.10 ms |
+| Policy of a change                            |       57,803 |    69,914 |    +21% |    3.16 ms | 2.65 ms |
+| `GET …/context` (the agent start-up bundle)   |       46,821 |    58,571 |    +25% |    3.86 ms | 3.16 ms |
+| `GET /sync` with nothing new                  |       59,406 |    69,444 |    +17% |    3.10 ms | 2.65 ms |
+| 50 changes of 10,000                          |        7,751 |    29,330 |   +278% |    15.4 ms | 5.40 ms |
+| 50 changes, `fields=number,title,policy`      |       12,276 |    27,341 |   +123% |    12.2 ms | 5.96 ms |
+| 50 changes, author filter                     |        7,682 |    26,915 |   +250% |    13.7 ms | 6.08 ms |
+| 50 issues of 2,000                            |       16,611 |    37,424 |   +125% |    9.04 ms | 4.70 ms |
+| Event log, 50 newest                          |       57,518 |    65,254 |    +13% |    3.36 ms | 2.87 ms |
+| Search, one query (10,000 matches)            |       27,318 |    40,807 |    +49% |    6.58 ms | 4.43 ms |
+| Search, 500 different queries                 |       35,993 |    34,464 |     −4% |    4.99 ms | 9.59 ms |
+| `openapi.json`, conditional                   |        2,063 |   104,708 | +4,977% |    49.6 ms | 1.78 ms |
+| `POST /batch`, three reads                    |       13,339 |    14,316 |     +7% |    9.40 ms | 17.4 ms |
+| Mixed: 80% change reads, 15% lists, 5% writes |       21,143 |    44,542 |   +111% |    8.35 ms | 4.52 ms |
+| `POST` an issue                               |        3,512 |    43,742 | +1,145% |    43.2 ms | 8.52 ms |
+| `POST` an issue with an `Idempotency-Key`     |        4,070 |    41,375 |   +917% |    41.5 ms | 12.4 ms |
+| `POST` a review                               |       23,671 |    40,006 |    +69% |    11.9 ms | 6.45 ms |
+| `POST` a check run                            |       31,643 |    42,000 |    +33% |    9.40 ms | 6.33 ms |
+| `POST` a token, then revoke it                |        7,073 |     8,903 |    +26% |    11.9 ms | 9.59 ms |
 
 Zero errors in every scenario.
 
@@ -56,14 +56,14 @@ Zero errors in every scenario.
 
 ### Beyond requests per second
 
-| Measure | Before | Now |
-| --- | --- | --- |
-| One hot read as connections grow (8 to 2,048) | ~30,000/s | 50,500–52,800/s, p99 78 ms at 2,048 |
-| 1,000 long-polling readers answered after one write | 25–27 ms | 25–36 ms |
-| 1,000 open event streams, one write, last delivery | 13 ms | 28 ms |
-| 3,000 writes with a webhook subscribed | 1,363 writes/s | 20,732 writes/s |
-| Server CPU per write, including its delivery | 824 µs | 79 µs |
-| Sign-in steps (consent, approve, exchange, rotate) | 0.07–0.08 ms each | 0.05 ms each |
+| Measure                                             | Before            | Now                                 |
+| --------------------------------------------------- | ----------------- | ----------------------------------- |
+| One hot read as connections grow (8 to 2,048)       | ~30,000/s         | 50,500–52,800/s, p99 78 ms at 2,048 |
+| 1,000 long-polling readers answered after one write | 25–27 ms          | 25–36 ms                            |
+| 1,000 open event streams, one write, last delivery  | 13 ms             | 28 ms                               |
+| 3,000 writes with a webhook subscribed              | 1,363 writes/s    | 20,732 writes/s                     |
+| Server CPU per write, including its delivery        | 824 µs            | 79 µs                               |
+| Sign-in steps (consent, approve, exchange, rotate)  | 0.07–0.08 ms each | 0.05 ms each                        |
 
 Throughput stays flat from 8 to 2,048 connections and latency grows in line with the queue (p50 38 ms at 2,048 connections is 2,048 requests waiting for one core). Nothing falls over and no request fails. The fan-out rows are within a few tens of milliseconds of each other and the event-stream row is slower by 15 ms (13 to 28 ms; 18 in the previous run), which we put down to noise because it is one write observed once, but have not shown.
 
@@ -71,12 +71,12 @@ Throughput stays flat from 8 to 2,048 connections and latency grows in line with
 
 Writes got ten times faster, so the same five seconds now create ten times the data, and the benchmark's server ends the run holding about 1.1 GB (720 MB of live heap) after creating several hundred thousand issues, reviews and check runs. To judge the cost of the data itself, create 100,000 issues in an otherwise idle server:
 
-| | Before this pass | Now |
-| --- | ---: | ---: |
-| Live heap | 168 MB | **109 MB** |
-| Resident memory right after | 585 MB | **348 MB** (243 MB after 4 s idle) |
-| With an `Idempotency-Key` on each | not measured | 135 MB heap |
-| Per issue, with its event | 1.3 KB | 0.7 KB |
+|                                   | Before this pass |                                Now |
+| --------------------------------- | ---------------: | ---------------------------------: |
+| Live heap                         |           168 MB |                         **109 MB** |
+| Resident memory right after       |           585 MB | **348 MB** (243 MB after 4 s idle) |
+| With an `Idempotency-Key` on each |     not measured |                        135 MB heap |
+| Per issue, with its event         |           1.3 KB |                             0.7 KB |
 
 What changed:
 
@@ -102,36 +102,36 @@ We profiled the server under each scenario and fixed what was at the top:
 
 Everything above is our code on a laptop. To see where a request stands against the others, `bun scripts/probe-competitors.ts` reads each service's public API the way a client does: one request after another on a kept-alive connection, from one machine (Europe, a home network), on 7 November 2026. It only reads, politely: GitHub with a personal token (5,000 an hour), everything else anonymously, with fewer samples where a service has low limits or heavy lists.
 
-| Service | Request | Samples | p50 | p95 | p99 | p50 minus round trip | Size |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| GitHub | API root | 50 | 233 ms | 281 ms | 476 ms | ~206 ms | 2.3 KB |
-| GitHub | One issue | 50 | 324 ms | 373 ms | 409 ms | ~297 ms | 4.2 KB |
-| GitHub | One pull request | 50 | 327 ms | 436 ms | 502 ms | ~300 ms | 22.7 KB |
-| GitHub | One issue, If-None-Match (304) | 50 | 316 ms | 368 ms | 499 ms | ~289 ms | none |
-| GitHub | List of 50 issues | 50 | 614 ms | 753 ms | 779 ms | ~587 ms | 341.5 KB |
-| GitHub | List of 50 pull requests | 50 | 803 ms | 1052 ms | 1199 ms | ~776 ms | 1088.6 KB |
-| GitHub | Search (issues, 50) | 15 | 933 ms | 1068 ms | 1068 ms | ~906 ms | 258.2 KB |
-| git.cafe | Repository | 50 | 125 ms | 131 ms | 137 ms | ~8 ms | 0.3 KB |
-| git.cafe | One issue | 50 | 129 ms | 139 ms | 176 ms | ~12 ms | 1.3 KB |
-| git.cafe | List of issues (7) | 50 | 135 ms | 145 ms | 158 ms | ~18 ms | 13.2 KB |
-| git.cafe | List of pull requests (1) | 50 | 136 ms | 186 ms | 216 ms | ~19 ms | 0.8 KB |
-| git.cafe | One pull request | 50 | 142 ms | 189 ms | 225 ms | ~25 ms | 1.5 KB |
-| git.cafe | Explore (5 repositories) | 50 | 121 ms | 162 ms | 1361 ms | ~4 ms | 1.2 KB |
-| GitLab | Project | 50 | 251 ms | 329 ms | 366 ms | ~242 ms | 1.0 KB |
-| GitLab | One issue | 50 | 303 ms | 386 ms | 495 ms | ~295 ms | 3.1 KB |
-| GitLab | One merge request | 50 | 323 ms | 455 ms | 573 ms | ~315 ms | 7.4 KB |
-| GitLab | One issue, If-None-Match (304) | 50 | 278 ms | 376 ms | 452 ms | ~269 ms | none |
-| GitLab | List of 50 issues | 20 | 589 ms | 671 ms | 671 ms | ~580 ms | 234.1 KB |
-| GitLab | List of 50 merge requests | 20 | 471 ms | 686 ms | 686 ms | ~463 ms | 268.2 KB |
-| Codeberg | One issue | 30 | 164 ms | 253 ms | 253 ms | ~137 ms | 3.3 KB |
-| Codeberg | One pull request | 30 | 363 ms | 481 ms | 591 ms | ~336 ms | 7.9 KB |
-| Codeberg | List of 50 issues | 6 | 2538 ms | 2852 ms | 2852 ms | ~2511 ms | 219.4 KB |
-| Codeberg | List of 50 pull requests | 4 | 14758 ms | 17899 ms | 17899 ms | ~14731 ms | 1244.1 KB |
-| Gitea | One issue | 20 | 196 ms | 335 ms | 335 ms | ~6 ms | 1.4 KB |
-| Gitea | List of 50 issues | 5 | 894 ms | 1059 ms | 1059 ms | ~704 ms | 166.7 KB |
-| Bitbucket | Repository | 8 | 240 ms | 540 ms | 540 ms | ~231 ms | 3.0 KB |
-| Bitbucket | One pull request | 8 | 514 ms | 763 ms | 763 ms | ~506 ms | 11.0 KB |
-| Bitbucket | List of 50 pull requests | 6 | 2495 ms | 2951 ms | 2951 ms | ~2486 ms | 657.9 KB |
+| Service   | Request                        | Samples |      p50 |      p95 |      p99 | p50 minus round trip |      Size |
+| --------- | ------------------------------ | ------: | -------: | -------: | -------: | -------------------: | --------: |
+| GitHub    | API root                       |      50 |   233 ms |   281 ms |   476 ms |              ~206 ms |    2.3 KB |
+| GitHub    | One issue                      |      50 |   324 ms |   373 ms |   409 ms |              ~297 ms |    4.2 KB |
+| GitHub    | One pull request               |      50 |   327 ms |   436 ms |   502 ms |              ~300 ms |   22.7 KB |
+| GitHub    | One issue, If-None-Match (304) |      50 |   316 ms |   368 ms |   499 ms |              ~289 ms |      none |
+| GitHub    | List of 50 issues              |      50 |   614 ms |   753 ms |   779 ms |              ~587 ms |  341.5 KB |
+| GitHub    | List of 50 pull requests       |      50 |   803 ms |  1052 ms |  1199 ms |              ~776 ms | 1088.6 KB |
+| GitHub    | Search (issues, 50)            |      15 |   933 ms |  1068 ms |  1068 ms |              ~906 ms |  258.2 KB |
+| git.cafe  | Repository                     |      50 |   125 ms |   131 ms |   137 ms |                ~8 ms |    0.3 KB |
+| git.cafe  | One issue                      |      50 |   129 ms |   139 ms |   176 ms |               ~12 ms |    1.3 KB |
+| git.cafe  | List of issues (7)             |      50 |   135 ms |   145 ms |   158 ms |               ~18 ms |   13.2 KB |
+| git.cafe  | List of pull requests (1)      |      50 |   136 ms |   186 ms |   216 ms |               ~19 ms |    0.8 KB |
+| git.cafe  | One pull request               |      50 |   142 ms |   189 ms |   225 ms |               ~25 ms |    1.5 KB |
+| git.cafe  | Explore (5 repositories)       |      50 |   121 ms |   162 ms |  1361 ms |                ~4 ms |    1.2 KB |
+| GitLab    | Project                        |      50 |   251 ms |   329 ms |   366 ms |              ~242 ms |    1.0 KB |
+| GitLab    | One issue                      |      50 |   303 ms |   386 ms |   495 ms |              ~295 ms |    3.1 KB |
+| GitLab    | One merge request              |      50 |   323 ms |   455 ms |   573 ms |              ~315 ms |    7.4 KB |
+| GitLab    | One issue, If-None-Match (304) |      50 |   278 ms |   376 ms |   452 ms |              ~269 ms |      none |
+| GitLab    | List of 50 issues              |      20 |   589 ms |   671 ms |   671 ms |              ~580 ms |  234.1 KB |
+| GitLab    | List of 50 merge requests      |      20 |   471 ms |   686 ms |   686 ms |              ~463 ms |  268.2 KB |
+| Codeberg  | One issue                      |      30 |   164 ms |   253 ms |   253 ms |              ~137 ms |    3.3 KB |
+| Codeberg  | One pull request               |      30 |   363 ms |   481 ms |   591 ms |              ~336 ms |    7.9 KB |
+| Codeberg  | List of 50 issues              |       6 |  2538 ms |  2852 ms |  2852 ms |             ~2511 ms |  219.4 KB |
+| Codeberg  | List of 50 pull requests       |       4 | 14758 ms | 17899 ms | 17899 ms |            ~14731 ms | 1244.1 KB |
+| Gitea     | One issue                      |      20 |   196 ms |   335 ms |   335 ms |                ~6 ms |    1.4 KB |
+| Gitea     | List of 50 issues              |       5 |   894 ms |  1059 ms |  1059 ms |              ~704 ms |  166.7 KB |
+| Bitbucket | Repository                     |       8 |   240 ms |   540 ms |   540 ms |              ~231 ms |    3.0 KB |
+| Bitbucket | One pull request               |       8 |   514 ms |   763 ms |   763 ms |              ~506 ms |   11.0 KB |
+| Bitbucket | List of 50 pull requests       |       6 |  2495 ms |  2951 ms |  2951 ms |             ~2486 ms |  657.9 KB |
 
 "p50 minus round trip" subtracts the TCP connect time to each host measured from the same machine (GitHub 27 ms, git.cafe 117 ms, GitLab 8.5, Codeberg 27, Gitea 190, Bitbucket 8.5). It is a rough picture of what the service and its edge spent, not a precise one. Rows with 4 to 8 samples are indications.
 
@@ -154,15 +154,15 @@ The hosted service has not been built, so this section is a simulation. `bun scr
 
 p50 / p99 in milliseconds, kept-alive connection:
 
-| Request | DB reads | Same machine | RTT 5 ms | RTT 30 ms | RTT 90 ms | RTT 180 ms |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| One change, from the body cache | 0 | 0 / 0 | 5 / 5 | 34 / 36 | 94 / 95 | 185 / 186 |
-| One change, If-None-Match (304) | 0 | 0 / 0 | 5 / 8 | 34 / 35 | 94 / 95 | 185 / 185 |
-| One change, not cached | 1 | 18 / 23 | 22 / 24 | 50 / 53 | 111 / 112 | 201 / 202 |
-| List of 50 changes | 1 | 18 / 21 | 23 / 26 | 51 / 54 | 112 / 112 | 201 / 204 |
-| Search, 50 results | 1 | 18 / 20 | 23 / 25 | 51 / 54 | 111 / 112 | 201 / 202 |
-| POST an issue | 2 | 33 / 36 | 38 / 43 | 66 / 70 | 126 / 127 | 216 / 220 |
-| Agent start-up: context | 1 | 17 / 21 | 23 / 30 | 51 / 52 | 111 / 112 | 202 / 210 |
+| Request                         | DB reads | Same machine | RTT 5 ms | RTT 30 ms | RTT 90 ms | RTT 180 ms |
+| ------------------------------- | -------: | -----------: | -------: | --------: | --------: | ---------: |
+| One change, from the body cache |        0 |        0 / 0 |    5 / 5 |   34 / 36 |   94 / 95 |  185 / 186 |
+| One change, If-None-Match (304) |        0 |        0 / 0 |    5 / 8 |   34 / 35 |   94 / 95 |  185 / 185 |
+| One change, not cached          |        1 |      18 / 23 |  22 / 24 |   50 / 53 | 111 / 112 |  201 / 202 |
+| List of 50 changes              |        1 |      18 / 21 |  23 / 26 |   51 / 54 | 112 / 112 |  201 / 204 |
+| Search, 50 results              |        1 |      18 / 20 |  23 / 25 |   51 / 54 | 111 / 112 |  201 / 202 |
+| POST an issue                   |        2 |      33 / 36 |  38 / 43 |   66 / 70 | 126 / 127 |  216 / 220 |
+| Agent start-up: context         |        1 |      17 / 21 |  23 / 30 |   51 / 52 | 111 / 112 |  202 / 210 |
 
 Reading it:
 
@@ -186,12 +186,12 @@ Put together, for a caller 30 ms away we would expect about **35 ms for a cached
 
 These are goals, set before there is anything to measure them against, and published on the status page once there is.
 
-| Kind                  | p50    | p99    |
-| --------------------- | ------ | ------ |
-| Read one object       | 40 ms  | 250 ms |
-| Read a list of 50     | 80 ms  | 400 ms |
-| Write                 | 120 ms | 600 ms |
-| Anything slower       | becomes a `202` operation |
+| Kind              | p50                       | p99    |
+| ----------------- | ------------------------- | ------ |
+| Read one object   | 40 ms                     | 250 ms |
+| Read a list of 50 | 80 ms                     | 400 ms |
+| Write             | 120 ms                    | 600 ms |
+| Anything slower   | becomes a `202` operation |
 
 ## What the design does for speed
 
@@ -207,13 +207,13 @@ These are goals, set before there is anything to measure them against, and publi
 
 The API process holds no state that correctness depends on. The pieces that must be shared sit behind interfaces, so adding nodes is adding processes:
 
-| Concern             | How                                                                                       | State of it |
-| ------------------- | ----------------------------------------------------------------------------------------- | ----------- |
-| Rate limits         | Counter in a shared store, leased to nodes in blocks. See [Rate limits](/docs/api/rate-limits#how-it-works-with-many-clients). | Built on Convex (`convex/apiStores.ts`) and tested against Convex's in-memory runtime, including asks that arrive together. Not yet run against a live deployment or measured across nodes. |
-| Idempotency keys    | A shared store; the first request claims the key in one transaction | Built on Convex and tested the same way, including two nodes racing for one key. |
-| Event log, waiters  | One log; waiters per repository                                                           | In memory, one process. A shared log is a roadmap item. |
-| Reads               | Version-keyed body cache per node                                                         | Built.      |
-| Public reads        | Anonymous reads carry `Cache-Control: public, must-revalidate` and an `ETag`, so a CDN can revalidate them cheaply | Headers set; no CDN in front yet. Git data addressed by a full commit id is `immutable` but `private`, so a shared cache will not keep it. |
+| Concern            | How                                                                                                                            | State of it                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rate limits        | Counter in a shared store, leased to nodes in blocks. See [Rate limits](/docs/api/rate-limits#how-it-works-with-many-clients). | Built on Convex (`convex/apiStores.ts`) and tested against Convex's in-memory runtime, including asks that arrive together. Not yet run against a live deployment or measured across nodes. |
+| Idempotency keys   | A shared store; the first request claims the key in one transaction                                                            | Built on Convex and tested the same way, including two nodes racing for one key.                                                                                                            |
+| Event log, waiters | One log; waiters per repository                                                                                                | In memory, one process. A shared log is a roadmap item.                                                                                                                                     |
+| Reads              | Version-keyed body cache per node                                                                                              | Built.                                                                                                                                                                                      |
+| Public reads       | Anonymous reads carry `Cache-Control: public, must-revalidate` and an `ETag`, so a CDN can revalidate them cheaply             | Headers set; no CDN in front yet. Git data addressed by a full commit id is `immutable` but `private`, so a shared cache will not keep it.                                                  |
 
 Concurrency per token is a per-node guard. It limits one client opening hundreds of connections, and it is the only limit that is not shared.
 

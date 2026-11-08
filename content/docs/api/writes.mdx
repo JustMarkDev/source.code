@@ -1,6 +1,6 @@
 ---
 icon: ArrowPathIcon
-title: "Writes: retries, edits and long work"
+title: 'Writes: retries, edits and long work'
 description: Idempotency keys, If-Match, landing only what was checked, dry runs, operations and batch.
 ---
 
@@ -17,14 +17,14 @@ curl -X POST "$SX/repos/dana/gitfs/issues" \
   -d '{"title":"Crash on empty repo"}'
 ```
 
-| Situation                                  | Result                                                                  |
-| ------------------------------------------ | ----------------------------------------------------------------------- |
-| Same key, same request                     | The stored response, `Sx-Replayed: true`                                |
+| Situation                                             | Result                                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Same key, same request                                | The stored response, `Sx-Replayed: true`                                     |
 | Same key, the same conditional update with `If-Match` | Re-checked against the current ETag; a stale one gets `412 version_mismatch` |
-| Same key, the same update with `If-Match: *` | Replayed with `Sx-Replayed: true`; a wildcard is not a concrete precondition |
-| Same key, a different request              | `422 idempotency_key_reused`                                            |
-| Same key while the first is still running  | `409 request_in_progress` with `Retry-After`. Send it again.            |
-| The first request failed                   | The key is free again. A corrected retry runs.                          |
+| Same key, the same update with `If-Match: *`          | Replayed with `Sx-Replayed: true`; a wildcard is not a concrete precondition |
+| Same key, a different request                         | `422 idempotency_key_reused`                                                 |
+| Same key while the first is still running             | `409 request_in_progress` with `Retry-After`. Send it again.                 |
+| The first request failed                              | The key is free again. A corrected retry runs.                               |
 
 Keys are scoped to the account the request acts as and to the token; a repository-limited token keeps its key across a rename. They are up to 64 characters and kept 24 hours. Use a UUID per intended action, and keep it across retries of that action.
 
@@ -34,12 +34,12 @@ In the preview the keys are held in memory, bounded to 100,000 keys or 24 MB of 
 
 These need no key. `Sx-Outcome` says what happened.
 
-| Write                                | Repeating it                                                                 |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| `POST …/changes` for a branch        | Adds a patch set if the branch moved (`patch_set_added`), otherwise returns the same change (`unchanged`) |
-| `POST …/issues` with an open title   | Returns the existing issue (`unchanged`)                                     |
-| `POST …/changes/{n}/checks`          | The same `key` on the same `tree` updates one run: `created`, `updated`, `unchanged` |
-| Resolving or dismissing a finding    | Already in that state: returns it                                            |
+| Write                              | Repeating it                                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `POST …/changes` for a branch      | Adds a patch set if the branch moved (`patch_set_added`), otherwise returns the same change (`unchanged`) |
+| `POST …/issues` with an open title | Returns the existing issue (`unchanged`)                                                                  |
+| `POST …/changes/{n}/checks`        | The same `key` on the same `tree` updates one run: `created`, `updated`, `unchanged`                      |
+| Resolving or dismissing a finding  | Already in that state: returns it                                                                         |
 
 ## Editing without overwriting someone else
 
@@ -56,8 +56,11 @@ If it changed since you read it, you get `412 version_mismatch` and the **curren
 A policy decision is about one tree. `POST …/land` requires `expected_tree`, the tree you checked. If the change has moved:
 
 ```json
-{ "code": "stale_head", "detail": "#216 is now at 9c4d7e1, not 5d02b8f.",
-  "current": { "patch_set": 3, "tree": "9c4d7e1", "sha": "9c4d7e1000…" } }
+{
+  "code": "stale_head",
+  "detail": "#216 is now at 9c4d7e1, not 5d02b8f.",
+  "current": { "patch_set": 3, "tree": "9c4d7e1", "sha": "9c4d7e1000…" }
+}
 ```
 
 Nothing lands. Read the change again, check the new tree, and send that one. This is what protects an agent that read a change a minute ago.
@@ -109,10 +112,20 @@ A finished operation also produces an `operation.finished` [event](/docs/api/eve
 `POST /v1/batch` takes up to 25 requests, runs them in parallel and returns each answer with its own status. Each request is authorised and rate limited as if it had been sent alone. Batches do not nest.
 
 ```json
-{ "requests": [
-  { "id": "change", "method": "GET", "path": "/repos/dana/gitfs/changes/216?fields=number,title,policy" },
-  { "id": "checks", "method": "GET", "path": "/repos/dana/gitfs/changes/216/checks" }
-] }
+{
+  "requests": [
+    {
+      "id": "change",
+      "method": "GET",
+      "path": "/repos/dana/gitfs/changes/216?fields=number,title,policy"
+    },
+    {
+      "id": "checks",
+      "method": "GET",
+      "path": "/repos/dana/gitfs/changes/216/checks"
+    }
+  ]
+}
 ```
 
 It exists to cut round trips: a change, its policy and its checks in one. Writes in a batch are separate writes. An all-or-nothing batch is on the [roadmap](/docs/api/roadmap).

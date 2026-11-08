@@ -241,7 +241,8 @@ export class AuthStore implements TokenStore {
     if (!record) {
       record = this.byHash.get(hashToken(token))
       if (!record) return { ok: false, reason: 'unknown' }
-      if (this.recent.size >= 4096) this.recent.delete(this.recent.keys().next().value as string)
+      if (this.recent.size >= 4096)
+        this.recent.delete(this.recent.keys().next().value as string)
       this.recent.set(token, record)
       this.rawOf.set(record, token)
     }
@@ -254,7 +255,11 @@ export class AuthStore implements TokenStore {
     return this.check(record, audience, now)
   }
 
-  private check(record: TokenRecord, audience: Audience, now: number): FindResult {
+  private check(
+    record: TokenRecord,
+    audience: Audience,
+    now: number,
+  ): FindResult {
     if (record.revokedAt !== null) return { ok: false, reason: 'revoked' }
     if (record.expiresAt <= now) return { ok: false, reason: 'expired' }
     if (!record.audience.includes(audience))
@@ -308,7 +313,8 @@ export class AuthStore implements TokenStore {
     this.revoked.push(t)
     // Past the cap the oldest revocations are forgotten: such a token then answers
     // `token_invalid` instead of `token_revoked`, and it still does not work.
-    while (this.revoked.length - this.revokedFrom > AuthStore.REVOKED_KEPT) this.forgetOldest()
+    while (this.revoked.length - this.revokedFrom > AuthStore.REVOKED_KEPT)
+      this.forgetOldest()
     if (this.revokedFrom > 4096 && this.revokedFrom * 2 > this.revoked.length) {
       this.revoked.splice(0, this.revokedFrom)
       this.revokedFrom = 0
@@ -340,7 +346,8 @@ export class AuthStore implements TokenStore {
     const a = this.authorizations.get(id)
     if (!a || a.revokedAt !== null) return false
     a.revokedAt = this.clock()
-    for (const t of this.byAuthorization.get(id) ?? []) t.revokedAt ??= a.revokedAt
+    for (const t of this.byAuthorization.get(id) ?? [])
+      t.revokedAt ??= a.revokedAt
     return true
   }
 
@@ -363,10 +370,12 @@ export class AuthStore implements TokenStore {
     const newName = to.toLowerCase()
     for (const t of this.byId.values()) {
       if (!t.repos) continue
-      if (t.repos.includes(oldName)) t.repos = t.repos.map((r) => (r === oldName ? newName : r))
+      if (t.repos.includes(oldName))
+        t.repos = t.repos.map((r) => (r === oldName ? newName : r))
       // A different repository moving into a name this token holds is not the
       // repository the token was granted, so remove the name it collides with.
-      else if (t.repos.includes(newName)) t.repos = t.repos.filter((r) => r !== newName)
+      else if (t.repos.includes(newName))
+        t.repos = t.repos.filter((r) => r !== newName)
     }
   }
 
@@ -380,7 +389,11 @@ export class AuthStore implements TokenStore {
   /** Drop expired and long-revoked tokens, and authorizations revoked long ago. */
   sweep(now: number) {
     for (const t of Array.from(this.byId.values()))
-      if (t.expiresAt + 86_400_000 < now || (t.revokedAt && t.revokedAt + 86_400_000 < now)) this.forgetByRecord(t)
+      if (
+        t.expiresAt + 86_400_000 < now ||
+        (t.revokedAt && t.revokedAt + 86_400_000 < now)
+      )
+        this.forgetByRecord(t)
     for (const [id, a] of this.authorizations)
       if (a.revokedAt !== null && a.revokedAt + 86_400_000 < now) {
         this.authorizations.delete(id)

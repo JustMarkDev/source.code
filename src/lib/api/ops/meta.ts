@@ -5,7 +5,14 @@ import { Raw, defineOp } from '../registry'
 import * as S from '../schemas'
 import { ApiError, apiError, errorCatalog } from '../problem'
 import { pools } from '../limiter'
-import { API_VERSION, BATCH_LIMIT, BODY_LIMIT, PAGE, SUPPORTED_VERSIONS, WAIT_MAX } from '../pipeline'
+import {
+  API_VERSION,
+  BATCH_LIMIT,
+  BODY_LIMIT,
+  PAGE,
+  SUPPORTED_VERSIONS,
+  WAIT_MAX,
+} from '../pipeline'
 import type { Op } from '../registry'
 
 const open = {
@@ -19,7 +26,8 @@ export const rootOp = defineOp({
   ...open,
   id: 'api.root',
   summary: 'Where to start',
-  description: 'Links to every top-level collection, the OpenAPI document and the limits.',
+  description:
+    'Links to every top-level collection, the OpenAPI document and the limits.',
   tags: ['meta'],
   method: 'GET',
   path: '/',
@@ -77,7 +85,8 @@ export const limitsOp = defineOp({
   ...open,
   id: 'api.limits',
   summary: 'Rate, page and body limits',
-  description: 'Rate-limit pools, page sizes and request-body limits for this API. Object caps are in the guide for each resource.',
+  description:
+    'Rate-limit pools, page sizes and request-body limits for this API. Object caps are in the guide for each resource.',
   tags: ['meta'],
   method: 'GET',
   path: '/limits',
@@ -85,7 +94,11 @@ export const limitsOp = defineOp({
   handler: () =>
     Effect.succeed({
       object: 'limits' as const,
-      pools: Object.entries(pools).map(([name, p]) => ({ name, limit: p.limit, window_seconds: p.windowMs / 1000 })),
+      pools: Object.entries(pools).map(([name, p]) => ({
+        name,
+        limit: p.limit,
+        window_seconds: p.windowMs / 1000,
+      })),
       page: PAGE,
       concurrency: { per_token_per_node: 20 },
       body_bytes: BODY_LIMIT,
@@ -99,7 +112,8 @@ export const principalOp = defineOp({
   ...open,
   id: 'auth.principal',
   summary: 'Who this token is',
-  description: 'The account, actor class, scopes, repositories and expiry of the token. Never rate limited.',
+  description:
+    'The account, actor class, scopes, repositories and expiry of the token. Never rate limited.',
   tags: ['auth'],
   method: 'GET',
   path: '/auth/principal',
@@ -116,7 +130,11 @@ export const principalOp = defineOp({
       scopes: [...p.scopes].sort(),
       repos: p.repos ? [...p.repos] : null,
       expires_at: new Date(p.expiresAt).toISOString(),
-      pools: Object.entries(pools).map(([name, q]) => ({ name, limit: q.limit, window_seconds: q.windowMs / 1000 })),
+      pools: Object.entries(pools).map(([name, q]) => ({
+        name,
+        limit: q.limit,
+        window_seconds: q.windowMs / 1000,
+      })),
     })
   },
 })
@@ -127,7 +145,8 @@ export function openapiOp(spec: () => unknown): Op {
     ...open,
     id: 'api.openapi',
     summary: 'This API as OpenAPI 3.1',
-    description: 'Generated from the same definitions the server runs. Every operation carries x-sx-* metadata: safety, idempotency, scopes, rate-limit pool and cost, and error codes.',
+    description:
+      'Generated from the same definitions the server runs. Every operation carries x-sx-* metadata: safety, idempotency, scopes, rate-limit pool and cost, and error codes.',
     tags: ['meta'],
     method: 'GET',
     path: '/openapi.json',
@@ -138,13 +157,29 @@ export function openapiOp(spec: () => unknown): Op {
       Effect.sync(() => {
         if (built === null) {
           const body = JSON.stringify(spec())
-          built = { body, etag: `W/"${createHash('sha1').update(body).digest('base64url').slice(0, 16)}"` }
+          built = {
+            body,
+            etag: `W/"${createHash('sha1').update(body).digest('base64url').slice(0, 16)}"`,
+          }
         }
-        const headers = { etag: built.etag, 'cache-control': 'public, max-age=300, must-revalidate' }
+        const headers = {
+          etag: built.etag,
+          'cache-control': 'public, max-age=300, must-revalidate',
+        }
         const sent = ctx.header('if-none-match')
-        if (sent !== null && sent.split(',').some((t) => t.trim() === built!.etag))
+        if (
+          sent !== null &&
+          sent.split(',').some((t) => t.trim() === built!.etag)
+        )
           return new Raw(new Response(null, { status: 304, headers }))
-        return new Raw(new Response(built.body, { headers: { ...headers, 'content-type': 'application/json; charset=utf-8' } }))
+        return new Raw(
+          new Response(built.body, {
+            headers: {
+              ...headers,
+              'content-type': 'application/json; charset=utf-8',
+            },
+          }),
+        )
       }),
   })
 }
@@ -178,7 +213,12 @@ export const batchOp = defineOp({
   handler: (ctx) =>
     Effect.tryPromise({
       try: async () => {
-        const results: Array<{ id: string; status: number; headers: Record<string, string>; body: unknown }> = []
+        const results: Array<{
+          id: string
+          status: number
+          headers: Record<string, string>
+          body: unknown
+        }> = []
         // A batch holds one concurrency slot; run a few at a time so a full
         // batch of 25 does not collide with the per-token cap.
         for (let i = 0; i < ctx.body.requests.length; i += 5) {
@@ -195,7 +235,13 @@ export const batchOp = defineOp({
                 }
               }
               const headers: Record<string, string> = {}
-              for (const k of ['etag', 'location', 'sx-outcome', 'ratelimit', 'retry-after'])
+              for (const k of [
+                'etag',
+                'location',
+                'sx-outcome',
+                'ratelimit',
+                'retry-after',
+              ])
                 if (res.headers.has(k)) headers[k] = res.headers.get(k)!
               return { id: r.id, status: res.status, headers, body }
             }),
@@ -204,7 +250,8 @@ export const batchOp = defineOp({
         }
         return { object: 'batch' as const, results }
       },
-      catch: (e) => (e instanceof ApiError ? e : apiError('internal', 'The batch failed.')),
+      catch: (e) =>
+        e instanceof ApiError ? e : apiError('internal', 'The batch failed.'),
     }),
 })
 

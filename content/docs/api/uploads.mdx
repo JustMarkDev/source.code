@@ -56,22 +56,22 @@ curl -X POST "$SX/repos/dana/gitfs/changes/216/evidence" \
 
 The upload must be yours and finished. Its type must fit the kind. A file attaches once. The change's `evidence_count` goes up and a `change.updated` event is written.
 
-| `kind`         | Accepts                                  |
-| -------------- | ---------------------------------------- |
+| `kind`         | Accepts                                              |
+| -------------- | ---------------------------------------------------- |
 | `image`        | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
-| `recording`    | `video/mp4`, `video/webm`                |
-| `preview`      | `text/html`: an interactive page         |
-| `test_results` | `application/json`, `text/plain`         |
+| `recording`    | `video/mp4`, `video/webm`                            |
+| `preview`      | `text/html`: an interactive page                     |
+| `test_results` | `application/json`, `text/plain`                     |
 
 `GET …/changes/216/evidence` lists what is attached.
 
 ## Types and sizes
 
-| Type                                   | Up to  |
-| -------------------------------------- | -----: |
-| `image/png`, `jpeg`, `gif`, `webp`     | 10 MiB |
-| `video/mp4`, `video/webm`              | 50 MiB |
-| `application/json`, `text/plain`, `text/html` | 5 MiB  |
+| Type                                          |  Up to |
+| --------------------------------------------- | -----: |
+| `image/png`, `jpeg`, `gif`, `webp`            | 10 MiB |
+| `video/mp4`, `video/webm`                     | 50 MiB |
+| `application/json`, `text/plain`, `text/html` |  5 MiB |
 
 SVG is not accepted: it can carry script.
 

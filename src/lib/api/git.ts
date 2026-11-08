@@ -16,16 +16,28 @@ export type GitCommit = {
   date: string
 }
 
-export type GitDiffFile = { path: string; state: 'added' | 'modified' | 'deleted'; additions: number; deletions: number; patch: string }
+export type GitDiffFile = {
+  path: string
+  state: 'added' | 'modified' | 'deleted'
+  additions: number
+  deletions: number
+  patch: string
+}
 
 export interface GitData {
   /** Every file path at `ref`, with the commit it was resolved to. */
-  files: (repo: string, ref?: string) => Promise<{ ref: string; paths: Array<string> }>
+  files: (
+    repo: string,
+    ref?: string,
+  ) => Promise<{ ref: string; paths: Array<string> }>
   blob: (repo: string, path: string, ref?: string) => Promise<Uint8Array | null>
   /** Newest first. */
   commits: (repo: string, limit: number) => Promise<Array<GitCommit>>
   commit: (repo: string, sha: string) => Promise<GitCommit>
-  diff: (repo: string, sha: string) => Promise<{ sha: string; base: string | null; files: Array<GitDiffFile> }>
+  diff: (
+    repo: string,
+    sha: string,
+  ) => Promise<{ sha: string; base: string | null; files: Array<GitDiffFile> }>
   /** Point an address at an immutable git store id, when the implementation has one. */
   setRepo?: (repo: string, storeId: string) => void
   /** Forget an address whose repository is gone. */
@@ -64,7 +76,9 @@ async function guarded<T>(what: string, call: () => Promise<T>): Promise<T> {
 /** The store behind `src/git`. A repository's store id is its name until the directory says otherwise. */
 export class StoreGit implements GitData {
   private readonly stores = new Map<string, string>()
-  constructor(private readonly open: (storeId: string) => GitRepo = getGitRepo) {}
+  constructor(
+    private readonly open: (storeId: string) => GitRepo = getGitRepo,
+  ) {}
 
   setRepo(repo: string, storeId: string) {
     this.stores.set(repo.toLowerCase(), storeId)
@@ -93,11 +107,15 @@ export class StoreGit implements GitData {
   }
 
   commits(repo: string, limit: number) {
-    return guarded('The history', async () => (await this.repo(repo).listCommits({ limit })).commits.map(commitOf))
+    return guarded('The history', async () =>
+      (await this.repo(repo).listCommits({ limit })).commits.map(commitOf),
+    )
   }
 
   commit(repo: string, sha: string) {
-    return guarded(`Commit ${sha}`, async () => commitOf((await this.repo(repo).getCommit({ sha })).commit))
+    return guarded(`Commit ${sha}`, async () =>
+      commitOf((await this.repo(repo).getCommit({ sha })).commit),
+    )
   }
 
   diff(repo: string, sha: string) {

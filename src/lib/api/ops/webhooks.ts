@@ -9,16 +9,26 @@ import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 import type { Delivery, Hook } from '../webhooks'
 import type { MemoryDomain } from '../domain'
 
-const hookParams = repoParams.extend({ webhook: z.string().describe('The webhook `whk_` id') })
-const deliveryParams = hookParams.extend({ delivery: z.string().describe('The delivery `dlv_` id') })
+const hookParams = repoParams.extend({
+  webhook: z.string().describe('The webhook `whk_` id'),
+})
+const deliveryParams = hookParams.extend({
+  delivery: z.string().describe('The delivery `dlv_` id'),
+})
 
 const eventPatterns = z
   .array(z.string().regex(/^(\*|[a-z_]+(\.[a-z_]+)*(\.\*)?)$/))
   .min(1)
   .max(50)
-  .describe('Event types, such as `change.landed`. `change.*` matches the family, `*` everything')
+  .describe(
+    'Event types, such as `change.landed`. `change.*` matches the family, `*` everything',
+  )
 
-function presentHook(d: MemoryDomain, h: Hook, secret: string | null): z.infer<typeof S.Webhook> {
+function presentHook(
+  d: MemoryDomain,
+  h: Hook,
+  secret: string | null,
+): z.infer<typeof S.Webhook> {
   const last = h.lastDelivery ? d.svc.hooks.getDelivery(h.lastDelivery) : null
   const url = `${d.urls.api}/repos/${h.repo}/webhooks/${h.id}`
   return {
@@ -31,7 +41,9 @@ function presentHook(d: MemoryDomain, h: Hook, secret: string | null): z.infer<t
     active: h.active,
     disabled_reason: h.disabledReason,
     secret,
-    last_delivery: last ? { id: last.id, state: last.state, at: iso(last.createdAt) } : null,
+    last_delivery: last
+      ? { id: last.id, state: last.state, at: iso(last.createdAt) }
+      : null,
     html_url: `${d.urls.html}/${h.repo}/settings`,
     url,
     created_at: iso(h.createdAt),
@@ -40,7 +52,12 @@ function presentHook(d: MemoryDomain, h: Hook, secret: string | null): z.infer<t
   }
 }
 
-function presentDelivery(d: MemoryDomain, h: Hook, x: Delivery, full: boolean): z.infer<typeof S.Delivery> {
+function presentDelivery(
+  d: MemoryDomain,
+  h: Hook,
+  x: Delivery,
+  full: boolean,
+): z.infer<typeof S.Delivery> {
   return {
     object: 'delivery',
     id: x.id,
@@ -49,9 +66,15 @@ function presentDelivery(d: MemoryDomain, h: Hook, x: Delivery, full: boolean): 
     state: x.state,
     attempt_count: x.attempts.length,
     attempts: full
-      ? x.attempts.map((a) => ({ number: a.number, at: iso(a.at), status: a.status, error: a.error, duration_ms: a.ms }))
+      ? x.attempts.map((a) => ({
+          number: a.number,
+          at: iso(a.at),
+          status: a.status,
+          error: a.error,
+          duration_ms: a.ms,
+        }))
       : null,
-    payload: full ? (x.event) : null,
+    payload: full ? x.event : null,
     next_attempt_at: x.nextAt ? iso(x.nextAt) : null,
     redelivery_of: x.redeliveryOf,
     url: `${d.urls.api}/repos/${h.repo}/webhooks/${h.id}/deliveries/${x.id}`,
@@ -59,17 +82,39 @@ function presentDelivery(d: MemoryDomain, h: Hook, x: Delivery, full: boolean): 
   }
 }
 
-async function hookOf(d: MemoryDomain, owner: string, repo: string, id: string, p: Parameters<MemoryDomain['repoAccess']>[2], need: 'read' | 'write' = 'write') {
-  const full = need === 'read'
-    ? await d.repoAccessStrict(owner, repo, p, 'read')
-    : await d.repoAccess(owner, repo, p, 'write')
+async function hookOf(
+  d: MemoryDomain,
+  owner: string,
+  repo: string,
+  id: string,
+  p: Parameters<MemoryDomain['repoAccess']>[2],
+  need: 'read' | 'write' = 'write',
+) {
+  const full =
+    need === 'read'
+      ? await d.repoAccessStrict(owner, repo, p, 'read')
+      : await d.repoAccess(owner, repo, p, 'write')
   const h = d.svc.hooks.get(id)
-  if (!h || h.repo !== full) throw apiError('not_found', `No webhook ${id} on ${full}.`)
+  if (!h || h.repo !== full)
+    throw apiError('not_found', `No webhook ${id} on ${full}.`)
   return h
 }
 
-const read = { auth: 'required' as const, scopes: ['webhooks:read' as const], pool: 'read' as const, safety: 'read' as const, idempotent: true, tags: ['webhooks'] }
-const write = { auth: 'required' as const, scopes: ['webhooks:write' as const], pool: 'write' as const, safety: 'write' as const, tags: ['webhooks'] }
+const read = {
+  auth: 'required' as const,
+  scopes: ['webhooks:read' as const],
+  pool: 'read' as const,
+  safety: 'read' as const,
+  idempotent: true,
+  tags: ['webhooks'],
+}
+const write = {
+  auth: 'required' as const,
+  scopes: ['webhooks:write' as const],
+  pool: 'write' as const,
+  safety: 'write' as const,
+  tags: ['webhooks'],
+}
 
 export const listWebhooks = defineOp({
   ...read,
@@ -84,10 +129,20 @@ export const listWebhooks = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         return d.svc.hooks.list(full).map((h) => presentHook(d, h, null))
       })
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -115,20 +170,73 @@ export const createWebhook = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const h = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'write')
-        const repoId = await d.repoIdOf(ctx.params.owner, ctx.params.repo, ctx.principal)
-        const problem = endpointProblem(ctx.body.endpoint, d.svc.hooks.allowPrivate)
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'write',
+        )
+        const repoId = await d.repoIdOf(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+        )
+        const problem = endpointProblem(
+          ctx.body.endpoint,
+          d.svc.hooks.allowPrivate,
+        )
         if (problem)
-          throw apiError('invalid_request', 'That URL cannot be a webhook endpoint.', {
-            errors: [{ pointer: '/body/endpoint', code: 'url_not_allowed', message: problem }],
-          })
+          throw apiError(
+            'invalid_request',
+            'That URL cannot be a webhook endpoint.',
+            {
+              errors: [
+                {
+                  pointer: '/body/endpoint',
+                  code: 'url_not_allowed',
+                  message: problem,
+                },
+              ],
+            },
+          )
         if (d.svc.hooks.list(full).length >= MAX_HOOKS_PER_REPO)
-          throw apiError('limit_reached', `A repository can have ${MAX_HOOKS_PER_REPO} webhooks.`)
-        if (ctx.dryRun) return presentHook(d, { id: 'whk_dryrun', repo: full, repoId, url: ctx.body.endpoint, description: ctx.body.description ?? '', events: ctx.body.events, active: true, disabledReason: null, secrets: [], failures: 0, createdAt: ctx.now(), updatedAt: ctx.now(), version: 1, deliveries: [], lastDelivery: null }, null)
-        const { hook, secret } = d.svc.hooks.create(full, repoId, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description })
+          throw apiError(
+            'limit_reached',
+            `A repository can have ${MAX_HOOKS_PER_REPO} webhooks.`,
+          )
+        if (ctx.dryRun)
+          return presentHook(
+            d,
+            {
+              id: 'whk_dryrun',
+              repo: full,
+              repoId,
+              url: ctx.body.endpoint,
+              description: ctx.body.description ?? '',
+              events: ctx.body.events,
+              active: true,
+              disabledReason: null,
+              secrets: [],
+              failures: 0,
+              createdAt: ctx.now(),
+              updatedAt: ctx.now(),
+              version: 1,
+              deliveries: [],
+              lastDelivery: null,
+            },
+            null,
+          )
+        const { hook, secret } = d.svc.hooks.create(full, repoId, {
+          url: ctx.body.endpoint,
+          events: ctx.body.events,
+          description: ctx.body.description,
+        })
         return presentHook(d, hook, secret)
       })
-      return reply(h, { status: 201, headers: { location: h.url, 'cache-control': 'no-store' } })
+      return reply(h, {
+        status: 201,
+        headers: { location: h.url, 'cache-control': 'no-store' },
+      })
     }),
 })
 
@@ -142,14 +250,34 @@ export const getWebhook = defineOp({
   response: S.Webhook,
   errors: ['not_found', 'forbidden', 'moved'],
   probe: async (ctx, d) => {
-    const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
+    const h = await hookOf(
+      d,
+      ctx.params.owner,
+      ctx.params.repo,
+      ctx.params.webhook,
+      ctx.principal,
+      'read',
+    )
     const last = h.lastDelivery ? d.svc.hooks.getDelivery(h.lastDelivery) : null
     return `${h.id}.${h.version}.${h.lastDelivery ?? ''}.${last?.state ?? ''}.${last?.attempts.length ?? 0}`
   },
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => presentHook(d, await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read'), null))
+      return yield* run(async (d) =>
+        presentHook(
+          d,
+          await hookOf(
+            d,
+            ctx.params.owner,
+            ctx.params.repo,
+            ctx.params.webhook,
+            ctx.principal,
+            'read',
+          ),
+          null,
+        ),
+      )
     }),
 })
 
@@ -157,7 +285,8 @@ export const updateWebhook = defineOp({
   ...write,
   id: 'webhooks.update',
   summary: 'Change a webhook',
-  description: 'Set `active: true` to turn a disabled endpoint back on. That also clears the failure count. Send If-Match with the ETag you read.',
+  description:
+    'Set `active: true` to turn a disabled endpoint back on. That also clears the failure count. Send If-Match with the ETag you read.',
   method: 'PATCH',
   path: '/repos/{owner}/{repo}/webhooks/{webhook}',
   params: hookParams,
@@ -176,18 +305,52 @@ export const updateWebhook = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
-        d.assertVersion(ctx.ifMatch, `${h.id}.${h.version}`, () => presentHook(d, h, null))
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
+        d.assertVersion(ctx.ifMatch, `${h.id}.${h.version}`, () =>
+          presentHook(d, h, null),
+        )
         if (ctx.body.endpoint !== undefined) {
-          const problem = endpointProblem(ctx.body.endpoint, d.svc.hooks.allowPrivate)
+          const problem = endpointProblem(
+            ctx.body.endpoint,
+            d.svc.hooks.allowPrivate,
+          )
           if (problem)
-            throw apiError('invalid_request', 'That URL cannot be a webhook endpoint.', {
-              errors: [{ pointer: '/body/endpoint', code: 'url_not_allowed', message: problem }],
-            })
+            throw apiError(
+              'invalid_request',
+              'That URL cannot be a webhook endpoint.',
+              {
+                errors: [
+                  {
+                    pointer: '/body/endpoint',
+                    code: 'url_not_allowed',
+                    message: problem,
+                  },
+                ],
+              },
+            )
         }
-        if (!ctx.dryRun) d.svc.hooks.update(h, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description, active: ctx.body.active })
+        if (!ctx.dryRun)
+          d.svc.hooks.update(h, {
+            url: ctx.body.endpoint,
+            events: ctx.body.events,
+            description: ctx.body.description,
+            active: ctx.body.active,
+          })
         const shown = ctx.dryRun
-          ? { ...h, url: ctx.body.endpoint ?? h.url, events: ctx.body.events ?? h.events, description: ctx.body.description ?? h.description, active: ctx.body.active ?? h.active, ...(ctx.body.active ? { disabledReason: null, failures: 0 } : {}) }
+          ? {
+              ...h,
+              url: ctx.body.endpoint ?? h.url,
+              events: ctx.body.events ?? h.events,
+              description: ctx.body.description ?? h.description,
+              active: ctx.body.active ?? h.active,
+              ...(ctx.body.active ? { disabledReason: null, failures: 0 } : {}),
+            }
           : h
         return presentHook(d, shown, null)
       })
@@ -212,7 +375,13 @@ export const deleteWebhook = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
         if (!ctx.dryRun) d.svc.hooks.remove(h)
       })
       return reply(null, { status: 204 })
@@ -236,7 +405,13 @@ export const rotateSecret = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const h = yield* run(async (d) => {
-        const hook = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const hook = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
         return presentHook(d, hook, d.svc.hooks.rotate(hook))
       })
       return reply(h, { headers: { 'cache-control': 'no-store' } })
@@ -247,7 +422,8 @@ export const pingWebhook = defineOp({
   ...write,
   id: 'webhooks.ping',
   summary: 'Send a test delivery',
-  description: 'Sends a `webhook.ping` event so you can check the endpoint and your signature check. Answers 202 with the delivery.',
+  description:
+    'Sends a `webhook.ping` event so you can check the endpoint and your signature check. Answers 202 with the delivery.',
   method: 'POST',
   path: '/repos/{owner}/{repo}/webhooks/{webhook}/ping',
   params: hookParams,
@@ -259,7 +435,13 @@ export const pingWebhook = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const x = yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
         return presentDelivery(d, h, d.svc.hooks.ping(h), false)
       })
       return reply(x, { status: 202, headers: { location: x.url } })
@@ -286,16 +468,30 @@ export const listDeliveries = defineOp({
       const q = ctx.query
       const f = fp('webhooks.deliveries', ctx.params.webhook, q.state)
       const out = yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+          'read',
+        )
         const after = afterOf(q.cursor, f)
-        const afterSequence = after ? Number(after.id) : Number.POSITIVE_INFINITY
+        const afterSequence = after
+          ? Number(after.id)
+          : Number.POSITIVE_INFINITY
         // Newest first: the monotonic sequence is the stable order when ids share a millisecond.
-        const rows = h.deliveries.filter((x) => (!q.state || x.state === q.state) && x.sequence < afterSequence)
+        const rows = h.deliveries.filter(
+          (x) =>
+            (!q.state || x.state === q.state) && x.sequence < afterSequence,
+        )
         const page = rows.slice(0, q.limit)
         const more = rows.length > q.limit
         return {
           items: page.map((x) => presentDelivery(d, h, x, false)),
-          next: more ? { key: 0, id: String(page[page.length - 1].sequence) } : null,
+          next: more
+            ? { key: 0, id: String(page[page.length - 1].sequence) }
+            : null,
         }
       })
       return listOf(out.items, out.next, f)
@@ -315,9 +511,17 @@ export const getDelivery = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+          'read',
+        )
         const x = d.svc.hooks.getDelivery(ctx.params.delivery)
-        if (!x || x.hookId !== h.id) throw apiError('not_found', `No delivery ${ctx.params.delivery}.`)
+        if (!x || x.hookId !== h.id)
+          throw apiError('not_found', `No delivery ${ctx.params.delivery}.`)
         return presentDelivery(d, h, x, true)
       })
     }),
@@ -327,7 +531,8 @@ export const redeliver = defineOp({
   ...write,
   id: 'webhooks.deliveries.redeliver',
   summary: 'Send a delivery again',
-  description: 'Creates a new delivery of the same event. `webhook-id` is unchanged, so a receiver that deduplicates by it sees the same event.',
+  description:
+    'Creates a new delivery of the same event. `webhook-id` is unchanged, so a receiver that deduplicates by it sees the same event.',
   method: 'POST',
   path: '/repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}/redeliver',
   params: deliveryParams,
@@ -339,9 +544,16 @@ export const redeliver = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const x = yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
         const old = d.svc.hooks.getDelivery(ctx.params.delivery)
-        if (!old || old.hookId !== h.id) throw apiError('not_found', `No delivery ${ctx.params.delivery}.`)
+        if (!old || old.hookId !== h.id)
+          throw apiError('not_found', `No delivery ${ctx.params.delivery}.`)
         return presentDelivery(d, h, d.svc.hooks.redeliver(h, old), false)
       })
       return reply(x, { status: 202, headers: { location: x.url } })
@@ -373,14 +585,32 @@ export const replayWebhook = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const r = yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(
+          d,
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.webhook,
+          ctx.principal,
+        )
         return d.svc.hooks.replay(h, ctx.body.after_sequence, ctx.body.limit)
       })
-      return reply({ object: 'replay' as const, queued: r.count, last_sequence: r.last }, { status: 202 })
+      return reply(
+        { object: 'replay' as const, queued: r.count, last_sequence: r.last },
+        { status: 202 },
+      )
     }),
 })
 
 export const webhookOps = [
-  listWebhooks, createWebhook, getWebhook, updateWebhook, deleteWebhook,
-  rotateSecret, pingWebhook, listDeliveries, getDelivery, redeliver, replayWebhook,
+  listWebhooks,
+  createWebhook,
+  getWebhook,
+  updateWebhook,
+  deleteWebhook,
+  rotateSecret,
+  pingWebhook,
+  listDeliveries,
+  getDelivery,
+  redeliver,
+  replayWebhook,
 ]

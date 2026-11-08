@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await --
-   Domain.run takes an async function so the same handlers can read from Convex later;
-   the in-memory domain answers synchronously. */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { fragmentsOf, parseQuery } from '../search'
@@ -40,13 +37,35 @@ export const searchOp = defineOp({
       // The cursor belongs to one viewer: a different caller may see a
       // different list, so its cursor must not silently continue this one.
       const f = fp('search', q.q, ctx.principal?.capabilityKey ?? 'anon')
-      const out = yield* run(async (d) => {
+      const out = yield* run((d) => {
         const parsed = parseQuery(q.q)
-        if (!parsed.terms.length && !parsed.phrases.length && !parsed.repo.length && !parsed.types.length && !parsed.state.length && !parsed.author.length && !parsed.label.length)
-          throw apiError('invalid_request', 'The query has nothing to search for.', {
-            errors: [{ pointer: '/query/q', code: 'empty_query', message: 'Give a word, a phrase or a qualifier.' }],
-          })
-        const hits = d.svc.search.search(parsed, d.canSee(ctx.principal), ctx.principal?.capabilityKey ?? 'anon')
+        if (
+          !parsed.terms.length &&
+          !parsed.phrases.length &&
+          !parsed.repo.length &&
+          !parsed.types.length &&
+          !parsed.state.length &&
+          !parsed.author.length &&
+          !parsed.label.length
+        )
+          throw apiError(
+            'invalid_request',
+            'The query has nothing to search for.',
+            {
+              errors: [
+                {
+                  pointer: '/query/q',
+                  code: 'empty_query',
+                  message: 'Give a word, a phrase or a qualifier.',
+                },
+              ],
+            },
+          )
+        const hits = d.svc.search.search(
+          parsed,
+          d.canSee(ctx.principal),
+          ctx.principal?.capabilityKey ?? 'anon',
+        )
         const visible = hits.filter((h) =>
           h.doc.type === 'change'
             ? !ctx.principal || ctx.principal.scopes.has('pulls:read')
@@ -54,7 +73,12 @@ export const searchOp = defineOp({
               ? !ctx.principal || ctx.principal.scopes.has('issues:read')
               : true,
         )
-        const page = d.svc.search.page(visible, q.limit, afterOf(q.cursor, f), parsed)
+        const page = d.svc.search.page(
+          visible,
+          q.limit,
+          afterOf(q.cursor, f),
+          parsed,
+        )
         return {
           // Most of a result is the document, which does not change between queries. Keep
           // that as text and add only what depends on the query: the snippet and the score.
@@ -64,7 +88,11 @@ export const searchOp = defineOp({
             if (!pre) {
               const frag = fragmentsOf(h.doc, iso)
               const json = `${frag.head}${h.snippet ? JSON.stringify(h.snippet) : 'null'},"score":${h.score}${frag.tail}`
-              pre = new Pre(json, () => JSON.parse(json), `${h.doc.key}@${h.doc.updated}@${h.score}@${h.snippet}`)
+              pre = new Pre(
+                json,
+                () => JSON.parse(json),
+                `${h.doc.key}@${h.doc.updated}@${h.score}@${h.snippet}`,
+              )
               built.set(h, pre)
             }
             return pre
@@ -72,7 +100,11 @@ export const searchOp = defineOp({
           next: page.next,
         }
       })
-      return listOf(out.items as unknown as Array<z.infer<typeof S.SearchResult>>, out.next, f)
+      return listOf(
+        out.items as unknown as Array<z.infer<typeof S.SearchResult>>,
+        out.next,
+        f,
+      )
     }),
 })
 

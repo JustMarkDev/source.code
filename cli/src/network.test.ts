@@ -172,8 +172,7 @@ describe('signing in with a code', () => {
   function stub(steps: Array<[number, Record<string, unknown>]>) {
     const calls: Array<{ url: string; body: string }> = []
     const queue = [...steps]
-    // eslint-disable-next-line @typescript-eslint/require-await -- a fetch stand-in has to return a promise
-    const f = (async (url: string, init?: RequestInit) => {
+    const answer = (url: string, init?: RequestInit) => {
       calls.push({
         url,
         body:
@@ -195,7 +194,9 @@ describe('signing in with a code', () => {
         })
       const [status, body] = queue.shift()!
       return Response.json(body, { status })
-    }) as unknown as typeof fetch
+    }
+    const f = ((url: string, init?: RequestInit) =>
+      Promise.resolve(answer(url, init))) as unknown as typeof fetch
     return { f, calls }
   }
   const ctx = () => {

@@ -24,7 +24,13 @@ export type MirrorRec = {
   created: number
 }
 
-export type EnvVarRec = { name: string; kind: string; secret: boolean; set: Array<Environment>; description: string }
+export type EnvVarRec = {
+  name: string
+  kind: string
+  secret: boolean
+  set: Array<Environment>
+  description: string
+}
 
 export type GrantRec = {
   id: string
@@ -68,31 +74,62 @@ export class RepoExtras {
   activeGrant(environment: Environment): GrantRec | undefined {
     const t = this.now()
     return this.grants.find(
-      (g) => g.state === 'active' && g.environment === environment && g.expires !== null && g.expires > t && g.uses < g.maxRuns,
+      (g) =>
+        g.state === 'active' &&
+        g.environment === environment &&
+        g.expires !== null &&
+        g.expires > t &&
+        g.uses < g.maxRuns,
     )
   }
 
   /** Reads values. The caller has already been checked; this applies the grant. */
-  values(opts: { environment: Environment; names?: Array<string>; who: string; agent: boolean }) {
+  values(opts: {
+    environment: Environment
+    names?: Array<string>
+    who: string
+    agent: boolean
+  }) {
     const grant = opts.agent ? this.activeGrant(opts.environment) : undefined
     const vars = this.env.filter(
-      (v) => v.set.includes(opts.environment) && (!opts.names || opts.names.includes(v.name)) && (!grant || grant.variables.includes(v.name)),
+      (v) =>
+        v.set.includes(opts.environment) &&
+        (!opts.names || opts.names.includes(v.name)) &&
+        (!grant || grant.variables.includes(v.name)),
     )
     const values: Record<string, string> = {}
-    for (const v of vars) if (v.name in SAMPLE_VALUES) values[v.name] = SAMPLE_VALUES[v.name]
+    for (const v of vars)
+      if (v.name in SAMPLE_VALUES) values[v.name] = SAMPLE_VALUES[v.name]
     if (grant) grant.uses++
-    this.note(opts.who, `read ${vars.length} variable${vars.length === 1 ? '' : 's'} (${opts.environment})${grant ? ` under ${grant.id}` : ''}`)
-    return { values, secrets: vars.filter((v) => v.secret).map((v) => v.name), grant: grant?.id ?? null, grantRec: grant }
+    this.note(
+      opts.who,
+      `read ${vars.length} variable${vars.length === 1 ? '' : 's'} (${opts.environment})${grant ? ` under ${grant.id}` : ''}`,
+    )
+    return {
+      values,
+      secrets: vars.filter((v) => v.secret).map((v) => v.name),
+      grant: grant?.id ?? null,
+      grantRec: grant,
+    }
   }
 
-  requestGrant(opts: { environment: Environment; reason: string | null; maxRuns: number; who: string }) {
-    const existing = this.grants.find((g) => g.state === 'pending' && g.environment === opts.environment)
+  requestGrant(opts: {
+    environment: Environment
+    reason: string | null
+    maxRuns: number
+    who: string
+  }) {
+    const existing = this.grants.find(
+      (g) => g.state === 'pending' && g.environment === opts.environment,
+    )
     if (existing) return { grant: existing, created: false }
     const g: GrantRec = {
       id: newId('grant', this.now()),
       environment: opts.environment,
       state: 'pending',
-      variables: this.env.filter((v) => v.set.includes(opts.environment)).map((v) => v.name),
+      variables: this.env
+        .filter((v) => v.set.includes(opts.environment))
+        .map((v) => v.name),
       reason: opts.reason,
       requestedBy: opts.who,
       maxRuns: opts.maxRuns,
@@ -101,7 +138,10 @@ export class RepoExtras {
       created: this.now(),
     }
     this.grants.unshift(g)
-    this.note(opts.who, `requested ${opts.environment} access: ${opts.reason ?? 'no reason given'}`)
+    this.note(
+      opts.who,
+      `requested ${opts.environment} access: ${opts.reason ?? 'no reason given'}`,
+    )
     return { grant: g, created: true }
   }
 }

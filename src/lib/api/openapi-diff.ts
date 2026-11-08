@@ -24,9 +24,18 @@ export function findBreaking(before: Json, after: Json): Array<string> {
   }
 
   const typeOf = (s: Json | undefined) =>
-    s ? JSON.stringify(s.type ?? s.const ?? (s.anyOf ? 'anyOf' : s.$ref ? 'ref' : '?')) : 'none'
+    s
+      ? JSON.stringify(
+          s.type ?? s.const ?? (s.anyOf ? 'anyOf' : s.$ref ? 'ref' : '?'),
+        )
+      : 'none'
 
-  const response = (path: string, a: Json | undefined, b: Json | undefined, depth = 0) => {
+  const response = (
+    path: string,
+    a: Json | undefined,
+    b: Json | undefined,
+    depth = 0,
+  ) => {
     const x = resolve(before, a)
     const y = resolve(after, b)
     if (!x || depth > 6) return
@@ -41,11 +50,15 @@ export function findBreaking(before: Json, after: Json): Array<string> {
           if (tv !== tw && tv !== '"object"' && tw !== '"object"')
             out.push(`${path}.${k}: type changed from ${tv} to ${tw}`)
           for (const e of v.enum ?? [])
-            if (w.enum && !w.enum.includes(e)) out.push(`${path}.${k}: enum value ${e} removed`)
+            if (w.enum && !w.enum.includes(e))
+              out.push(`${path}.${k}: enum value ${e} removed`)
           if (v.anyOf && w.anyOf) {
             const afterTypes = new Set((w.anyOf as Array<Json>).map(typeOf))
             for (const variant of v.anyOf as Array<Json>)
-              if (!afterTypes.has(typeOf(variant))) out.push(`${path}.${k}: response variant ${typeOf(variant)} removed`)
+              if (!afterTypes.has(typeOf(variant)))
+                out.push(
+                  `${path}.${k}: response variant ${typeOf(variant)} removed`,
+                )
           }
           response(`${path}.${k}`, v, w, depth + 1)
         }
@@ -54,12 +67,18 @@ export function findBreaking(before: Json, after: Json): Array<string> {
     if (x.items) response(`${path}[]`, x.items, y.items, depth + 1)
   }
 
-  const request = (path: string, a: Json | undefined, b: Json | undefined, depth = 0) => {
+  const request = (
+    path: string,
+    a: Json | undefined,
+    b: Json | undefined,
+    depth = 0,
+  ) => {
     const x = resolve(before, a)
     const y = resolve(after, b)
     if (!x || depth > 6) {
       // A schema that did not exist before: anything required is new.
-      if (!x && y?.required?.length) out.push(`${path}: new required ${y.required.join(', ')}`)
+      if (!x && y?.required?.length)
+        out.push(`${path}: new required ${y.required.join(', ')}`)
       return
     }
     if (!y) return void out.push(`${path}: request schema removed`)
@@ -73,9 +92,11 @@ export function findBreaking(before: Json, after: Json): Array<string> {
       if (!w) continue
       const tv = typeOf(resolve(before, v))
       const tw = typeOf(resolve(after, w))
-      if (tv !== tw) out.push(`${path}.${k}: request type changed from ${tv} to ${tw}`)
+      if (tv !== tw)
+        out.push(`${path}.${k}: request type changed from ${tv} to ${tw}`)
       for (const e of v.enum ?? [])
-        if (!(w.enum ?? []).includes(e) && w.enum) out.push(`${path}.${k}: enum value ${e} removed`)
+        if (!(w.enum ?? []).includes(e) && w.enum)
+          out.push(`${path}.${k}: enum value ${e} removed`)
       request(`${path}.${k}`, v, w, depth + 1)
     }
   }
@@ -89,29 +110,38 @@ export function findBreaking(before: Json, after: Json): Array<string> {
         continue
       }
       if (op.operationId !== next.operationId)
-        out.push(`${where}: operationId changed from ${op.operationId} to ${next.operationId}`)
+        out.push(
+          `${where}: operationId changed from ${op.operationId} to ${next.operationId}`,
+        )
       for (const status of Object.keys(op.responses ?? {})) {
         const a = op.responses[status]?.content
         const b = next.responses?.[status]?.content
-        if (!next.responses?.[status]) out.push(`${where}: response ${status} removed`)
+        if (!next.responses?.[status])
+          out.push(`${where}: response ${status} removed`)
         else if (a)
           for (const type of Object.keys(a))
             response(`${where} ${status}`, a[type]?.schema, b?.[type]?.schema)
       }
-      const oldParams = new Map<string, Json>((op.parameters ?? []).map((p: Json) => [`${p.in}:${p.name}`, p]))
-      const newParams = new Map<string, Json>((next.parameters ?? []).map((p: Json) => [`${p.in}:${p.name}`, p]))
+      const oldParams = new Map<string, Json>(
+        (op.parameters ?? []).map((p: Json) => [`${p.in}:${p.name}`, p]),
+      )
+      const newParams = new Map<string, Json>(
+        (next.parameters ?? []).map((p: Json) => [`${p.in}:${p.name}`, p]),
+      )
       for (const [k, p] of oldParams) {
         const q = newParams.get(k)
         if (!q) out.push(`${where}: parameter ${k} removed`)
         else {
-          if (!p.required && q.required) out.push(`${where}: parameter ${k} became required`)
+          if (!p.required && q.required)
+            out.push(`${where}: parameter ${k} became required`)
           for (const e of p.schema?.enum ?? [])
             if (q.schema?.enum && !q.schema.enum.includes(e))
               out.push(`${where}: parameter ${k} enum value ${e} removed`)
         }
       }
       for (const [k, q] of newParams)
-        if (!oldParams.has(k) && q.required) out.push(`${where}: new required parameter ${k}`)
+        if (!oldParams.has(k) && q.required)
+          out.push(`${where}: new required parameter ${k}`)
       request(
         `${where} body`,
         op.requestBody?.content?.['application/json']?.schema,
@@ -119,7 +149,11 @@ export function findBreaking(before: Json, after: Json): Array<string> {
       )
       if (!op.requestBody && next.requestBody?.required)
         out.push(`${where}: new required request body`)
-      else if (op.requestBody && !op.requestBody.required && next.requestBody?.required)
+      else if (
+        op.requestBody &&
+        !op.requestBody.required &&
+        next.requestBody?.required
+      )
         out.push(`${where}: request body became required`)
     }
   }

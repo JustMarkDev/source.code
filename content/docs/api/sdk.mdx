@@ -11,12 +11,24 @@ import { createClient } from './sdk/typescript'
 
 const sx = createClient({ token: process.env.SX_TOKEN })
 
-const change = await sx.changes.get({ owner: 'dana', repo: 'gitfs', number: '216' })
+const change = await sx.changes.get({
+  owner: 'dana',
+  repo: 'gitfs',
+  number: '216',
+})
 if (change.actions?.land.allowed) {
-  await sx.changes.land({ owner: 'dana', repo: 'gitfs', number: '216', body: { expected_tree: change.head.tree } })
+  await sx.changes.land({
+    owner: 'dana',
+    repo: 'gitfs',
+    number: '216',
+    body: { expected_tree: change.head.tree },
+  })
 }
 
-for await (const issue of sx.paginate('issues.list', { owner: 'dana', repo: 'gitfs' })) {
+for await (const issue of sx.paginate('issues.list', {
+  owner: 'dana',
+  repo: 'gitfs',
+})) {
   console.log(issue.number, issue.title)
 }
 ```
@@ -29,13 +41,13 @@ The types are generated from the same schemas the server validates responses aga
 
 ## What it does for you
 
-| Behaviour | Detail |
-| --- | --- |
+| Behaviour                          | Detail                                                                                                                                                                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Retries what is safe to repeat** | Reads, naturally idempotent writes, and any write it has given a key. It retries on network errors, `502`, `503`, `504` and anything the server marks `retryable`, up to 3 times, waiting `Retry-After` when there is one and otherwise backing off from 250 ms. Not on a `4xx` that cannot help. |
-| **Makes writes repeat-safe** | A write that is not naturally idempotent gets an `Idempotency-Key`, and every retry sends the same one, so a lost response never creates two issues. Pass your own with `{ idempotencyKey }`. |
-| **Caches by `ETag`** | A repeat `GET` sends `If-None-Match`; a `304` returns the object it already holds, and costs no rate-limit units. 500 entries by default; `cacheSize: 0` turns it off. |
-| **Paginates** | `sx.paginate(id, input)` follows `next_cursor` until the list ends. |
-| **Throws one error type** | `SxError` has `status`, `code`, `hint`, `retryable`, `exitCode`, `requestId` and the whole `problem`. Branch on `code`. |
+| **Makes writes repeat-safe**       | A write that is not naturally idempotent gets an `Idempotency-Key`, and every retry sends the same one, so a lost response never creates two issues. Pass your own with `{ idempotencyKey }`.                                                                                                     |
+| **Caches by `ETag`**               | A repeat `GET` sends `If-None-Match`; a `304` returns the object it already holds, and costs no rate-limit units. 500 entries by default; `cacheSize: 0` turns it off.                                                                                                                            |
+| **Paginates**                      | `sx.paginate(id, input)` follows `next_cursor` until the list ends.                                                                                                                                                                                                                               |
+| **Throws one error type**          | `SxError` has `status`, `code`, `hint`, `retryable`, `exitCode`, `requestId` and the whole `problem`. Branch on `code`.                                                                                                                                                                           |
 
 ## Request options
 
@@ -44,9 +56,9 @@ The second argument of every method:
 ```ts
 await sx.changes.update(input, {
   ifMatch: change.version.toString(), // fail with version_mismatch if it moved
-  dryRun: true,                       // check everything, change nothing
+  dryRun: true, // check everything, change nothing
   idempotencyKey: 'my-key',
-  wait: 20,                           // hold a conditional read until the object changes
+  wait: 20, // hold a conditional read until the object changes
   signal: AbortSignal.timeout(5000),
 })
 ```

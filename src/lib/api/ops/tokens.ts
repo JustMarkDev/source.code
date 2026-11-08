@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await --
-   Domain.run takes an async function so the same handlers can read from Convex later;
-   the in-memory domain answers synchronously. */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { allScopes } from '../auth'
@@ -13,7 +10,11 @@ import type { Principal, TokenRecord } from '../auth'
 
 const MAX_TOKENS = 100
 
-function present(d: MemoryDomain, t: TokenRecord, secret: string | null): z.infer<typeof S.Token> {
+function present(
+  d: MemoryDomain,
+  t: TokenRecord,
+  secret: string | null,
+): z.infer<typeof S.Token> {
   return {
     object: 'token',
     id: t.id,
@@ -49,7 +50,8 @@ export const listTokens = defineOp({
   ...base,
   id: 'tokens.list',
   summary: 'Your tokens',
-  description: 'Personal, bot and run tokens that belong to you, newest first. Never includes the secret.',
+  description:
+    'Personal, bot and run tokens that belong to you, newest first. Never includes the secret.',
   method: 'GET',
   path: '/tokens',
   pool: 'read',
@@ -59,10 +61,17 @@ export const listTokens = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run(async (d) =>
-        d.svc.auth.list(ctx.principal!.handle, ['personal', 'bot', 'run']).map((t) => present(d, t, null)),
+      const data = yield* run((d) =>
+        d.svc.auth
+          .list(ctx.principal!.handle, ['personal', 'bot', 'run'])
+          .map((t) => present(d, t, null)),
       )
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -81,7 +90,9 @@ export const createToken = defineOp({
   body: z.strictObject({
     name: z.string().min(1).max(100),
     scopes: z.array(z.enum(allScopes)).min(1).max(allScopes.length),
-    expires_in_days: z.union([z.literal(30), z.literal(60), z.literal(90), z.literal(365)]).default(90),
+    expires_in_days: z
+      .union([z.literal(30), z.literal(60), z.literal(90), z.literal(365)])
+      .default(90),
     repos: z
       .array(z.string().regex(/^[^/\s]+\/[^/\s]+$/))
       .max(50)
@@ -98,30 +109,68 @@ export const createToken = defineOp({
       const body = ctx.body
       const t = yield* run(async (d) => {
         const repos = body.repos
-          ? [...new Set(body.repos.map((r) => d.canonicalRepoName(r).toLowerCase()))]
+          ? [
+              ...new Set(
+                body.repos.map((r) => d.canonicalRepoName(r).toLowerCase()),
+              ),
+            ]
           : null
         const requestedName = new Map<string, string>()
-        for (const r of body.repos ?? []) requestedName.set(d.canonicalRepoName(r).toLowerCase(), r)
+        for (const r of body.repos ?? [])
+          requestedName.set(d.canonicalRepoName(r).toLowerCase(), r)
         const missing = body.scopes.filter((s) => !p.scopes.has(s))
         if (missing.length)
-          throw apiError('insufficient_scope', `You cannot give a token scopes you do not have: ${missing.join(', ')}.`, {
-            extra: { required_scopes: missing, token_scopes: [...p.scopes] },
-          })
+          throw apiError(
+            'insufficient_scope',
+            `You cannot give a token scopes you do not have: ${missing.join(', ')}.`,
+            {
+              extra: { required_scopes: missing, token_scopes: [...p.scopes] },
+            },
+          )
         if (p.repos && (!repos || repos.some((r) => !p.repos!.includes(r))))
-          throw apiError('forbidden', 'Your token is limited to repositories, so a token you create must be limited to some of them.')
+          throw apiError(
+            'forbidden',
+            'Your token is limited to repositories, so a token you create must be limited to some of them.',
+          )
         for (const r of repos ?? []) {
           try {
             await d.getRepo(...(r.split('/') as [string, string]), p)
           } catch (e) {
             // Do not reveal the new name of a private repository through an old alias.
             if (e instanceof ApiError && e.code === 'not_found')
-              throw apiError('not_found', `No repository ${requestedName.get(r) ?? r}.`)
+              throw apiError(
+                'not_found',
+                `No repository ${requestedName.get(r) ?? r}.`,
+              )
             throw e
           }
         }
         if (d.svc.auth.countActive(p.handle, ctx.now()) >= MAX_TOKENS)
-          throw apiError('limit_reached', `You can have ${MAX_TOKENS} active tokens.`)
-        if (ctx.dryRun) return present(d, { id: 'tok_dryrun', name: body.name, kind: 'personal', handle: p.handle, actingAs: p.handle, class: p.class, scopes: body.scopes, repos, audience: ['api', 'mcp'], prefix: 'sxp_', createdAt: ctx.now(), expiresAt: ctx.now() + body.expires_in_days * 86_400_000, lastUsedAt: null, revokedAt: null }, null)
+          throw apiError(
+            'limit_reached',
+            `You can have ${MAX_TOKENS} active tokens.`,
+          )
+        if (ctx.dryRun)
+          return present(
+            d,
+            {
+              id: 'tok_dryrun',
+              name: body.name,
+              kind: 'personal',
+              handle: p.handle,
+              actingAs: p.handle,
+              class: p.class,
+              scopes: body.scopes,
+              repos,
+              audience: ['api', 'mcp'],
+              prefix: 'sxp_',
+              createdAt: ctx.now(),
+              expiresAt: ctx.now() + body.expires_in_days * 86_400_000,
+              lastUsedAt: null,
+              revokedAt: null,
+            },
+            null,
+          )
         const { record, secret } = d.svc.auth.create({
           name: body.name,
           kind: p.class === 'human' ? 'personal' : 'bot',
@@ -133,7 +182,10 @@ export const createToken = defineOp({
         })
         return present(d, record, secret)
       })
-      return reply(t, { status: 201, headers: { location: t.url, 'cache-control': 'no-store' } })
+      return reply(t, {
+        status: 201,
+        headers: { location: t.url, 'cache-control': 'no-store' },
+      })
     }),
   dryRun: true,
 })
@@ -153,7 +205,9 @@ export const getToken = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => present(d, own(d, ctx.principal!, ctx.params.id), null))
+      return yield* run((d) =>
+        present(d, own(d, ctx.principal!, ctx.params.id), null),
+      )
     }),
 })
 
@@ -161,7 +215,8 @@ export const revokeToken = defineOp({
   ...base,
   id: 'tokens.revoke',
   summary: 'Revoke a token',
-  description: 'It stops working at once. Revoking a token that is already revoked answers 404.',
+  description:
+    'It stops working at once. Revoking a token that is already revoked answers 404.',
   method: 'DELETE',
   path: '/tokens/{id}',
   params: z.object({ id: z.string().describe('The token `tok_` id') }),
@@ -174,7 +229,7 @@ export const revokeToken = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run(async (d) => {
+      yield* run((d) => {
         const t = own(d, ctx.principal!, ctx.params.id)
         if (!ctx.dryRun) d.svc.auth.revoke(t.id)
       })
@@ -183,7 +238,10 @@ export const revokeToken = defineOp({
   dryRun: true,
 })
 
-function presentAuthz(d: MemoryDomain, a: ReturnType<MemoryDomain['svc']['auth']['listAuthorizations']>[number]): z.infer<typeof S.Authorization> {
+function presentAuthz(
+  d: MemoryDomain,
+  a: ReturnType<MemoryDomain['svc']['auth']['listAuthorizations']>[number],
+): z.infer<typeof S.Authorization> {
   return {
     object: 'authorization',
     id: a.id,
@@ -199,7 +257,8 @@ function presentAuthz(d: MemoryDomain, a: ReturnType<MemoryDomain['svc']['auth']
 export const listAuthorizations = defineOp({
   id: 'authorizations.list',
   summary: 'Applications you have authorized',
-  description: 'The OAuth grants on your account: which application, what it may do, when it was last used.',
+  description:
+    'The OAuth grants on your account: which application, what it may do, when it was last used.',
   tags: ['tokens'],
   method: 'GET',
   path: '/authorizations',
@@ -212,15 +271,25 @@ export const listAuthorizations = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run(async (d) => d.svc.auth.listAuthorizations(ctx.principal!.handle).map((a) => presentAuthz(d, a)))
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      const data = yield* run((d) =>
+        d.svc.auth
+          .listAuthorizations(ctx.principal!.handle)
+          .map((a) => presentAuthz(d, a)),
+      )
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
 export const revokeAuthorization = defineOp({
   id: 'authorizations.revoke',
   summary: 'Revoke an application',
-  description: 'Every access and refresh token the application holds stops working at once.',
+  description:
+    'Every access and refresh token the application holds stops working at once.',
   tags: ['tokens'],
   method: 'DELETE',
   path: '/authorizations/{id}',
@@ -237,7 +306,7 @@ export const revokeAuthorization = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      yield* run(async (d) => {
+      yield* run((d) => {
         const a = d.svc.auth.authorizations.get(ctx.params.id)
         if (!a || a.handle !== ctx.principal!.handle || a.revokedAt !== null)
           throw apiError('not_found', `No authorization ${ctx.params.id}.`)
@@ -247,4 +316,11 @@ export const revokeAuthorization = defineOp({
     }),
 })
 
-export const tokenOps = [listTokens, createToken, getToken, revokeToken, listAuthorizations, revokeAuthorization]
+export const tokenOps = [
+  listTokens,
+  createToken,
+  getToken,
+  revokeToken,
+  listAuthorizations,
+  revokeAuthorization,
+]

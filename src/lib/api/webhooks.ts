@@ -4,7 +4,7 @@ import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { isIP } from 'node:net'
 import { newId, randomSource } from './ids'
-import { matchesType, parseEvent  } from './events'
+import { matchesType, parseEvent } from './events'
 import type { EventLog, EventRecord } from './events'
 
 const randomBytes = (n: number) => Buffer.from(randomSource.bytes(n))
@@ -26,7 +26,9 @@ const randomBytes = (n: number) => Buffer.from(randomSource.bytes(n))
  *    address, checked when the endpoint is saved and again, on the resolved
  *    address the connection is pinned to, at every attempt.
  */
-export const RETRY_DELAYS_MS = [5_000, 300_000, 1_800_000, 7_200_000, 18_000_000, 36_000_000, 36_000_000]
+export const RETRY_DELAYS_MS = [
+  5_000, 300_000, 1_800_000, 7_200_000, 18_000_000, 36_000_000, 36_000_000,
+]
 export const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1
 export const DISABLE_AFTER = 5
 export const MAX_HOOKS_PER_REPO = 10
@@ -45,9 +47,18 @@ export const realScheduler: Scheduler = {
   },
 }
 
-export type SendResult = { status: number | null; error: string | null; ms: number }
+export type SendResult = {
+  status: number | null
+  error: string | null
+  ms: number
+}
 export type Transport = {
-  send: (req: { url: string; headers: Record<string, string>; body: string; timeoutMs: number }) => Promise<SendResult>
+  send: (req: {
+    url: string
+    headers: Record<string, string>
+    body: string
+    timeoutMs: number
+  }) => Promise<SendResult>
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +69,9 @@ export function isBlockedAddress(ip: string): boolean {
   if (kind === 4) {
     const [a, b, c] = ip.split('.').map(Number)
     return (
-      a === 0 || a === 10 || a === 127 ||
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
       (a === 100 && b >= 64 && b <= 127) ||
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
@@ -72,10 +85,13 @@ export function isBlockedAddress(ip: string): boolean {
     const v = ip.toLowerCase()
     const mapped = /^(?:::ffff:|0:0:0:0:0:ffff:)(\d+\.\d+\.\d+\.\d+)$/.exec(v)
     if (mapped) return isBlockedAddress(mapped[1])
-    const hex = /^(?:::ffff:|0:0:0:0:0:ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(v)
+    const hex =
+      /^(?:::ffff:|0:0:0:0:0:ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(v)
     if (hex) {
       const n = (parseInt(hex[1], 16) << 16) | parseInt(hex[2], 16)
-      return isBlockedAddress(`${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`)
+      return isBlockedAddress(
+        `${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`,
+      )
     }
     // 6to4 embeds an IPv4 address in the first two groups after 2002::.
     if (v.startsWith('2002:')) {
@@ -88,19 +104,28 @@ export function isBlockedAddress(ip: string): boolean {
       }
     }
     return (
-      v === '::' || v === '::1' ||
-      /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('ff') ||
-      v.startsWith('64:ff9b:') || v.startsWith('2001:db8') ||
+      v === '::' ||
+      v === '::1' ||
+      /^f[cd]/.test(v) ||
+      /^fe[89ab]/.test(v) ||
+      v.startsWith('ff') ||
+      v.startsWith('64:ff9b:') ||
+      v.startsWith('2001:db8') ||
       // Teredo tunnels carry an obfuscated client IPv4 address; treat the
       // whole 2001:0000::/32 range as private.
-      v === '2001::' || v.startsWith('2001::') || v.startsWith('2001:0:')
+      v === '2001::' ||
+      v.startsWith('2001::') ||
+      v.startsWith('2001:0:')
     )
   }
   return false
 }
 
 /** Why a URL may not be used as an endpoint, or null if it may. Checked when it is saved. */
-export function endpointProblem(raw: string, allowPrivate: boolean): string | null {
+export function endpointProblem(
+  raw: string,
+  allowPrivate: boolean,
+): string | null {
   if (raw.length > 2000) return 'The URL is too long.'
   let u: URL
   try {
@@ -110,13 +135,19 @@ export function endpointProblem(raw: string, allowPrivate: boolean): string | nu
   }
   if (u.protocol !== 'https:' && !(allowPrivate && u.protocol === 'http:'))
     return 'Use https.'
-  if (u.username || u.password) return 'Put credentials in a header, not in the URL.'
+  if (u.username || u.password)
+    return 'Put credentials in a header, not in the URL.'
   const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase()
   if (!allowPrivate) {
-    if (host === 'localhost' || /\.(localhost|local|internal|lan|home|corp)$/.test(host) || host === 'metadata.google.internal')
+    if (
+      host === 'localhost' ||
+      /\.(localhost|local|internal|lan|home|corp)$/.test(host) ||
+      host === 'metadata.google.internal'
+    )
       return 'That host is private.'
     if (isIP(host) && isBlockedAddress(host)) return 'That address is private.'
-    if (/^\d+$/.test(host) || /^0x[0-9a-f]+$/.test(host)) return 'Use a host name or a dotted address.'
+    if (/^\d+$/.test(host) || /^0x[0-9a-f]+$/.test(host))
+      return 'Use a host name or a dotted address.'
   }
   return null
 }
@@ -125,7 +156,12 @@ export function endpointProblem(raw: string, allowPrivate: boolean): string | nu
 export class HttpTransport implements Transport {
   constructor(private readonly allowPrivate = false) {}
 
-  async send(req: { url: string; headers: Record<string, string>; body: string; timeoutMs: number }): Promise<SendResult> {
+  async send(req: {
+    url: string
+    headers: Record<string, string>
+    body: string
+    timeoutMs: number
+  }): Promise<SendResult> {
     const started = performance.now()
     const done = (status: number | null, error: string | null): SendResult => ({
       status,
@@ -148,7 +184,8 @@ export class HttpTransport implements Transport {
         if (!this.allowPrivate && all.some((a) => isBlockedAddress(a.address)))
           return done(null, 'The host resolves to a private address.')
       }
-      if (!this.allowPrivate && isBlockedAddress(address)) return done(null, 'The address is private.')
+      if (!this.allowPrivate && isBlockedAddress(address))
+        return done(null, 'The address is private.')
     } catch {
       return done(null, 'The host did not resolve.')
     }
@@ -158,9 +195,17 @@ export class HttpTransport implements Transport {
         u,
         {
           method: 'POST',
-          headers: { ...req.headers, 'content-length': String(Buffer.byteLength(req.body)) },
+          headers: {
+            ...req.headers,
+            'content-length': String(Buffer.byteLength(req.body)),
+          },
           // The pin: connect to the address we checked, whatever DNS says now.
-          lookup: (_h, _o, cb) => (cb as (e: null, a: string, f: number) => void)(null, address, family),
+          lookup: (_h, _o, cb) =>
+            (cb as (e: null, a: string, f: number) => void)(
+              null,
+              address,
+              family,
+            ),
           servername: isIP(host) ? undefined : host,
           timeout: req.timeoutMs,
         },
@@ -182,7 +227,13 @@ export class HttpTransport implements Transport {
 
 // ---------------------------------------------------------------------------
 
-export type Attempt = { number: number; at: number; status: number | null; error: string | null; ms: number }
+export type Attempt = {
+  number: number
+  at: number
+  status: number | null
+  error: string | null
+  ms: number
+}
 
 export type Delivery = {
   id: string
@@ -218,7 +269,12 @@ export type Hook = {
 
 export const newSecret = () => `whsec_${randomBytes(24).toString('base64')}`
 
-export function sign(secret: string, id: string, timestamp: number, body: string): string {
+export function sign(
+  secret: string,
+  id: string,
+  timestamp: number,
+  body: string,
+): string {
   const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64')
   return `v1,${createHmac('sha256', key).update(`${id}.${timestamp}.${body}`).digest('base64')}`
 }
@@ -266,14 +322,20 @@ export class WebhookService {
   // ----- endpoints ---------------------------------------------------------
 
   list(repo: string) {
-    return [...(this.byRepo.get(repo) ?? [])].map((id) => this.hooks.get(id)!).sort((a, b) => b.createdAt - a.createdAt)
+    return [...(this.byRepo.get(repo) ?? [])]
+      .map((id) => this.hooks.get(id)!)
+      .sort((a, b) => b.createdAt - a.createdAt)
   }
 
   get(id: string) {
     return this.hooks.get(id) ?? null
   }
 
-  create(repo: string, repoId: string, input: { url: string; events: Array<string>; description?: string }) {
+  create(
+    repo: string,
+    repoId: string,
+    input: { url: string; events: Array<string>; description?: string },
+  ) {
     const t = this.now()
     const secret = newSecret()
     const hook: Hook = {
@@ -300,10 +362,21 @@ export class WebhookService {
     return { hook, secret }
   }
 
-  update(hook: Hook, patch: { url?: string; events?: Array<string>; description?: string; active?: boolean }) {
-    const changed = (patch.url !== undefined && patch.url !== hook.url) ||
-      (patch.events !== undefined && JSON.stringify(patch.events) !== JSON.stringify(hook.events)) ||
-      (patch.description !== undefined && patch.description !== hook.description) ||
+  update(
+    hook: Hook,
+    patch: {
+      url?: string
+      events?: Array<string>
+      description?: string
+      active?: boolean
+    },
+  ) {
+    const changed =
+      (patch.url !== undefined && patch.url !== hook.url) ||
+      (patch.events !== undefined &&
+        JSON.stringify(patch.events) !== JSON.stringify(hook.events)) ||
+      (patch.description !== undefined &&
+        patch.description !== hook.description) ||
       (patch.active !== undefined && patch.active !== hook.active)
     if (!changed) return
     if (patch.url !== undefined) hook.url = patch.url
@@ -358,7 +431,9 @@ export class WebhookService {
     for (const s of hook.secrets) s.expiresAt ??= t + SECRET_OVERLAP_MS
     const secret = newSecret()
     hook.secrets.push({ value: secret, createdAt: t, expiresAt: null })
-    hook.secrets = hook.secrets.filter((s) => s.expiresAt === null || s.expiresAt > t)
+    hook.secrets = hook.secrets.filter(
+      (s) => s.expiresAt === null || s.expiresAt > t,
+    )
     hook.updatedAt = t
     hook.version++
     return secret
@@ -376,11 +451,20 @@ export class WebhookService {
     if (!ids) return
     for (const id of ids) {
       const hook = this.hooks.get(id)
-      if (hook?.active && hook.repoId === e.repo_id && matchesType(hook.events, e.type)) this.enqueue(hook, e, null)
+      if (
+        hook?.active &&
+        hook.repoId === e.repo_id &&
+        matchesType(hook.events, e.type)
+      )
+        this.enqueue(hook, e, null)
     }
   }
 
-  enqueue(hook: Hook, event: EventRecord, redeliveryOf: string | null): Delivery {
+  enqueue(
+    hook: Hook,
+    event: EventRecord,
+    redeliveryOf: string | null,
+  ): Delivery {
     const d: Delivery = {
       id: newId('delivery', this.now()),
       sequence: this.nextDelivery++,
@@ -418,7 +502,12 @@ export class WebhookService {
       created_at: new Date(t).toISOString(),
       repo: hook.repo,
       repo_id: hook.repoId,
-      actor: { object: 'actor', id: 'acc_webhooks000000000', handle: 'webhooks', class: 'bot' },
+      actor: {
+        object: 'actor',
+        id: 'acc_webhooks000000000',
+        handle: 'webhooks',
+        class: 'bot',
+      },
       subject: { object: 'webhook', id: hook.id, number: null },
       changes: [],
       data: null,
@@ -432,7 +521,11 @@ export class WebhookService {
 
   /** Re-send every matching event after a sequence, for a receiver that was down. */
   replay(hook: Hook, after: number, limit: number) {
-    const { events, scannedTo } = this.o.events.since(after, limit, (e) => e.repoId === hook.repoId && matchesType(hook.events, e.type))
+    const { events, scannedTo } = this.o.events.since(
+      after,
+      limit,
+      (e) => e.repoId === hook.repoId && matchesType(hook.events, e.type),
+    )
     for (const e of events) this.enqueue(hook, parseEvent(e), null)
     // Report how far the scan got, so a page with no matching events still
     // advances the caller instead of replaying the same window forever.
@@ -461,19 +554,29 @@ export class WebhookService {
     if (!hook.active && d.event.type !== 'webhook.ping') {
       d.state = 'failed'
       d.nextAt = null
-      d.attempts.push({ number: d.attempts.length + 1, at: this.now(), status: null, error: 'The endpoint is disabled.', ms: 0 })
+      d.attempts.push({
+        number: d.attempts.length + 1,
+        at: this.now(),
+        status: null,
+        error: 'The endpoint is disabled.',
+        ms: 0,
+      })
       return
     }
     const t = this.now()
     const body = JSON.stringify(d.event)
     const ts = Math.floor(t / 1000)
-    const live = hook.secrets.filter((s) => s.expiresAt === null || s.expiresAt > t)
+    const live = hook.secrets.filter(
+      (s) => s.expiresAt === null || s.expiresAt > t,
+    )
     const headers = {
       'content-type': 'application/json',
       'user-agent': 'source.code-webhooks/1',
       'webhook-id': d.event.id,
       'webhook-timestamp': String(ts),
-      'webhook-signature': live.map((s) => sign(s.value, d.event.id, ts, body)).join(' '),
+      'webhook-signature': live
+        .map((s) => sign(s.value, d.event.id, ts, body))
+        .join(' '),
       'sx-delivery': d.id,
       'sx-event': d.event.type,
     }
@@ -487,13 +590,19 @@ export class WebhookService {
     const sentAt = performance.now()
     let result: SendResult
     try {
-      result = await this.o.transport.send({ url: hook.url, headers, body, timeoutMs: TIMEOUT_MS })
+      result = await this.o.transport.send({
+        url: hook.url,
+        headers,
+        body,
+        timeoutMs: TIMEOUT_MS,
+      })
     } catch (e) {
       // A transport that rejects is a failed attempt, not a delivery that
       // stays pending forever and not an unhandled rejection.
       result = {
         status: null,
-        error: e instanceof Error ? e.message.slice(0, 200) : 'The send failed.',
+        error:
+          e instanceof Error ? e.message.slice(0, 200) : 'The send failed.',
         ms: Math.round(performance.now() - sentAt),
       }
     } finally {
@@ -501,7 +610,13 @@ export class WebhookService {
     }
     // Evicted during the send: do not count the result on a record no one keeps.
     if (this.deliveries.get(d.id) !== d) return
-    const attempt: Attempt = { number: d.attempts.length + 1, at: t, status: result.status, error: result.error, ms: result.ms }
+    const attempt: Attempt = {
+      number: d.attempts.length + 1,
+      at: t,
+      status: result.status,
+      error: result.error,
+      ms: result.ms,
+    }
     d.attempts.push(attempt)
     if (result.status !== null && result.status >= 200 && result.status < 300) {
       d.state = 'succeeded'
@@ -510,11 +625,15 @@ export class WebhookService {
       return
     }
     // 410 Gone is the receiver saying it no longer wants these.
-    if (result.status === 410) return this.fail(hook, d, 'The endpoint answered 410 Gone.')
+    if (result.status === 410)
+      return this.fail(hook, d, 'The endpoint answered 410 Gone.')
     if (d.attempts.length >= MAX_ATTEMPTS) return this.fail(hook, d, null)
     const delay = RETRY_DELAYS_MS[d.attempts.length - 1]
     d.nextAt = this.now() + delay
-    this.cancel.set(d.id, this.scheduler.after(delay, () => void this.attempt(hook, d)))
+    this.cancel.set(
+      d.id,
+      this.scheduler.after(delay, () => void this.attempt(hook, d)),
+    )
   }
 
   private fail(hook: Hook, d: Delivery, reason: string | null) {
@@ -524,14 +643,20 @@ export class WebhookService {
     hook.failures++
     if (reason || hook.failures >= DISABLE_AFTER) {
       hook.active = false
-      hook.disabledReason = reason ?? `${DISABLE_AFTER} deliveries in a row failed.`
+      hook.disabledReason =
+        reason ?? `${DISABLE_AFTER} deliveries in a row failed.`
       hook.updatedAt = this.now()
       hook.version++
       this.o.events.append({
         type: 'webhook.disabled',
         repo: hook.repo,
         repo_id: hook.repoId,
-        actor: { object: 'actor', id: 'acc_webhooks000000000', handle: 'webhooks', class: 'bot' },
+        actor: {
+          object: 'actor',
+          id: 'acc_webhooks000000000',
+          handle: 'webhooks',
+          class: 'bot',
+        },
         subject: { object: 'webhook', id: hook.id, number: null },
         changes: ['active'],
         data: null,
@@ -541,7 +666,8 @@ export class WebhookService {
 
   /** For tests: wait until nothing is being sent. */
   async idle() {
-    for (let i = 0; i < 50 && (this.inFlight > 0 || this.queue.length > 0); i++) await new Promise((r) => setTimeout(r, 2))
+    for (let i = 0; i < 50 && (this.inFlight > 0 || this.queue.length > 0); i++)
+      await new Promise((r) => setTimeout(r, 2))
     await new Promise((r) => setTimeout(r, 2))
   }
 }

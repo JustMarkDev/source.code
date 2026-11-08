@@ -1,6 +1,6 @@
 # Third-party notices
 
-source.code includes or depends on the components below. Each keeps its own license, which applies to that component and not to source.code's own code (see `LICENSE`). This file is generated from `package.json` and the installed packages; re-run it when dependencies change.
+source.code includes or depends on the components below. Each keeps its own license, which applies to that component and not to source.code's own code (see `LICENSE`). The dependency table is generated from `package.json` and the installed packages: run `bun scripts/third-party.ts` after dependencies change.
 
 ## Vendored code
 
@@ -45,6 +45,7 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 | d3-scale                         | yes             | ISC          |
 | d3-shape                         | yes             | ISC          |
 | diff                             | yes             | BSD-3-Clause |
+| effect                           | yes             | MIT          |
 | fumadocs-core                    | yes             | MIT          |
 | fumadocs-mdx                     | yes             | MIT          |
 | fumadocs-ui                      | yes             | MIT          |
@@ -52,18 +53,27 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 | motion                           | yes             | MIT          |
 | react                            | yes             | MIT          |
 | react-dom                        | yes             | MIT          |
-| shadcn                           | yes             | MIT          |
-| simple-icons                     | yes             | CC0-1.0      |
+| react-markdown                   | yes             | MIT          |
+| remark-gfm                       | yes             | MIT          |
 | tailwind-merge                   | yes             | MIT          |
 | tw-animate-css                   | yes             | MIT          |
 | zod                              | yes             | MIT          |
 | @convex-dev/eslint-plugin        | build only      | Apache-2.0   |
 | @tailwindcss/vite                | build only      | MIT          |
-| @tanstack/eslint-config          | build only      | MIT          |
+| @types/bun                       | build only      | MIT          |
+| @types/d3-scale                  | build only      | MIT          |
+| @types/d3-shape                  | build only      | MIT          |
+| @types/mdx                       | build only      | MIT          |
+| @types/react                     | build only      | MIT          |
+| @types/react-dom                 | build only      | MIT          |
 | @typescript/native               | build only      | Apache-2.0   |
 | @vitejs/plugin-react             | build only      | MIT          |
-| prettier                         | build only      | MIT          |
+| convex-test                      | build only      | Apache-2.0   |
+| oxfmt                            | build only      | MIT          |
+| shadcn                           | build only      | MIT          |
+| simple-icons                     | build only      | CC0-1.0      |
 | tailwindcss                      | build only      | MIT          |
 | typescript                       | build only      | Apache-2.0   |
 | vite                             | build only      | MIT          |
+| vite-plus                        | build only      | MIT          |
 | vite-tsconfig-paths              | build only      | MIT          |

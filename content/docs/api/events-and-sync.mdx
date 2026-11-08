@@ -6,12 +6,12 @@ description: Stop polling. Wait for a change, stream the event log, or keep a lo
 
 Polling a list to see what changed costs you requests and costs us load, and it is always a little late. There are four ways to do better. They all read from one event log.
 
-| You want                                   | Use                                                 |
-| ------------------------------------------ | --------------------------------------------------- |
-| To know when one thing changes             | [`?wait=`](#waiting-instead-of-polling)             |
-| A local copy of a repository, kept current | [`GET /sync`](#sync)                                |
-| Everything that happened, in order         | [`GET /events`](#the-event-log)                     |
-| Events the moment they happen              | [`GET /events/stream`](#the-stream)                 |
+| You want                                   | Use                                     |
+| ------------------------------------------ | --------------------------------------- |
+| To know when one thing changes             | [`?wait=`](#waiting-instead-of-polling) |
+| A local copy of a repository, kept current | [`GET /sync`](#sync)                    |
+| Everything that happened, in order         | [`GET /events`](#the-event-log)         |
+| Events the moment they happen              | [`GET /events/stream`](#the-stream)     |
 
 ## Waiting instead of polling
 
@@ -46,7 +46,11 @@ Everything that happens in a repository you can see is an event, in order.
   "actor": { "object": "actor", "handle": "hollis", "class": "agent" },
   "subject": { "object": "change", "id": "chg_01m6…", "number": 216 },
   "changes": ["head.patch_set", "policy.state", "checks.state"],
-  "data": { "object": "change", "number": 216, "…": "the change after this event" }
+  "data": {
+    "object": "change",
+    "number": 216,
+    "…": "the change after this event"
+  }
 }
 ```
 

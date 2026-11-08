@@ -24,14 +24,16 @@ export type Grant = {
 }
 
 export interface LimitStore {
-  take: (key: string, want: number, policy: Policy, now: number) => Promise<Grant>
+  take: (
+    key: string,
+    want: number,
+    policy: Policy,
+    now: number,
+  ) => Promise<Grant>
 }
 
 export class MemoryLimitStore implements LimitStore {
-  private readonly windows = new Map<
-    string,
-    { start: number; used: number }
-  >()
+  private readonly windows = new Map<string, { start: number; used: number }>()
   /** How many times the store was asked. Tests use this to prove leasing works. */
   calls = 0
 
@@ -113,17 +115,19 @@ export class Limiter {
     }
   }
 
-  async check(
-    key: string,
-    policy: Policy,
-    cost: number,
-  ): Promise<Decision> {
+  async check(key: string, policy: Policy, cost: number): Promise<Decision> {
     const now = this.now()
     const start = now - (now % policy.windowMs)
     const id = `${key}@${policy.windowMs}`
     let lease = this.leases.get(id)
     if (!lease || lease.start !== start) {
-      lease = { start, left: 0, storeRemaining: policy.limit, exhausted: false, resetMs: 0 }
+      lease = {
+        start,
+        left: 0,
+        storeRemaining: policy.limit,
+        exhausted: false,
+        resetMs: 0,
+      }
       this.leases.set(id, lease)
     }
     const resetSeconds = Math.ceil((start + policy.windowMs - now) / 1000)
@@ -177,7 +181,8 @@ export class Limiter {
     const now = this.now()
     // Never refund into a window that has already rolled over: those units
     // belong to the old window and would inflate the new one.
-    if (lease && lease.start === now - (now % policy.windowMs)) lease.left += cost
+    if (lease && lease.start === now - (now % policy.windowMs))
+      lease.left += cost
   }
 
   /** Forget leases from finished windows. */

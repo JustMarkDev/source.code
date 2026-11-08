@@ -8,26 +8,26 @@ No model has seen this API. The API is built so one that has not can still use i
 
 ## Learn it from the API
 
-| Ask                              | You get                                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `GET /v1`                        | Links to every collection, the OpenAPI document, the limits, the MCP server, `llms.txt`. |
-| `GET /v1/openapi.json`           | Every operation with its schemas and the `x-sx-*` metadata below.                         |
-| `GET /v1/errors`                 | Every error code: status, whether it is retryable, the CLI exit code, the hint.          |
-| `GET /v1/limits`                 | Rate-limit pools, page sizes and every other number.                                      |
-| `GET /v1/auth/principal`         | Who the token is, what it may do, when it expires.                                        |
-| [`/llms.txt`](/llms.txt)         | These docs as plain text.                                                                 |
+| Ask                      | You get                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `GET /v1`                | Links to every collection, the OpenAPI document, the limits, the MCP server, `llms.txt`. |
+| `GET /v1/openapi.json`   | Every operation with its schemas and the `x-sx-*` metadata below.                        |
+| `GET /v1/errors`         | Every error code: status, whether it is retryable, the CLI exit code, the hint.          |
+| `GET /v1/limits`         | Rate-limit pools, page sizes and every other number.                                     |
+| `GET /v1/auth/principal` | Who the token is, what it may do, when it expires.                                       |
+| [`/llms.txt`](/llms.txt) | These docs as plain text.                                                                |
 
 Every operation in the OpenAPI document says, before you call it:
 
-| Member            | Tells you                                                                   |
-| ----------------- | --------------------------------------------------------------------------- |
-| `x-sx-safety`     | `read`, `write` or `destructive`                                            |
-| `x-sx-idempotent` | Whether repeating it with the same input is harmless                        |
-| `x-sx-dry-run`    | Whether `?dry_run=true` works                                               |
-| `x-sx-scopes`     | The scopes it needs                                                         |
-| `x-sx-pool`, `x-sx-cost` | Which rate-limit pool, how many units                                |
-| `x-sx-errors`     | The error codes it can return                                               |
-| `x-sx-async`      | Whether it may answer `202` and an operation                                |
+| Member                   | Tells you                                            |
+| ------------------------ | ---------------------------------------------------- |
+| `x-sx-safety`            | `read`, `write` or `destructive`                     |
+| `x-sx-idempotent`        | Whether repeating it with the same input is harmless |
+| `x-sx-dry-run`           | Whether `?dry_run=true` works                        |
+| `x-sx-scopes`            | The scopes it needs                                  |
+| `x-sx-pool`, `x-sx-cost` | Which rate-limit pool, how many units                |
+| `x-sx-errors`            | The error codes it can return                        |
+| `x-sx-async`             | Whether it may answer `202` and an operation         |
 
 An agent can decide what to confirm, what to retry and what to budget from this alone.
 
@@ -69,20 +69,20 @@ Start a [run](/docs/api/runs) rather than handing over your token. It is limited
 
 Branch on `code`, never on text.
 
-| `code`                                 | Do                                                                                           |
-| -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `policy_blocked`, `retryable: false`   | **Stop.** Report the `requirements` that failed. Do not look for another way in.             |
-| `policy_blocked`, `retryable: true`    | Only waiting is left. `wait` on the change, or sleep and send the same request.              |
-| `human_required`                       | **Stop and ask a person.** An agent cannot approve its own work.                             |
-| `stale_head`                           | The change moved. Read it again, check the new `head.tree`, decide again.                    |
-| `version_mismatch`                     | Merge your edit into `current` and send again with its ETag.                                 |
-| `parent_not_landed`                    | Land the stack, or the parent first.                                                         |
-| `insufficient_scope`                   | Do not retry. Report `required_scopes`. A person has to give the token the scope.            |
-| `rate_limited`, `concurrency_limited`  | Wait `Retry-After` seconds.                                                                  |
-| `request_in_progress`                  | Wait `Retry-After`, send the same request with the same key.                                 |
-| `backend_unavailable`                  | Retry after `Retry-After` with backoff. Keyed writes are safe to repeat.                     |
-| `not_found`                            | Check the path. Private things also answer this.                                             |
-| `invalid_request`                      | Fix what `errors` lists. It names each field.                                                |
+| `code`                                | Do                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------- |
+| `policy_blocked`, `retryable: false`  | **Stop.** Report the `requirements` that failed. Do not look for another way in.  |
+| `policy_blocked`, `retryable: true`   | Only waiting is left. `wait` on the change, or sleep and send the same request.   |
+| `human_required`                      | **Stop and ask a person.** An agent cannot approve its own work.                  |
+| `stale_head`                          | The change moved. Read it again, check the new `head.tree`, decide again.         |
+| `version_mismatch`                    | Merge your edit into `current` and send again with its ETag.                      |
+| `parent_not_landed`                   | Land the stack, or the parent first.                                              |
+| `insufficient_scope`                  | Do not retry. Report `required_scopes`. A person has to give the token the scope. |
+| `rate_limited`, `concurrency_limited` | Wait `Retry-After` seconds.                                                       |
+| `request_in_progress`                 | Wait `Retry-After`, send the same request with the same key.                      |
+| `backend_unavailable`                 | Retry after `Retry-After` with backoff. Keyed writes are safe to repeat.          |
+| `not_found`                           | Check the path. Private things also answer this.                                  |
+| `invalid_request`                     | Fix what `errors` lists. It names each field.                                     |
 
 `retryable` is a boolean so a generic retry loop is one `if`.
 
@@ -103,7 +103,6 @@ Agents pay for every token they read. The API helps:
 - Lists carry `checks` and `policy` per item, so you do not fetch each change to find the red one.
 - `304` costs nothing and returns no body.
 - `GET /sync` returns only what changed.
-
 
 ## The CLI and MCP
 

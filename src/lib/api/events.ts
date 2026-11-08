@@ -8,7 +8,11 @@ import { newId } from './ids'
  * Waiters are kept per topic (a repository, say), so an event wakes only the
  * clients that care about it, not every long-poll in the process.
  */
-export type ActorLike = { id: string; handle: string; class: 'human' | 'agent' | 'bot' }
+export type ActorLike = {
+  id: string
+  handle: string
+  class: 'human' | 'agent' | 'bot'
+}
 
 export type EventRecord = {
   object: 'event'
@@ -19,15 +23,28 @@ export type EventRecord = {
   repo: string | null
   /** The stable repository id, so a reused name cannot inherit another repository's history. */
   repo_id: string | null
-  actor: { object: 'actor'; id: string; handle: string; class: ActorLike['class'] }
+  actor: {
+    object: 'actor'
+    id: string
+    handle: string
+    class: ActorLike['class']
+  }
   subject: { object: string; id: string; number: number | null }
   changes: Array<string>
   data: Record<string, unknown> | null
 }
 
 /** `change.*` matches every change event; `*` matches everything. */
-export function matchesType(patterns: ReadonlyArray<string>, type: string): boolean {
-  return patterns.some((p) => p === '*' || p === type || (p.endsWith('.*') && type.startsWith(p.slice(0, -1))))
+export function matchesType(
+  patterns: ReadonlyArray<string>,
+  type: string,
+): boolean {
+  return patterns.some(
+    (p) =>
+      p === '*' ||
+      p === type ||
+      (p.endsWith('.*') && type.startsWith(p.slice(0, -1))),
+  )
 }
 
 /**
@@ -118,7 +135,8 @@ export class EventLog {
       list.push(stored)
     }
     for (const l of this.listeners) l(record)
-    if (this.events.length > this.keep * 1.1 || this.held > this.maxChars * 1.1) this.trim()
+    if (this.events.length > this.keep * 1.1 || this.held > this.maxChars * 1.1)
+      this.trim()
     this.wake('*')
     if (record.repo) this.wake(`repo:${record.repo.toLowerCase()}`)
     if (record.repo_id) this.wake(`repo-id:${record.repo_id}`)
@@ -129,7 +147,10 @@ export class EventLog {
   private trim() {
     let drop = 0
     let held = this.held
-    while (drop < this.events.length - 1 && (this.events.length - drop > this.keep || held > this.maxChars)) {
+    while (
+      drop < this.events.length - 1 &&
+      (this.events.length - drop > this.keep || held > this.maxChars)
+    ) {
       held -= this.events[drop].json.length
       drop++
     }

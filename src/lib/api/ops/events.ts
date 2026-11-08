@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/require-await */
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { hashToken, principalOf } from '../auth'
@@ -10,7 +9,9 @@ import { afterOf, fp, listOf, pageShape } from './common'
 const repoWaitTopic = (repo: string | undefined) => {
   if (!repo) return '*'
   const clean = repo.split('/')[0].toLowerCase()
-  return clean.startsWith('rep_') ? `repo-id:${clean}` : `repo:${repo.toLowerCase()}`
+  return clean.startsWith('rep_')
+    ? `repo-id:${clean}`
+    : `repo:${repo.toLowerCase()}`
 }
 
 export const listEvents = defineOp({
@@ -32,7 +33,9 @@ export const listEvents = defineOp({
     type: z
       .string()
       .optional()
-      .describe('Comma list of event types. `change.*` matches every change event'),
+      .describe(
+        'Comma list of event types. `change.*` matches every change event',
+      ),
   }),
   response: S.listOf(S.Event),
   errors: ['not_found', 'cursor_mismatch'],
@@ -42,16 +45,28 @@ export const listEvents = defineOp({
     const id = repo ? d?.repoIdForHistory(repo) : null
     return id ? `repo-id:${id}` : repoWaitTopic(repo)
   },
-  probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
+  probe: async (ctx, d) =>
+    ctx.query.repo
+      ? d.repoHistoryVersion(ctx.query.repo, ctx.principal)
+      : d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const q = ctx.query
       const f = fp('events.list', q.repo, q.type)
       const page = yield* run((d) =>
-        d.listEvents(ctx.principal, { repo: q.repo, type: q.type, after: afterOf(q.cursor, f), limit: q.limit }),
+        d.listEvents(ctx.principal, {
+          repo: q.repo,
+          type: q.type,
+          after: afterOf(q.cursor, f),
+          limit: q.limit,
+        }),
       )
-      return listOf(page.items as unknown as Array<z.infer<typeof S.Event>>, page.next, f)
+      return listOf(
+        page.items as unknown as Array<z.infer<typeof S.Event>>,
+        page.next,
+        f,
+      )
     }),
 })
 
@@ -93,8 +108,8 @@ export const syncRepo = defineOp({
     return id ? `repo-id:${id}` : repoWaitTopic(repo)
   },
   probe: (ctx, d) => {
-    const [owner, name] = ctx.query.repo.split('/')
-    return d.syncVersion(owner, name ?? '', ctx.principal)
+    const [owner = '', name = ''] = ctx.query.repo.split('/')
+    return d.syncVersion(owner, name, ctx.principal)
   },
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -128,7 +143,7 @@ export const streamEvents = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const { events, domain, repoId } = yield* run(async (d) => ({
+      const { events, domain, repoId } = yield* run((d) => ({
         events: d.events,
         domain: d,
         repoId: ctx.query.repo ? d.repoIdForHistory(ctx.query.repo) : null,
@@ -154,15 +169,20 @@ export const streamEvents = defineOp({
           }),
         )
       const encoder = new TextEncoder()
-      let open = true
-      const send = (text: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
-        if (!open || ctx.signal.aborted) return false
+      const stream = { open: true }
+      // Read through a call: the cancel callback closes it between awaits.
+      const isOpen = () => stream.open && !ctx.signal.aborted
+      const send = (
+        text: string,
+        controller: ReadableStreamDefaultController<Uint8Array>,
+      ) => {
+        if (!isOpen()) return false
         try {
           controller.enqueue(encoder.encode(text))
           return true
         } catch {
           // The client went away between the check and the enqueue.
-          open = false
+          stream.open = false
           return false
         }
       }
@@ -174,10 +194,14 @@ export const streamEvents = defineOp({
             } catch {}
             return
           }
-          while (open && !ctx.signal.aborted) {
+          while (isOpen()) {
             // A stream is long-lived; a token revoked or expired mid-stream stops it.
-            const bearer = /^Bearer\s+(.+)$/i.exec(ctx.header('authorization') ?? '')?.[1]
-            const found = bearer ? domain.svc.auth.find(hashToken(bearer), 'api', ctx.now()) : null
+            const bearer = /^Bearer\s+(.+)$/i.exec(
+              ctx.header('authorization') ?? '',
+            )?.[1]
+            const found = bearer
+              ? domain.svc.auth.find(hashToken(bearer), 'api', ctx.now())
+              : null
             if (!found?.ok) break
             const current = principalOf(found.record)
             // Re-read access for every batch: a repository may become private,
@@ -186,34 +210,57 @@ export const streamEvents = defineOp({
             const canPull = current.scopes.has('pulls:read')
             const canIssue = current.scopes.has('issues:read')
             const scopeOk = (t: string) =>
-              t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
-            const { events: batch, scannedTo } = events.since(after, 100, (e) => {
-              if (repo && e.repoId !== repoId) return false
-              if (!can(e.repoId)) return false
-              if (!scopeOk(e.type)) return false
-              return (
-                !types ||
-                types.some((t) => (t.endsWith('.*') ? e.type.startsWith(t.slice(0, -1)) : t === e.type))
-              )
-            })
+              t.startsWith('issue.')
+                ? canIssue
+                : /^(change|finding|check|ci|operation)\./.test(t)
+                  ? canPull
+                  : true
+            const { events: batch, scannedTo } = events.since(
+              after,
+              100,
+              (e) => {
+                if (repo && e.repoId !== repoId) return false
+                if (!can(e.repoId)) return false
+                if (!scopeOk(e.type)) return false
+                return (
+                  !types ||
+                  types.some((t) =>
+                    t.endsWith('.*')
+                      ? e.type.startsWith(t.slice(0, -1))
+                      : t === e.type,
+                  )
+                )
+              },
+            )
             for (const e of batch) {
-              if (!send(`id: ${e.sequence}\nevent: ${e.type}\ndata: ${e.json}\n\n`, controller)) break
+              if (
+                !send(
+                  `id: ${e.sequence}\nevent: ${e.type}\ndata: ${e.json}\n\n`,
+                  controller,
+                )
+              )
+                break
             }
-            if (!open) break
+            if (!isOpen()) break
             // Move past events that did not match, so they are not scanned again.
             after = Math.max(after, scannedTo)
             if (batch.length === 0) after = Math.max(after, events.head)
             if (batch.length === 100) continue
             const before = events.head
-            await events.wait(repoId ? `repo-id:${repoId}` : repoWaitTopic(repo), 15_000, ctx.signal)
-            if (events.head === before && open && !ctx.signal.aborted) send(': keepalive\n\n', controller)
+            await events.wait(
+              repoId ? `repo-id:${repoId}` : repoWaitTopic(repo),
+              15_000,
+              ctx.signal,
+            )
+            if (events.head === before && isOpen())
+              send(': keepalive\n\n', controller)
           }
           try {
             controller.close()
           } catch {}
         },
         cancel() {
-          open = false
+          stream.open = false
         },
       })
       return new Raw(
@@ -248,8 +295,7 @@ export const getOperation = defineOp({
     const repoId = d?.operationRepoId(p.id)
     return repoId ? `repo-id:${repoId}` : '*'
   },
-  probe: (ctx, d) =>
-      d.operationVersion(ctx.params.id, ctx.principal),
+  probe: (ctx, d) => d.operationVersion(ctx.params.id, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
