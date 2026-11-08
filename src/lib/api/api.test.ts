@@ -356,6 +356,30 @@ describe('generations and reuse', () => {
     const old = await h.call('GET', '/events?repo=dana/history')
     expect(old.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Before the rename')).toBe(true)
   })
+
+  test('losing team access invalidates cached events and sync bodies', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault', visibility: 'private' } })
+    await h.call('POST', '/repos/northwind/vault/issues', { body: { title: 'Private vault event' } })
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'readers' } })
+    await h.call('PUT', '/accounts/northwind/teams/readers/members/stranger')
+    await h.call('PUT', '/accounts/northwind/teams/readers/repos/northwind/vault', { body: { permission: 'read' } })
+    const before = await h.call('GET', '/events', { token: h.tokens.stranger })
+    expect(before.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Private vault event')).toBe(true)
+    const sync = await h.call('GET', '/sync?repo=northwind/vault', { token: h.tokens.stranger })
+    expect(sync.status).toBe(200)
+    await h.call('DELETE', '/accounts/northwind/teams/readers/members/stranger')
+    const after = await h.call('GET', '/events', { token: h.tokens.stranger })
+    expect(after.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Private vault event')).toBe(false)
+    expect((await h.call('GET', '/sync?repo=northwind/vault', { token: h.tokens.stranger })).status).toBe(404)
+  })
+
+  test('If-None-Match * still refuses a private team and repository to a stranger', async () => {
+    const h = harness()
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'private' } })
+    expect((await h.call('GET', '/accounts/northwind/teams/private', { token: h.tokens.stranger, headers: { 'if-none-match': '*' } })).status).toBe(404)
+    expect((await h.call('GET', '/sync?repo=dana/notes', { token: h.tokens.stranger, headers: { 'if-none-match': '*' } })).status).toBe(404)
+  })
 })
 
 describe('If-Match', () => {
@@ -592,6 +616,18 @@ describe('conditional requests', () => {
 })
 
 describe('writes', () => {
+  test('a 204 replays without a body', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { name: 'gone' } })
+    const key = 'delete-once'
+    const first = await h.call('DELETE', '/repos/dana/gone?confirm=dana/gone', { headers: { 'idempotency-key': key } })
+    expect(first.status).toBe(204)
+    const again = await h.call('DELETE', '/repos/dana/gone?confirm=dana/gone', { headers: { 'idempotency-key': key } })
+    expect(again.status).toBe(204)
+    expect(again.text).toBe('')
+    expect(again.headers.get('sx-replayed')).toBe('true')
+  })
+
   test('an Idempotency-Key makes a create happen once', async () => {
     const h = harness()
     const body = { title: 'Crash on empty repo' }

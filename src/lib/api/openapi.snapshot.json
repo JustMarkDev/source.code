@@ -62,18 +62,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -289,18 +282,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -532,18 +518,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -1325,18 +1304,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -7894,18 +7866,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -10072,18 +10037,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -10690,18 +10648,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -11541,18 +11492,11 @@
         ],
         "responses": {
           "204": {
-            "description": "Success",
+            "description": "No content",
             "headers": {
               "Sx-Request-Id": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "null"
                 }
               }
             }
@@ -12070,11 +12014,12 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/octet-stream": {
+            "*/*": {
               "schema": {
                 "type": "string",
                 "format": "binary"
-              }
+              },
+              "description": "Send the bytes with the Content-Type declared when the upload was created."
             }
           }
         },

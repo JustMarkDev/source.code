@@ -280,6 +280,7 @@ export const setEnv = defineOp({
         if (!ctx.dryRun && !v.set.includes(ctx.params.environment)) {
           v.set.push(ctx.params.environment)
           x.note(ctx.principal!.handle, `set ${v.name} (${ctx.params.environment})`)
+          await d.bumpRepo(ctx.params.owner, ctx.params.repo, ctx.principal)
         }
         return { object: 'env_var' as const, name: v.name, kind: v.kind, secret: v.secret, description: v.description, environments: [...v.set], set: v.set.includes(ctx.params.environment) }
       })

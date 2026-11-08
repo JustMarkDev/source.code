@@ -147,26 +147,35 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
           ? {
               requestBody: {
                 required: true,
-                content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+                content: {
+                  '*/*': {
+                    schema: { type: 'string', format: 'binary' },
+                    description: 'Send the bytes with the Content-Type declared when the upload was created.',
+                  },
+                },
               },
             }
           : {}),
       responses: {
         [String(op.status ?? 200)]: {
-          description: 'Success',
+          description: op.status === 204 ? 'No content' : 'Success',
           headers: {
             'Sx-Request-Id': { schema: { type: 'string' } },
             ...(op.method === 'GET' ? { ETag: { schema: { type: 'string' } } } : {}),
           },
-          content: {
-            [op.responseContentType ?? 'application/json']: {
-              schema:
-                op.responseContentType === 'application/octet-stream' || op.responseContentType === '*/*'
-                  ? { type: 'string', format: 'binary' }
-                  : jsonSchema(op.response, 'output', outputDefs),
-            },
-            ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),
-          },
+          ...(op.status === 204
+            ? {}
+            : {
+                content: {
+                  [op.responseContentType ?? 'application/json']: {
+                    schema:
+                      op.responseContentType === 'application/octet-stream' || op.responseContentType === '*/*'
+                        ? { type: 'string', format: 'binary' }
+                        : jsonSchema(op.response, 'output', outputDefs),
+                  },
+                  ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),
+                },
+              }),
         },
         ...(op.probe || op.waitOn ? { '304': { description: 'Not modified. Costs no rate-limit units.' } } : {}),
         default: {

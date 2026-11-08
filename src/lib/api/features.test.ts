@@ -474,6 +474,16 @@ describe('uploads', () => {
     expect(second.headers.get('sx-replayed')).toBeNull()
   })
 
+  test('an upload that is never attached is swept after its grace period', async () => {
+    const now = clock()
+    const h = harness({ now })
+    const made = (await start(h)).json
+    await put(h, made.upload_url, PNG)
+    now.advance(25 * 3_600_000)
+    await start(h) // creating the next upload runs the sweep
+    expect((await h.call('GET', `/uploads/${made.id}/content`)).status).toBe(404)
+  })
+
   test('the address expires after an hour', async () => {
     const now = clock()
     const h = harness({ now })

@@ -41,6 +41,23 @@ describe('the TypeScript client', () => {
     expect(again.id).toBe(made.id)
   })
 
+  test('uploads.put sends the declared content type', async () => {
+    const { sx, seen } = clientFor()
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+    const made = await sx.uploads.create({ body: { filename: 'sdk.png', content_type: 'image/png', size: png.length } })
+    const url = new URL(made.upload_url!)
+    const done = await sx.uploads.put({
+      id: made.id,
+      exp: Number(url.searchParams.get('exp')),
+      sig: url.searchParams.get('sig')!,
+      body: png,
+      contentType: 'image/png',
+    })
+    expect(done.state).toBe('uploaded')
+    const sent = seen.find((s) => s.method === 'PUT')
+    expect(sent?.headers.get('content-type')).toBe('image/png')
+  })
+
   test('a repeat read is a 304 that costs nothing, and the caller still gets the object', async () => {
     const { sx, seen } = clientFor()
     const a = await sx.changes.get({ owner: 'dana', repo: 'gitfs', number: '216' })

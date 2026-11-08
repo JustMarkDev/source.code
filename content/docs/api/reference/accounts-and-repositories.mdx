@@ -116,7 +116,7 @@ curl "https://api.source.code/v1/accounts/dana" \
 
 ```http
 HTTP/1.1 200
-etag: W/"acc_01m203xrm0bw4d69nd-fL8I3yq7tREbJUSV"
+etag: W/"acc_01m203xrm0bw4d69nd.0-tHkgB4JBUO9zAEmg"
 ratelimit: "read";r=1198;t=60
 ```
 
@@ -286,7 +286,7 @@ Its members lose the access it gave them. Repositories are not touched.
 | Scopes     | `repo:write`                              |
 | Rate limit | `write` pool, 1 unit                      |
 | Dry run    | `?dry_run=true`                           |
-| Success    | `204`, a JSON document                    |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -351,7 +351,7 @@ curl "https://api.source.code/v1/accounts/northwind/teams/support" \
 
 ```http
 HTTP/1.1 200
-etag: W/"tem_01m6tq6r80vj9wx9t7.1-fL8I3yq7tREbJUSV"
+etag: W/"tem_01m6tq6r80vj9wx9t7.1-tHkgB4JBUO9zAEmg"
 ratelimit: "read";r=1162;t=60
 ```
 
@@ -457,7 +457,7 @@ ratelimit: "write";r=89;t=60
 | Scopes     | `repo:write`                              |
 | Rate limit | `write` pool, 1 unit                      |
 | Dry run    | `?dry_run=true`                           |
-| Success    | `204`, a JSON document                    |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -566,7 +566,7 @@ ratelimit: "write";r=88;t=60
 | Scopes     | `repo:write`                              |
 | Rate limit | `write` pool, 1 unit                      |
 | Dry run    | `?dry_run=true`                           |
-| Success    | `204`, a JSON document                    |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -852,7 +852,7 @@ Permanent. Owners of the account and admins of the organization only. You must r
 | Scopes     | `repo:write`                              |
 | Rate limit | `write` pool, 1 unit                      |
 | Dry run    | `?dry_run=true`                           |
-| Success    | `204`, a JSON document                    |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -927,7 +927,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3-fL8I3yq7tREbJUSV"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-tHkgB4JBUO9zAEmg"
 ratelimit: "read";r=1196;t=60
 ```
 
@@ -1075,7 +1075,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/context" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3-fL8I3yq7tREbJUSV"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-tHkgB4JBUO9zAEmg"
 ratelimit: "read";r=1195;t=60
 ```
 

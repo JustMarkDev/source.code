@@ -346,7 +346,13 @@ function resolve(doc: Json, schema: Json | undefined): Json | undefined {
 }
 
 function responseName(doc: Json, item: Json, op: Op): string {
+  if (op.status === 204) return 'no body'
   const content = item.responses[String(op.status ?? 200)]?.content ?? {}
+  if (op.responseContentType && op.responseContentType !== 'application/json') {
+    if (op.responseContentType === 'text/event-stream') return 'a `text/event-stream`'
+    if (op.responseContentType === '*/*' || op.responseContentType === 'application/octet-stream') return 'binary data'
+    return `a \`${op.responseContentType}\``
+  }
   if (content['text/event-stream']) return 'a `text/event-stream`'
   const schema = resolve(doc, content['application/json']?.schema)
   const kind = schema?.properties?.object?.const

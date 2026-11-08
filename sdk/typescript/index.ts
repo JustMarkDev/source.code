@@ -860,7 +860,7 @@ export interface Operations {
     input: {
       id: string
     }
-    output: null
+    output: void
   }
   /** Abandon a change (`POST /repos/{owner}/{repo}/changes/{number}/abandon`) */
   'changes.abandon': {
@@ -1376,7 +1376,7 @@ export interface Operations {
       repo: string
       mirror: string
     }
-    output: null
+    output: void
   }
   /** Copies of the repository on other hosts (`GET /repos/{owner}/{repo}/mirrors`) */
   'mirrors.list': {
@@ -1518,7 +1518,7 @@ export interface Operations {
       /** `owner/name`, to confirm */
       confirm?: string
     }
-    output: null
+    output: void
   }
   /** One repository (`GET /repos/{owner}/{repo}`) */
   'repos.get': {
@@ -1745,7 +1745,7 @@ export interface Operations {
       handle: string
       slug: string
     }
-    output: null
+    output: void
   }
   /** One team, with its members and repositories (`GET /accounts/{handle}/teams/{slug}`) */
   'teams.get': {
@@ -1783,7 +1783,7 @@ export interface Operations {
       slug: string
       login: string
     }
-    output: null
+    output: void
   }
   /** Take a repository away from a team (`DELETE /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`) */
   'teams.repos.remove': {
@@ -1793,7 +1793,7 @@ export interface Operations {
       owner: string
       repo: string
     }
-    output: null
+    output: void
   }
   /** Give a team a repository (`PUT /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`) */
   'teams.repos.set': {
@@ -1871,7 +1871,7 @@ export interface Operations {
     input: {
       id: string
     }
-    output: null
+    output: void
   }
   /** Read the file (`GET /uploads/{id}/content`) */
   'uploads.content': {
@@ -1917,6 +1917,7 @@ export interface Operations {
       /** From the upload address */
       sig: string
       body: BodyInit
+      contentType?: string
     }
     output: Upload
   }
@@ -1941,7 +1942,7 @@ export interface Operations {
       repo: string
       webhook: string
     }
-    output: null
+    output: void
   }
   /** One delivery, with every attempt and the payload (`GET /repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}`) */
   'webhooks.deliveries.get': {
@@ -3700,7 +3701,10 @@ export function createClient(options: ClientOptions = {}): Client {
     if (op.body && input.body !== undefined) {
       body = JSON.stringify(input.body)
       headers['content-type'] = 'application/json'
-    } else if (op.rawBody) body = input.body
+    } else if (op.rawBody) {
+      body = input.body
+      if (input.contentType) headers['content-type'] = input.contentType
+    }
     const read = op.method === 'GET'
     // A write that is not naturally idempotent is made safe to repeat: the same key is sent every time.
     if (!read && !op.idempotent && !o.dryRun)

@@ -109,6 +109,9 @@ export class UploadService {
    */
   private waiting: Array<UploadRec> = []
   private waitingFrom = 0
+  /** Uploads that have bytes but were never attached, oldest first. */
+  private completed: Array<UploadRec> = []
+  private completedFrom = 0
   private readonly pendingBy = new Map<string, number>()
   private readonly counted = new WeakSet<UploadRec>()
   private readonly secret: Buffer
@@ -180,6 +183,19 @@ export class UploadService {
       this.waiting = this.waiting.slice(this.waitingFrom)
       this.waitingFrom = 0
     }
+    // A file that is uploaded but never attached keeps its bytes forever. Give
+    // the owner a day after the upload address expires, then drop both.
+    while (this.completedFrom < this.completed.length && this.completed[this.completedFrom].expires + 86_400_000 <= t) {
+      const rec = this.completed[this.completedFrom++]
+      if (rec.state === 'uploaded' && rec.attachedTo === null) {
+        this.uploads.delete(rec.id)
+        this.blobs.delete?.(rec.id)
+      }
+    }
+    if (this.completedFrom > 1024 && this.completedFrom * 2 > this.completed.length) {
+      this.completed = this.completed.slice(this.completedFrom)
+      this.completedFrom = 0
+    }
   }
 
   /** Run the expiry sweep on the API's schedule. */
@@ -220,6 +236,7 @@ export class UploadService {
     rec.sha256 = createHash('sha256').update(bytes).digest('hex')
     this.settle(rec)
     rec.state = 'uploaded'
+    this.completed.push(rec)
     return null
   }
 }

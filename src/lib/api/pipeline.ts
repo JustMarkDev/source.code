@@ -411,12 +411,43 @@ export function createApi(options: ApiOptions) {
     if (!concurrency.enter(limitKey))
       return fail(apiError('concurrency_limited', 'Too many requests are running for this token.', { retryAfter: 1 }), rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
 
+    let held = false
     try {
-      const res = await run(req, url, path, op, params, principal, requestId, depth, refund, started)
+      let res = await run(req, url, path, op, params, principal, requestId, depth, refund, started)
       for (const [k, v] of Object.entries(common)) if (!res.headers.has(k)) res.headers.set(k, v)
       if (rate) {
         res.headers.set('ratelimit-policy', rate.policy)
         res.headers.set('ratelimit', rate.header)
+      }
+      // A streaming response keeps its concurrency slot until the body closes.
+      if (op.streaming && res.body && req.method !== 'HEAD') {
+        const reader = res.body.getReader()
+        let released = false
+        const release = () => {
+          if (released) return
+          released = true
+          concurrency.leave(limitKey)
+        }
+        const stream = new ReadableStream<Uint8Array>({
+          async pull(controller) {
+            try {
+              const next = await reader.read()
+              if (next.done) {
+                release()
+                controller.close()
+              } else controller.enqueue(next.value)
+            } catch (e) {
+              release()
+              controller.error(e)
+            }
+          },
+          cancel(reason) {
+            release()
+            return reader.cancel(reason)
+          },
+        })
+        res = new Response(stream, { status: res.status, headers: res.headers })
+        held = true
       }
       return res
     } catch (e) {
@@ -424,7 +455,7 @@ export function createApi(options: ApiOptions) {
       if (!(e instanceof ApiError)) console.error(`[api] ${requestId}`, e)
       return fail(error, rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
     } finally {
-      concurrency.leave(limitKey)
+      if (!held) concurrency.leave(limitKey)
     }
   }
 
@@ -609,7 +640,7 @@ export function createApi(options: ApiOptions) {
       .map(([k, v]) => `${k}=${v}`)
       .join('&')
     const wantsMarkdown = isRead && !!op.markdown && (req.headers.get('accept') ?? '').includes('text/markdown')
-    const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}${wantsMarkdown ? '|md' : ''}`
+    const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}|${domain.accessRevision}${wantsMarkdown ? '|md' : ''}`
     let variant = variants.get(variantKey)
     if (variant === undefined) {
       variant = hash(variantKey)
@@ -631,13 +662,15 @@ export function createApi(options: ApiOptions) {
       if (begun.state === 'in_progress')
         return fail(apiError('request_in_progress', 'A request with this key is still running.', { retryAfter: 1 }))
       if (begun.state === 'replay') {
-        return new Response(begun.response.body, {
+        const replayBody = begun.response.status === 204 || begun.response.status === 304 || begun.response.body === '' ? null : begun.response.body
+        return new Response(replayBody, {
           status: begun.response.status,
           headers: { ...begun.response.headers, 'sx-replayed': 'true' },
         })
       }
     }
 
+    let applied = false
     try {
       // Conditional reads and the body cache, before any body is built.
       let versionKey: string | null = null
@@ -781,8 +814,9 @@ export function createApi(options: ApiOptions) {
         if (loc) headers.location = loc
       }
       const res = new Response(req.method === 'HEAD' || status === 204 ? null : json, { status, headers })
-      if (!isRead && key) {
-        await idem.complete(scope, key, { status, headers, body: json })
+      if (!isRead && key && !dryRun) {
+        applied = true
+        await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
       }
       const t = [`handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`]
       if (timing.cache) t.push(`cache;desc="hit"`)
@@ -790,7 +824,7 @@ export function createApi(options: ApiOptions) {
       res.headers.set('server-timing', t.join(', '))
       return res
     } catch (e) {
-      if (!isRead && key) await idem.abort(scope, key)
+      if (!isRead && key && !applied) await idem.abort(scope, key)
       if (e instanceof ApiError && e.code === 'moved') {
         const to = (e.extra as { to: string }).to
         const from = (e.extra as { from: string }).from

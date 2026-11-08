@@ -59,8 +59,8 @@ function presentDelivery(d: MemoryDomain, h: Hook, x: Delivery, full: boolean): 
   }
 }
 
-async function hookOf(d: MemoryDomain, owner: string, repo: string, id: string, p: Parameters<MemoryDomain['repoAccess']>[2]) {
-  const full = await d.repoAccess(owner, repo, p, 'write')
+async function hookOf(d: MemoryDomain, owner: string, repo: string, id: string, p: Parameters<MemoryDomain['repoAccess']>[2], need: 'read' | 'write' = 'write') {
+  const full = await d.repoAccess(owner, repo, p, need)
   const h = d.svc.hooks.get(id)
   if (!h || h.repo !== full) throw apiError('not_found', `No webhook ${id} on ${full}.`)
   return h
@@ -82,7 +82,7 @@ export const listWebhooks = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'write')
+        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.hooks.list(full).map((h) => presentHook(d, h, null))
       })
       return { object: 'list' as const, data, has_more: false, next_cursor: null }
@@ -141,7 +141,7 @@ export const getWebhook = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => presentHook(d, await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal), null))
+      return yield* run(async (d) => presentHook(d, await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read'), null))
     }),
 })
 
@@ -272,7 +272,7 @@ export const listDeliveries = defineOp({
       const q = ctx.query
       const f = fp('webhooks.deliveries', ctx.params.webhook, q.state)
       const out = yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
         const after = afterOf(q.cursor, f)
         // Newest first: ids sort by time, so the cursor is the last id seen.
         const rows = h.deliveries.filter((x) => (!q.state || x.state === q.state) && (!after || x.id < after.id))
@@ -300,7 +300,7 @@ export const getDelivery = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run(async (d) => {
-        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
         const x = d.svc.hooks.getDelivery(ctx.params.delivery)
         if (!x || x.hookId !== h.id) throw apiError('not_found', `No delivery ${ctx.params.delivery}.`)
         return presentDelivery(d, h, x, true)

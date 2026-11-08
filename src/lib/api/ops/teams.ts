@@ -79,7 +79,7 @@ export const getTeam = defineOp({
   params: team,
   response: S.Team,
   errors: ['not_found'],
-  probe: (ctx, d) => d.teamVersion(ctx.params.handle, ctx.params.slug),
+  probe: (ctx, d) => d.teamVersion(ctx.params.handle, ctx.params.slug, ctx.principal!),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

@@ -92,7 +92,7 @@ function readOps(doc: Json): Array<Op> {
         body: bodyContent?.['application/json'] ? tsOf(bodyContent['application/json'].schema) : null,
         bodyRequired: !!op.requestBody?.required,
         response: json ? tsOf(json.schema) : null,
-        raw: !!ok && !json,
+        raw: !!ok && !json && Object.keys(content).length > 0,
         idempotent: !!op['x-sx-idempotent'],
         safety: op['x-sx-safety'],
         rawBody: !!bodyContent && !bodyContent['application/json'],
@@ -112,7 +112,7 @@ function inputOf(op: Op): string {
     fields.push(`${q.doc ? `/** ${q.doc.replace(/\*\//g, '* /').replace(/\n/g, ' ')} */\n` : ''}${identifier(q.name)}${q.required ? '' : '?'}: ${q.type}`)
   }
   if (op.body) fields.push(`body${op.bodyRequired ? '' : '?'}: ${op.body}`)
-  else if (op.rawBody) fields.push('body: BodyInit')
+  else if (op.rawBody) fields.push('body: BodyInit', 'contentType?: string')
   return fields.length ? `{\n${fields.join('\n')}\n}` : 'Record<string, never>'
 }
 
@@ -300,7 +300,10 @@ export function createClient(options: ClientOptions = {}): Client {
     if (op.body && input.body !== undefined) {
       body = JSON.stringify(input.body)
       headers['content-type'] = 'application/json'
-    } else if (op.rawBody) body = input.body
+    } else if (op.rawBody) {
+      body = input.body
+      if (input.contentType) headers['content-type'] = input.contentType
+    }
     const read = op.method === 'GET'
     // A write that is not naturally idempotent is made safe to repeat: the same key is sent every time.
     if (!read && !op.idempotent && !o.dryRun) headers['idempotency-key'] = o.idempotencyKey ?? uuid()

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/require-await */
 import { Effect } from 'effect'
 import { z } from 'zod'
+import { hashToken } from '../auth'
 import { Domain, Raw, defineOp } from '../registry'
 import * as S from '../schemas'
 import { afterOf, fp, listOf, pageShape } from './common'
@@ -29,7 +30,7 @@ export const listEvents = defineOp({
   errors: ['cursor_mismatch'],
   shapeable: true,
   waitOn: () => '*',
-  probe: async (_ctx, d) => d.eventVersion(),
+  probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -74,7 +75,10 @@ export const syncRepo = defineOp({
   response: S.Sync,
   errors: ['not_found', 'moved'],
   waitOn: () => '*',
-  probe: async (_ctx, d) => d.eventVersion(),
+  probe: (ctx, d) => {
+    const [owner, name] = ctx.query.repo.split('/')
+    return d.repoVersion(owner, name ?? '', ctx.principal)
+  },
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -135,6 +139,10 @@ export const streamEvents = defineOp({
             return
           }
           while (open && !ctx.signal.aborted) {
+            // A stream is long-lived; a token revoked or expired mid-stream stops it.
+            const bearer = /^Bearer\s+(.+)$/i.exec(ctx.header('authorization') ?? '')?.[1]
+            const valid = bearer ? (await domain.svc.auth.find(hashToken(bearer), 'api', ctx.now())).ok : false
+            if (!valid) break
             // Re-read access for every batch: a repository may become private,
             // or a membership may be removed, while the stream stays open.
             const can = domain.canSeeId(ctx.principal)

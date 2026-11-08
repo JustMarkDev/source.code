@@ -312,7 +312,9 @@ export class MemoryDomain {
   readonly runs = new Map<string, RunRec>()
   private readonly runsByRepo = new Map<string, Array<RunRec>>()
   private readonly teamsOf = new Map<string, Set<string>>()
-  private readonly operations = new Map<string, OperationRec>()
+  readonly operations = new Map<string, OperationRec>()
+  /** Bumped by every ACL change, so cached bodies and ETags cannot outlive access. */
+  accessRevision = 0
   /** Delay between steps of a long operation. Tests set it to 0. */
   stepDelayMs = 5
   /** Attached by whoever assembles the API: tokens, webhooks, search, blobs. */
@@ -814,7 +816,7 @@ export class MemoryDomain {
   shownChange(repo: RepoRec, c: ChangeRec, viewer: Viewer | 'event', expand: ReadonlyArray<string> = []): Pre {
     const who = viewer === 'event' ? 'event' : viewer ? viewer.capId : 'anonymous'
     const ex = expand.length ? expand.join(',') : ''
-    const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${ex}|${who}|${repo.version}${expand.includes('repo') ? `|${repo.rev}` : ''}`
+    const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${ex}|${who}|${repo.version}|${this.accessRevision}${expand.includes('repo') ? `|${repo.rev}` : ''}`
     const hit = this.shown.get(key)
     if (hit) return hit
     const obj = this.presentChange(repo, c, viewer, expand)
@@ -1332,7 +1334,8 @@ export class MemoryDomain {
     return this.presentTeam(this.teamRec(org, slug))
   }
 
-  async teamVersion(org: string, slug: string) {
+  async teamVersion(org: string, slug: string, p: Principal) {
+    this.orgFor(org, p, 'member')
     const t = this.teamRec(org, slug)
     return `${t.id}.${t.version}`
   }
@@ -1377,6 +1380,7 @@ export class MemoryDomain {
     if (dry) return
     for (const m of t.members) this.unindexMember(m, `${org}/${slug}`)
     this.teams.delete(`${org}/${slug}`)
+    this.accessRevision++
     this.svc.search?.reset()
   }
 
@@ -1400,6 +1404,7 @@ export class MemoryDomain {
       set.add(`${org}/${slug}`)
       t.updated = this.now()
       t.version++
+      this.accessRevision++
       this.svc.search?.reset()
     }
     return this.presentTeam(t)
@@ -1414,6 +1419,7 @@ export class MemoryDomain {
     this.unindexMember(login, `${org}/${slug}`)
     t.updated = this.now()
     t.version++
+    this.accessRevision++
     this.svc.search?.reset()
   }
 
@@ -1427,6 +1433,7 @@ export class MemoryDomain {
       t.repos.set(`${repo.owner}/${repo.name}`, permission)
       t.updated = this.now()
       t.version++
+      this.accessRevision++
       // Visibility changed, so cached search results may be stale.
       this.svc.search?.reset()
     }
@@ -1442,6 +1449,7 @@ export class MemoryDomain {
     t.repos.delete(full)
     t.updated = this.now()
     t.version++
+    this.accessRevision++
     this.svc.search?.reset()
   }
 
@@ -1517,6 +1525,7 @@ export class MemoryDomain {
     }
     if (changed.length) {
       repo.version++
+      if (changed.includes('visibility')) this.accessRevision++
       // Search keeps the repository's name, description and visibility in every document.
       if (renaming || changed.includes('visibility') || changed.includes('description')) this.svc.search?.reset()
       this.emit(repo, 'repo.updated', this.asActor(p), { object: 'repo', id: repo.id, number: null }, changed, this.presentRepo(repo))
@@ -1541,6 +1550,7 @@ export class MemoryDomain {
     this.deleted.set(full, repo.owner)
     this.deletedRepos.set(repo.id, { full, owner: repo.owner })
     this.deletedIds.set(full.toLowerCase(), repo.id)
+    this.accessRevision++
     this.reposById.delete(repo.id)
     this.svc.hooks?.dropRepo(full)
     this.svc.extras?.drop(full)
@@ -1599,7 +1609,7 @@ export class MemoryDomain {
 
   async accountVersion(handle: string) {
     const a = this.accounts.get(handle)
-    return a ? `${a.id}` : null
+    return a ? `${a.id}.${this.accessRevision}` : null
   }
 
   async listRepos(
@@ -1622,7 +1632,7 @@ export class MemoryDomain {
   }
 
   private repoKey(r: RepoRec) {
-    return `${r.id}.${r.version}.${r.rev}.${r.changes.size}.${r.issues.size}`
+    return `${r.id}.${r.version}.${r.rev}.${r.changes.size}.${r.issues.size}.${this.accessRevision}`
   }
 
   /** The event log's position, for conditional reads of the log itself. */
@@ -1633,6 +1643,13 @@ export class MemoryDomain {
   /** The repository id behind an address, after checking the caller may read it. */
   async repoIdOf(owner: string, name: string, p: Viewer) {
     return this.resolve(owner, name, p).id
+  }
+
+  /** Marks a repository's derived state (env metadata, say) as changed without an event. */
+  async bumpRepo(owner: string, name: string, p: Viewer) {
+    const r = this.resolve(owner, name, p, 'write')
+    r.updated = this.now()
+    r.version++
   }
 
   /** Whether the caller may read the repository with this stable id. */
@@ -1776,7 +1793,7 @@ export class MemoryDomain {
   }
 
   private changeKey(repo: RepoRec, c: ChangeRec, expand: ReadonlyArray<string> = []) {
-    return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}${expand.includes('repo') ? `.${repo.rev}` : ''}`
+    return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}.${repo.version}.${this.accessRevision}${expand.includes('repo') ? `.${repo.rev}` : ''}`
   }
 
   private stackRev(repo: RepoRec, c: ChangeRec) {
@@ -2429,7 +2446,7 @@ export class MemoryDomain {
   async issueVersion(owner: string, name: string, n: number, p: Viewer) {
     const repo = this.resolve(owner, name, p)
     const i = repo.issues.get(n)
-    return i ? `${i.id}.${i.version}` : null
+    return i ? `${i.id}.${i.version}.${repo.version}.${this.accessRevision}` : null
   }
 
   async createIssue(
@@ -2479,7 +2496,7 @@ export class MemoryDomain {
     const repo = this.resolve(owner, name, p, 'write')
     const i = repo.issues.get(n)
     if (!i) throw apiError('not_found', `No issue #${n} in ${owner}/${name}.`)
-    this.assertMatch(ifMatch, `${i.id}.${i.version}`, () => this.presentIssue(repo, i))
+    this.assertMatch(ifMatch, `${i.id}.${i.version}.${repo.version}.${this.accessRevision}`, () => this.presentIssue(repo, i))
     if (!dry) {
       if (repo.openIssueByTitle.get(i.title) === i) repo.openIssueByTitle.delete(i.title)
       if (body.title !== undefined) i.title = body.title
@@ -2556,6 +2573,16 @@ export class MemoryDomain {
 
   canSeeId(p: Viewer) {
     return this.readableRepoIds(p)
+  }
+
+  /** The event log's position for one repository, after checking the caller may read it. */
+  async repoHistoryVersion(full: string, p: Viewer) {
+    const id = this.repoIdForHistory(full)
+    if (!id) throw apiError('not_found', `No repository ${full}.`)
+    if (!this.readableRepoIds(p)(id)) throw apiError('not_found', `No repository ${full}.`, {
+      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+    })
+    return `${id}.${this.events.head}`
   }
 
   /** The stable id behind a repository address, without requiring that it still exists. */
