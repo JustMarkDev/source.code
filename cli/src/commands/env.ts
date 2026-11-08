@@ -196,14 +196,14 @@ export const env: Command = async (
           dryRun: dry,
         })
       ).json as Grant
-      print(ctx, g, () => `approved ${g.id} until ${g.expires_at ?? ''}`)
+      print(ctx, g, () => `${dry ? 'would approve' : 'approved'} ${g.id}${dry ? '' : ` until ${g.expires_at ?? ''}`}`)
       return
     }
     if (action === 'revoke') {
       const g = (
         await api.post(`${repo.path}/env/grants/${id}/revoke`, { dryRun: dry })
       ).json as Grant
-      print(ctx, g, () => `revoked ${g.id}`)
+      print(ctx, g, () => `${dry ? 'would revoke' : 'revoked'} ${g.id}`)
       return
     }
     throw new SxError(

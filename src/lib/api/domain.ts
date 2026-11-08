@@ -1939,7 +1939,17 @@ export class MemoryDomain {
         const prev = this.head(existing)
         const preview = {
           ...existing,
-          patchSets: [...existing.patchSets, { ...prev, n: prev.n + 1, sha, kind: 'update' as const, note: 'Updated from branch', author: by, created: this.now() }],
+          patchSets: [...existing.patchSets, {
+            ...prev,
+            n: prev.n + 1,
+            sha,
+            tree: sha.slice(0, 7),
+            kind: 'update' as const,
+            note: 'Updated from branch',
+            author: by,
+            created: this.now(),
+            files: Object.fromEntries(Object.entries(prev.files).map(([path, f]) => [path, { ...f, hash: `${f.hash.slice(0, 4)}${prev.n + 1}` }])),
+          }],
           version: existing.version + 1,
         }
         return { change: this.presentChange(repo, preview, p), outcome: 'patch_set_added' as const }
