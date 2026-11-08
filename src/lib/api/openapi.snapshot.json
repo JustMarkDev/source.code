@@ -5444,6 +5444,19 @@
               "description": "Comma list. Default: every variable set here",
               "type": "string"
             }
+          },
+          {
+            "name": "check_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Check access without reading or auditing values",
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
           }
         ],
         "responses": {

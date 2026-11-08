@@ -114,33 +114,13 @@ export async function runWithEnv(opts: {
 }): Promise<RunResult> {
   const api = opts.ctx.api()
   const who = await whoami(opts.ctx)
-  const agent = who.class !== 'human'
   const names = opts.only?.join(',')
 
   if (opts.dryRun) {
-    // Say what would be injected without reading a value; apply the same refusals.
-    if (agent && opts.env === 'production')
-      cliError(
-        new SxError('human_required', '', undefined, exit.needsHuman),
-        opts.env,
-      )
-    if (!who.scopes.includes('secrets:decrypt'))
-      cliError(
-        new SxError('insufficient_scope', '', 'Ask for a token with secrets:decrypt.', exit.needsHuman),
-        opts.env,
-      )
-    if (agent && who.scopes.includes('secrets:schema')) {
-      const grants = (await api.get(`${opts.repo.path}/env/grants`)).json
-        .data as Array<{ state: string; environment: string }>
-      if (
-        !grants.some((g) => g.state === 'active' && g.environment === opts.env)
-      )
-        cliError(
-          new SxError('grant_required', '', undefined, exit.needsHuman),
-          opts.env,
-        )
-    }
-    const vars = who.scopes.includes('secrets:schema')
+    // Ask the server to run the same access checks without reading or auditing values.
+    await api.get(`${opts.repo.path}/env/${opts.env}/values`, { query: { check_only: 'true' } })
+    const canSchema = who.scopes.includes('secrets:schema')
+    const vars = canSchema
       ? ((await api.get(`${opts.repo.path}/env`, {
           query: { environment: opts.env as 'development' },
         })).json.data as Array<{ name: string; secret: boolean; set: boolean }>)

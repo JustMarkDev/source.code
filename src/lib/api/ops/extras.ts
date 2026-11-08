@@ -319,7 +319,10 @@ export const envValues = defineOp({
   method: 'GET',
   path: '/repos/{owner}/{repo}/env/{environment}/values',
   params: repoParams.extend({ environment }),
-  query: z.strictObject({ names: z.string().optional().describe('Comma list. Default: every variable set here') }),
+  query: z.strictObject({
+    names: z.string().optional().describe('Comma list. Default: every variable set here'),
+    check_only: z.enum(['true', 'false']).optional().describe('Check access without reading or auditing values'),
+  }),
   auth: 'required',
   scopes: ['secrets:decrypt'],
   conditional: false,
@@ -342,6 +345,8 @@ export const envValues = defineOp({
           throw apiError('grant_required', `No active grant for ${ctx.params.environment}.`, {
             hint: `POST /v1/repos/${full}/env/grants to request one. A person approves it, then retry.`,
           })
+        if (ctx.query.check_only === 'true')
+          return { object: 'env_values' as const, environment: ctx.params.environment, values: {}, secrets: [], grant: x.activeGrant(ctx.params.environment)?.id ?? null }
         const r = x.values({ environment: ctx.params.environment, names: ctx.query.names?.split(','), who: `${p.handle} (${p.class})`, agent })
         return { object: 'env_values' as const, environment: ctx.params.environment, values: r.values, secrets: r.secrets, grant: r.grant }
       })

@@ -77,7 +77,7 @@ Every response carries:
 | `Sx-Request-Id`     | Quote it when you report a problem. It is also `request_id` in an error body.            |
 | `Sx-Version`        | The API version that answered. See [Versioning](/docs/api/versioning).                   |
 | `Server-Timing`     | Where the time went: `handler`, `cache`, `total`. Use it to see whether slow is you or us. |
-| `ETag`              | On reads. Send it back as `If-None-Match`.                                               |
+| `ETag`              | On cacheable reads; live streams and raw downloads do not carry one. Send it back as `If-None-Match`. |
 | `RateLimit`, `RateLimit-Policy` | What is left and the limit. See [Rate limits](/docs/api/rate-limits).        |
 
 Some responses add `Sx-Outcome` (what a repeat-safe create did: `created`, `unchanged`, `patch_set_added`, `updated`), `Sx-Replayed` (the answer came from an idempotency key), `Sx-Dry-Run`, and `Sx-Limit-Applied` (your `limit` was clamped).

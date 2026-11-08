@@ -1068,6 +1068,8 @@ export interface Operations {
       environment: 'development' | 'preview' | 'production'
       /** Comma list. Default: every variable set here */
       names?: string
+      /** Check access without reading or auditing values */
+      check_only?: 'true' | 'false'
     }
     output: EnvValues
   }
@@ -2338,7 +2340,7 @@ const OPERATIONS = {
   'env.values': {
     method: 'GET',
     path: '/repos/{owner}/{repo}/env/{environment}/values',
-    query: ['names'],
+    query: ['names', 'check_only'],
     body: false,
     rawBody: false,
     json: true,

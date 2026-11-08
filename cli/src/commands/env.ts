@@ -85,16 +85,8 @@ export const env: Command = async (
 
   if (sub === 'pull') {
     if (dry) {
+      await api.get(`${repo.path}/env/${environment}/values`, { query: { check_only: 'true' } })
       const who = await whoami(ctx)
-      if (!who.scopes.includes('secrets:decrypt'))
-        throw new SxError('insufficient_scope', 'Reading values needs secrets:decrypt.', 'Ask for a token with secrets:decrypt.', exit.needsHuman)
-      if (who.class !== 'human' && environment === 'production')
-        throw new SxError('human_required', 'Agents cannot use production values.', 'Ask a person to run this, or use development values.', exit.needsHuman)
-      if (who.class !== 'human' && who.scopes.includes('secrets:schema')) {
-        const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string }>
-        if (!grants.some((g) => g.state === 'active' && g.environment === environment))
-          throw new SxError('grant_required', `No active grant for ${environment}.`, 'Ask a person to approve one.', exit.needsHuman)
-      }
       const vars = who.scopes.includes('secrets:schema')
         ? ((await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>)
         : []
