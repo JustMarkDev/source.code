@@ -5,17 +5,17 @@ name: Workflow lint
 on:
   pull_request:
     paths:
-      - ".github/workflows/**"
-      - ".github/actions/**"
-      - ".github/dependabot.yml"
-      - ".github/zizmor.yml"
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/dependabot.yml'
+      - '.github/zizmor.yml'
   push:
     branches: [main]
     paths:
-      - ".github/workflows/**"
-      - ".github/actions/**"
-      - ".github/dependabot.yml"
-      - ".github/zizmor.yml"
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/dependabot.yml'
+      - '.github/zizmor.yml'
 
 permissions:
   contents: read

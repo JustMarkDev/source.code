@@ -68,7 +68,9 @@ async function handle({ request }: { request: Request }) {
       limitKey: found.record.id,
       ttlMs: 60_000,
     })
-    client = clientFor(`${origin}${API_MOUNT}`, created.secret, (req) => api.fetch(req))
+    client = clientFor(`${origin}${API_MOUNT}`, created.secret, (req) =>
+      api.fetch(req),
+    )
     revoke = () => api.domain.svc.auth.revoke(created.record.id)
   }
   const server = createSxMcpServer({ client })

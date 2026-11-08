@@ -1,21 +1,196 @@
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 import { fumadocsMdx } from 'fumadocs-mdx/vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
+  lint: {
+    // Dither Kit is vendored from its shadcn registry; keep it as shipped so
+    // `dither-kit update` stays a clean overwrite.
+    ignorePatterns: [
+      '**/build/**',
+      '**/coverage/**',
+      '**/dist/**',
+      '.output/**',
+      '.tanstack/**',
+      'convex/_generated/**',
+      'src/components/dither-kit/**',
+      'routeTree.gen.ts',
+    ],
+    jsPlugins: [
+      { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
+      { name: 'convex', specifier: '@convex-dev/eslint-plugin' },
+    ],
+    // Type checking is `bun check`; lint only needs the type information.
+    options: { typeAware: true, denyWarnings: true },
+    rules: {
+      'vite-plus/prefer-vite-plus-imports': 'error',
+
+      // What @tanstack/eslint-config enforced.
+      'for-direction': 'error',
+      'no-async-promise-executor': 'error',
+      'no-case-declarations': 'error',
+      'no-class-assign': 'error',
+      'no-compare-neg-zero': 'error',
+      'no-cond-assign': 'error',
+      'no-constant-binary-expression': 'error',
+      'no-constant-condition': 'error',
+      'no-control-regex': 'error',
+      'no-debugger': 'error',
+      'no-delete-var': 'error',
+      'no-dupe-else-if': 'error',
+      'no-duplicate-case': 'error',
+      'no-empty-character-class': 'error',
+      'no-empty-pattern': 'error',
+      'no-empty-static-block': 'error',
+      'no-ex-assign': 'error',
+      'no-extra-boolean-cast': 'error',
+      'no-fallthrough': 'error',
+      'no-global-assign': 'error',
+      'no-invalid-regexp': 'error',
+      'no-irregular-whitespace': 'error',
+      'no-loss-of-precision': 'error',
+      'no-misleading-character-class': 'error',
+      'no-nonoctal-decimal-escape': 'error',
+      'no-regex-spaces': 'error',
+      'no-self-assign': 'error',
+      'no-shadow': 'warn',
+      'no-shadow-restricted-names': 'error',
+      'no-sparse-arrays': 'error',
+      'no-unsafe-finally': 'error',
+      'no-unsafe-optional-chaining': 'error',
+      'no-unused-labels': 'error',
+      'no-unused-private-class-members': 'error',
+      'no-useless-backreference': 'error',
+      'no-useless-catch': 'error',
+      'no-useless-escape': 'error',
+      'no-var': 'error',
+      'no-with': 'error',
+      'prefer-const': 'error',
+      'require-yield': 'error',
+      'sort-imports': ['error', { ignoreDeclarationSort: true }],
+      'use-isnan': 'error',
+      'valid-typeof': 'error',
+
+      'typescript/array-type': [
+        'error',
+        { default: 'generic', readonly: 'generic' },
+      ],
+      'typescript/ban-ts-comment': [
+        'error',
+        { 'ts-expect-error': false, 'ts-ignore': 'allow-with-description' },
+      ],
+      'typescript/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports' },
+      ],
+      'typescript/method-signature-style': ['error', 'property'],
+      'typescript/no-duplicate-enum-values': 'error',
+      'typescript/no-extra-non-null-assertion': 'error',
+      'typescript/no-for-in-array': 'error',
+      'typescript/no-inferrable-types': ['error', { ignoreParameters: true }],
+      'typescript/no-misused-new': 'error',
+      'typescript/no-namespace': 'error',
+      'typescript/no-non-null-asserted-optional-chain': 'error',
+      'typescript/no-unnecessary-condition': 'error',
+      'typescript/no-unnecessary-type-assertion': 'error',
+      'typescript/no-unsafe-function-type': 'error',
+      'typescript/no-wrapper-object-types': 'error',
+      'typescript/prefer-as-const': 'error',
+      'typescript/prefer-for-of': 'warn',
+      'typescript/require-await': 'warn',
+      'typescript/triple-slash-reference': 'error',
+
+      'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
+      'import/first': 'error',
+      'import/newline-after-import': 'error',
+      'import/no-commonjs': 'error',
+      'import/no-duplicates': 'error',
+      'unicorn/prefer-node-protocol': 'error',
+    },
+    overrides: [
+      {
+        // bun types `expect(...).rejects.*` as void, but it is a promise and
+        // has to be awaited.
+        files: ['**/*.test.ts'],
+        rules: { 'typescript/await-thenable': 'off' },
+      },
+      {
+        // What @convex-dev/eslint-plugin's `recommended` config enforced.
+        files: ['**/convex/**/*.ts'],
+        rules: {
+          'convex/no-old-registered-function-syntax': 'error',
+          'convex/require-args-validator': 'error',
+          'convex/explicit-table-ids': 'error',
+          'convex/no-filter-in-query': 'warn',
+          'convex/no-top-of-hour-crons': 'warn',
+          'convex/no-schema-import-cycle': 'error',
+          'convex/no-duplicate-indexes': 'error',
+          'convex/no-process-env': 'error',
+        },
+      },
+    ],
+  },
+  staged: {
+    '*': 'vp check --fix',
+  },
+  fmt: {
+    semi: false,
+    singleQuote: true,
+    trailingComma: 'all',
+    printWidth: 80,
+    sortPackageJson: false,
+    ignorePatterns: [
+      '.nitro/',
+      '.output/',
+      '.tanstack/',
+      '**/api',
+      '**/build',
+      '**/public',
+      'convex/_generated/',
+      'example/convex/_generated/',
+      'convex/README.md',
+      'pnpm-lock.yaml',
+      'routeTree.gen.ts',
+      'sdk/typescript/index.ts', // generated by scripts/api-sdk.ts
+      'src/components/dither-kit/', // vendored, see the lint block
+      '.agents/skills/',
+      '.claude/skills/',
+    ],
+  },
   server: {
     port: 3000,
   },
-  plugins: [
+  build: {
+    // The chunks over 500 kB are shiki grammars (cpp, emacs-lisp, wasm) that
+    // the diff and code viewers fetch on demand; none of them is on the initial
+    // load.
+    chunkSizeWarningLimit: 800,
+    rolldownOptions: {
+      onLog(level, log, defaultHandler) {
+        // fumadocs-mdx's shared runtime imports node:fs/promises dynamically,
+        // only to read a page's raw text on the server. Nothing in the browser
+        // reaches it.
+        if (
+          log.message.includes('"node:fs/promises" has been externalized') &&
+          log.message.includes('fumadocs-mdx/dist/runtime/server.js')
+        )
+          return
+        defaultHandler(level, log)
+      },
+    },
+  },
+  plugins: lazyPlugins(() => [
     fumadocsMdx(),
-    tailwindcss(),
+    // Vite minifies the CSS afterwards. Tailwind's own lightningcss pass only
+    // adds a warning for fumadocs-ui's valid `::highlight()` selectors.
+    tailwindcss({ optimize: false }),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart(),
     viteReact(),
-  ],
+  ]),
 })

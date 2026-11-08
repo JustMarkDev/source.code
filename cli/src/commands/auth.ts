@@ -13,7 +13,9 @@ import type { Command } from './types'
 export const auth: Command = async ({ rest: [sub = 'status'], flags }, ctx) => {
   const apiConfig = resolve('api')
   const network = apiConfig.from !== 'default'
-  const saved = network ? readCredentials(apiConfig.value.replace(/\/$/, '')) : null
+  const saved = network
+    ? readCredentials(apiConfig.value.replace(/\/$/, ''))
+    : null
   const token = process.env.SX_TOKEN ?? saved?.access_token
   if (sub === 'status') {
     // Over the network the token is checked by asking who it is. In the preview

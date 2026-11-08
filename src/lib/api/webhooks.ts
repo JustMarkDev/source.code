@@ -89,7 +89,7 @@ export function isBlockedAddress(ip: string): boolean {
     }
     return (
       v === '::' || v === '::1' ||
-      /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || /^ff/.test(v) ||
+      /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('ff') ||
       v.startsWith('64:ff9b:') || v.startsWith('2001:db8') ||
       // Teredo tunnels carry an obfuscated client IPv4 address; treat the
       // whole 2001:0000::/32 range as private.
@@ -335,7 +335,7 @@ export class WebhookService {
 
   /** A deleted repository takes its webhooks with it. */
   dropRepo(repo: string) {
-    for (const id of [...(this.byRepo.get(repo) ?? [])]) {
+    for (const id of Array.from(this.byRepo.get(repo) ?? [])) {
       const h = this.hooks.get(id)
       if (h) this.remove(h)
     }

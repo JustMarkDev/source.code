@@ -10,7 +10,12 @@ import { trial } from './pricing'
 export const checkedOn = 'November 5 to 7, 2026'
 
 export type Product =
-  'us' | 'github' | 'gitlab' | 'bitbucket' | 'gitcafe' | 'forgejo'
+  | 'us'
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'gitcafe'
+  | 'forgejo'
 
 export const products: Array<{ id: Product; name: string; note?: string }> = [
   { id: 'us', name: 'source.code' },

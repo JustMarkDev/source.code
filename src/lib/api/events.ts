@@ -197,7 +197,7 @@ export class EventLog {
   private wake(topic: string) {
     const set = this.waiters.get(topic)
     if (!set) return
-    for (const done of [...set]) done()
+    for (const done of Array.from(set)) done()
   }
 
   get waiting() {

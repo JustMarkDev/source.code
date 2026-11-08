@@ -4,10 +4,10 @@ source.code includes or depends on the components below. Each keeps its own lice
 
 ## Vendored code
 
-| Component | Where | License | Notes |
-| --- | --- | --- | --- |
-| Dither Kit | `src/components/dither-kit/` | MIT (declared in its npm package metadata) | Copied from the Dither Kit shadcn registry (https://github.com/Boring-Software-Inc/dither-kit). The repository and the npm tarball contain no license file, only the `license: MIT` field and the author name (ripgrim). We have asked for a LICENSE file to be added. Heavily inspired by Evil Charts, per its README. |
-| shadcn/ui patterns | `src/components/ui/` | MIT | Components were generated with the shadcn CLI and then restyled. |
+| Component          | Where                        | License                                    | Notes                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | ---------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dither Kit         | `src/components/dither-kit/` | MIT (declared in its npm package metadata) | Copied from the Dither Kit shadcn registry (https://github.com/Boring-Software-Inc/dither-kit). The repository and the npm tarball contain no license file, only the `license: MIT` field and the author name (ripgrim). We have asked for a LICENSE file to be added. Heavily inspired by Evil Charts, per its README. |
+| shadcn/ui patterns | `src/components/ui/`         | MIT                                        | Components were generated with the shadcn CLI and then restyled.                                                                                                                                                                                                                                                        |
 
 ## Notices carried by dependencies
 
@@ -23,47 +23,47 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 
 ## Direct dependencies
 
-| Package | Used at runtime | License |
-| --- | --- | --- |
-| @base-ui/react | yes | MIT |
-| @convex-dev/react-query | yes | Apache-2.0 |
-| @fontsource-variable/geist | yes | OFL-1.1 |
-| @fontsource-variable/geist-mono | yes | OFL-1.1 |
-| @heroicons/react | yes | MIT |
-| @modelcontextprotocol/sdk | yes | MIT |
-| @pierre/diffs | yes | apache-2.0 |
-| @pierre/storage | yes | MIT |
-| @pierre/trees | yes | apache-2.0 |
-| @tanstack/react-query | yes | MIT |
-| @tanstack/react-router | yes | MIT |
-| @tanstack/react-router-ssr-query | yes | MIT |
-| @tanstack/react-start | yes | MIT |
-| class-variance-authority | yes | Apache-2.0 |
-| clsx | yes | MIT |
-| cn | yes | MIT |
-| convex | yes | Apache-2.0 |
-| d3-scale | yes | ISC |
-| d3-shape | yes | ISC |
-| diff | yes | BSD-3-Clause |
-| fumadocs-core | yes | MIT |
-| fumadocs-mdx | yes | MIT |
-| fumadocs-ui | yes | MIT |
-| lucide-react | yes | ISC |
-| motion | yes | MIT |
-| react | yes | MIT |
-| react-dom | yes | MIT |
-| shadcn | yes | MIT |
-| simple-icons | yes | CC0-1.0 |
-| tailwind-merge | yes | MIT |
-| tw-animate-css | yes | MIT |
-| zod | yes | MIT |
-| @convex-dev/eslint-plugin | build only | Apache-2.0 |
-| @tailwindcss/vite | build only | MIT |
-| @tanstack/eslint-config | build only | MIT |
-| @typescript/native | build only | Apache-2.0 |
-| @vitejs/plugin-react | build only | MIT |
-| prettier | build only | MIT |
-| tailwindcss | build only | MIT |
-| typescript | build only | Apache-2.0 |
-| vite | build only | MIT |
-| vite-tsconfig-paths | build only | MIT |
+| Package                          | Used at runtime | License      |
+| -------------------------------- | --------------- | ------------ |
+| @base-ui/react                   | yes             | MIT          |
+| @convex-dev/react-query          | yes             | Apache-2.0   |
+| @fontsource-variable/geist       | yes             | OFL-1.1      |
+| @fontsource-variable/geist-mono  | yes             | OFL-1.1      |
+| @heroicons/react                 | yes             | MIT          |
+| @modelcontextprotocol/sdk        | yes             | MIT          |
+| @pierre/diffs                    | yes             | apache-2.0   |
+| @pierre/storage                  | yes             | MIT          |
+| @pierre/trees                    | yes             | apache-2.0   |
+| @tanstack/react-query            | yes             | MIT          |
+| @tanstack/react-router           | yes             | MIT          |
+| @tanstack/react-router-ssr-query | yes             | MIT          |
+| @tanstack/react-start            | yes             | MIT          |
+| class-variance-authority         | yes             | Apache-2.0   |
+| clsx                             | yes             | MIT          |
+| cn                               | yes             | MIT          |
+| convex                           | yes             | Apache-2.0   |
+| d3-scale                         | yes             | ISC          |
+| d3-shape                         | yes             | ISC          |
+| diff                             | yes             | BSD-3-Clause |
+| fumadocs-core                    | yes             | MIT          |
+| fumadocs-mdx                     | yes             | MIT          |
+| fumadocs-ui                      | yes             | MIT          |
+| lucide-react                     | yes             | ISC          |
+| motion                           | yes             | MIT          |
+| react                            | yes             | MIT          |
+| react-dom                        | yes             | MIT          |
+| shadcn                           | yes             | MIT          |
+| simple-icons                     | yes             | CC0-1.0      |
+| tailwind-merge                   | yes             | MIT          |
+| tw-animate-css                   | yes             | MIT          |
+| zod                              | yes             | MIT          |
+| @convex-dev/eslint-plugin        | build only      | Apache-2.0   |
+| @tailwindcss/vite                | build only      | MIT          |
+| @tanstack/eslint-config          | build only      | MIT          |
+| @typescript/native               | build only      | Apache-2.0   |
+| @vitejs/plugin-react             | build only      | MIT          |
+| prettier                         | build only      | MIT          |
+| tailwindcss                      | build only      | MIT          |
+| typescript                       | build only      | Apache-2.0   |
+| vite                             | build only      | MIT          |
+| vite-tsconfig-paths              | build only      | MIT          |

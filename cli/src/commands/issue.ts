@@ -39,7 +39,9 @@ export const issue: Command = async (
     })
     const created = r.headers.get('sx-outcome') !== 'unchanged'
     print(ctx, { ...r.json, created, dryRun: dry }, () =>
-      created ? `${dry ? 'would create' : 'created'} #${r.json.number}` : `#${r.json.number} already open`,
+      created
+        ? `${dry ? 'would create' : 'created'} #${r.json.number}`
+        : `#${r.json.number} already open`,
     )
     return
   }
@@ -64,7 +66,11 @@ export const issue: Command = async (
         dryRun: dry,
       })
     ).json
-    print(ctx, { ...found, dryRun: dry }, () => `${dry ? 'would close' : 'closed'} #${found.number}`)
+    print(
+      ctx,
+      { ...found, dryRun: dry },
+      () => `${dry ? 'would close' : 'closed'} #${found.number}`,
+    )
     return
   }
   throw new SxError(

@@ -133,7 +133,7 @@ const ages = [
   '3 weeks ago',
 ]
 const pick = (name: string) =>
-  [...name].reduce((n, c) => n + c.charCodeAt(0), 0) % messages.length
+  Array.from(name).reduce((n, c) => n + c.charCodeAt(0), 0) % messages.length
 
 function iconFor(e: Entry) {
   if (e.kind === 'dir') return FolderIcon

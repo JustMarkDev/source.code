@@ -53,7 +53,7 @@ export class Pre {
   /** `obj` may be a function, for items built from text that rarely need the object. */
   constructor(
     readonly json: string,
-    obj: unknown | (() => unknown),
+    obj: unknown,
     readonly key: string,
   ) {
     if (typeof obj === 'function') this.make = obj as () => unknown

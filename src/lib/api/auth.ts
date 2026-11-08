@@ -379,7 +379,7 @@ export class AuthStore implements TokenStore {
 
   /** Drop expired and long-revoked tokens, and authorizations revoked long ago. */
   sweep(now: number) {
-    for (const t of [...this.byId.values()])
+    for (const t of Array.from(this.byId.values()))
       if (t.expiresAt + 86_400_000 < now || (t.revokedAt && t.revokedAt + 86_400_000 < now)) this.forgetByRecord(t)
     for (const [id, a] of this.authorizations)
       if (a.revokedAt !== null && a.revokedAt + 86_400_000 < now) {

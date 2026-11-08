@@ -171,12 +171,12 @@ function Terms() {
       <LegalSection id="software" title="Our software and its license">
         <p>
           The server and web app are public so you can read them, and are
-          published under the Business Source License 1.1: production use of
-          the server code needs a commercial license, and each version
-          converts to Apache-2.0 four years after it is published. The CLI
-          and SDK in `cli/` and `sdk/typescript/` are Apache-2.0 and can be
-          used and forked freely. Using the hosted service does not require
-          a license. Parts we did not write keep their own licenses.
+          published under the Business Source License 1.1: production use of the
+          server code needs a commercial license, and each version converts to
+          Apache-2.0 four years after it is published. The CLI and SDK in `cli/`
+          and `sdk/typescript/` are Apache-2.0 and can be used and forked
+          freely. Using the hosted service does not require a license. Parts we
+          did not write keep their own licenses.
         </p>
       </LegalSection>
 

@@ -8,7 +8,11 @@ import type { BrandId } from '~/components/brand'
 import type { Repo } from '~/mock/data'
 
 export type IntegrationGroup =
-  'review' | 'runners' | 'environments' | 'secrets' | 'planning'
+  | 'review'
+  | 'runners'
+  | 'environments'
+  | 'secrets'
+  | 'planning'
 
 /** `available` works today. `planned` is on the roadmap and cannot be connected yet. */
 export type IntegrationStatus = 'available' | 'planned'
@@ -272,7 +276,7 @@ const emit = () => listeners.forEach((l) => l())
 
 export const connections = {
   get: () => state,
-  subscribe(cb: () => void) {
+  subscribe: (cb: () => void) => {
     listeners.add(cb)
     return () => void listeners.delete(cb)
   },
@@ -315,7 +319,12 @@ export function useConnections() {
 /* Mirrors: other hosts that keep a copy of a repository in step. */
 
 export type Host =
-  'github' | 'gitlab' | 'codeberg' | 'gitea' | 'bitbucket' | 'forgejo'
+  | 'github'
+  | 'gitlab'
+  | 'codeberg'
+  | 'gitea'
+  | 'bitbucket'
+  | 'forgejo'
 export type MirrorState = 'in-sync' | 'syncing' | 'behind' | 'failing'
 
 export type Mirror = {

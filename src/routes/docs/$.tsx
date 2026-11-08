@@ -19,6 +19,8 @@ export const Route = createFileRoute('/docs/$')({
   loader: async ({ params }) => {
     const slugs = params._splat?.split('/').filter(Boolean) ?? []
     const data = await serverLoader({ data: slugs })
+    // Fetch the page body now so rendering does not suspend.
+    await docs.getPage(data.path)?.preload()
     return data
   },
 })
@@ -60,9 +62,10 @@ function Content({ path }: { path: string }) {
   useDocsLandmarks(path)
   const page = docs.getPage(path)
   if (!page) throw new Error(`unknown page: ${path}`)
+  const { toc } = React.use(page.load())
   const MDX = page.body
   return (
-    <DocsPage toc={page.toc}>
+    <DocsPage toc={toc}>
       <DocsTitle>{page.title}</DocsTitle>
       <DocsDescription>{page.description}</DocsDescription>
       <DocsBody>

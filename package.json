@@ -5,13 +5,15 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "convex dev --start 'vite dev'",
-    "typecheck": "bun check",
-    "build": "bun run typecheck && vite build",
+    "dev": "convex dev --start 'vp dev'",
+    "check": "vp check && bun run typecheck",
+    "typecheck": "bun check --no-script",
+    "build": "bun run typecheck && vp build",
     "start": "node .output/server/index.mjs",
-    "format": "prettier --write .",
-    "lint": "bun run typecheck && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test": "bun test"
+    "format": "vp fmt .",
+    "lint": "vp lint",
+    "test": "bun test",
+    "prepare": "vp config"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -52,7 +54,6 @@
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^5.0.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/eslint-config": "^0.4.0",
     "@types/bun": "^1.4.4",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.2.0",
@@ -62,11 +63,21 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^6.0.5",
     "convex-test": "^0.0.67",
-    "prettier": "^3.9.6",
     "simple-icons": "^16.36.0",
     "tailwindcss": "^4.3.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.2.0",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.5.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vite-plus": "1.5.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.5.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.4",
+      "onFail": "download"
+    }
   }
 }

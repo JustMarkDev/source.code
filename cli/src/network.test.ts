@@ -174,7 +174,14 @@ describe('signing in with a code', () => {
     const queue = [...steps]
     // eslint-disable-next-line @typescript-eslint/require-await -- a fetch stand-in has to return a promise
     const f = (async (url: string, init?: RequestInit) => {
-      calls.push({ url, body: String(init?.body ?? '') })
+      calls.push({
+        url,
+        body:
+          typeof init?.body === 'string' ||
+          init?.body instanceof URLSearchParams
+            ? init.body.toString()
+            : '',
+      })
       if (url.endsWith('/oauth/register'))
         return Response.json({ client_id: 'cl_test' }, { status: 201 })
       if (url.endsWith('/oauth/device_authorization'))
@@ -312,7 +319,10 @@ describe('signing in with a code', () => {
         const session = await fetch(`${url}/oauth/session`, {
           method: 'POST',
           redirect: 'manual',
-          headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            origin: 'https://source.code',
+          },
           body: 'handle=dana&return_to=/',
         })
         const cookie = session.headers.get('set-cookie')!.split(';')[0]
@@ -355,7 +365,10 @@ describe('signing in with a code', () => {
       const creds = readCredentials(url)!
       expect(creds.access_token).toMatch(/^sxo_/)
       const who = await sx(env, 'auth', 'status')
-      expect(JSON.parse(who.out)).toMatchObject({ authenticated: true, via: 'credentials' })
+      expect(JSON.parse(who.out)).toMatchObject({
+        authenticated: true,
+        via: 'credentials',
+      })
       // With a stored token and no SX_TOKEN, calls work.
       const list = await sx(env, 'repo', 'list')
       expect(list.code, list.err).toBe(0)

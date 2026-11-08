@@ -28,15 +28,15 @@ On failure `sx` prints one object to stderr in JSON mode, or two lines in text m
 
 The `code` in an error is the API's `code`, and the exit code is the API's `exit_code`, so a script, `curl` and `sx` agree. [Every code](/docs/api/errors).
 
-| Code | Meaning              | Example                                         |
-| ---- | -------------------- | ----------------------------------------------- |
-| `0`  | Success              |                                                 |
-| `1`  | Something went wrong | An unexpected error                             |
-| `2`  | You used it wrong    | Missing argument, unknown repository context    |
-| `3`  | Not found            | `not_found`, `account_not_found`                |
-| `4`  | Not signed in        | `unauthenticated`, `token_expired`              |
+| Code | Meaning              | Example                                             |
+| ---- | -------------------- | --------------------------------------------------- |
+| `0`  | Success              |                                                     |
+| `1`  | Something went wrong | An unexpected error                                 |
+| `2`  | You used it wrong    | Missing argument, unknown repository context        |
+| `3`  | Not found            | `not_found`, `account_not_found`                    |
+| `4`  | Not signed in        | `unauthenticated`, `token_expired`                  |
 | `5`  | Blocked              | `policy_blocked`, `forbidden`, `insufficient_scope` |
-| `6`  | Needs a human        | `human_required`, `grant_required`, `needs_human` |
+| `6`  | Needs a human        | `human_required`, `grant_required`, `needs_human`   |
 
 ## Dry runs
 

@@ -2692,7 +2692,7 @@ export class MemoryDomain {
           retryable: failure.retryable ?? entry.retryable,
           exit_code: entry.exit,
           ...(failure.errors ? { errors: failure.errors } : {}),
-          ...(failure.extra ?? {}),
+          ...failure.extra,
         }
         this.emit(repo, 'operation.finished', by, { object: 'operation', id: op.id, number: null }, ['state'], null)
       }

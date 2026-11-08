@@ -4,7 +4,7 @@ const LOG = Math.log(GROWTH)
 export const BUCKETS = 1200
 
 export class Histogram {
-  counts = new Array<number>(BUCKETS).fill(0)
+  counts = Array.from<number>({ length: BUCKETS }).fill(0)
   total = 0
   max = 0
 

@@ -77,7 +77,7 @@ function readOps(doc: Json): Array<Op> {
     for (const [method, op] of Object.entries<Json>(item)) {
       if (!op.operationId) continue
       const params = (op.parameters ?? []) as Array<Json>
-      const ok = Object.entries<Json>(op.responses ?? {}).find(([code]) => /^2/.test(code))
+      const ok = Object.entries<Json>(op.responses ?? {}).find(([code]) => code.startsWith('2'))
       const content = (ok?.[1].content ?? {}) as Json
       const json = content['application/json']
       const bodyContent = op.requestBody?.content as Json | undefined
