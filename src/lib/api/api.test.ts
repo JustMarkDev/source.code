@@ -1508,7 +1508,7 @@ describe('review, policy and landing', () => {
     const list = (await h.call('GET', '/repos/dana/stacky/changes?state=landed&sort=number')).json.data
     expect(list.map((c: { number: number }) => c.number)).toEqual([1, 2, 3])
     const landedAt = list.map((c: { landed_at: string }) => c.landed_at)
-    expect([...landedAt].sort()).toEqual(landedAt)
+    expect([...landedAt].sort((a, b) => a.localeCompare(b))).toEqual(landedAt)
     const middle = (await h.call('GET', '/repos/dana/stacky/changes/2')).json
     expect(middle.head.tree).toBe('2222222')
     expect(middle.reviewers[0].carries_to_head).toBe(true)

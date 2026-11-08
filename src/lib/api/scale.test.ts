@@ -127,7 +127,7 @@ describe('rate limits across many nodes', () => {
     await new Promise((r) => setTimeout(r, 30))
     release()
     const results = await Promise.all(calls)
-    const statuses = results.map((r) => r.status).sort()
+    const statuses = results.map((r) => r.status).sort((a, b) => a - b)
     expect(statuses).toEqual([200, 200, 200, 429, 429])
     expect(results.find((r) => r.status === 429)!.json.code).toBe('concurrency_limited')
     // And the slots are free again.

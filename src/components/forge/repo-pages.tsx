@@ -261,7 +261,7 @@ function useAttachments() {
       pending.current.push(...next.map((n) => n.url))
       if (next.length) setFiles((all) => [...all, ...next])
     },
-    remove(url: string) {
+    remove: (url: string) => {
       URL.revokeObjectURL(url)
       pending.current = pending.current.filter((u) => u !== url)
       setFiles((all) => all.filter((f) => f.url !== url))

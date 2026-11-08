@@ -272,7 +272,7 @@ const emit = () => listeners.forEach((l) => l())
 
 export const connections = {
   get: () => state,
-  subscribe(cb: () => void) {
+  subscribe: (cb: () => void) => {
     listeners.add(cb)
     return () => void listeners.delete(cb)
   },

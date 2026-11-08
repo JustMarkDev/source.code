@@ -174,7 +174,7 @@ describe('signing in with a code', () => {
     const queue = [...steps]
     // eslint-disable-next-line @typescript-eslint/require-await -- a fetch stand-in has to return a promise
     const f = (async (url: string, init?: RequestInit) => {
-      calls.push({ url, body: String(init?.body ?? '') })
+      calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' })
       if (url.endsWith('/oauth/register'))
         return Response.json({ client_id: 'cl_test' }, { status: 201 })
       if (url.endsWith('/oauth/device_authorization'))

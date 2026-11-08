@@ -149,7 +149,10 @@ else if (flag('fan')) {
           first = false
           if (++ready === count) console.log('ready')
         }
-        if (seen.includes('event: issue.created')) return void bump()
+        if (seen.includes('event: issue.created')) {
+            bump()
+            return
+          }
       }
     })()
   }

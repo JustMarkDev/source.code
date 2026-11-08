@@ -82,7 +82,7 @@ function toRepo(
 }
 
 const seedOf = (handle: string) =>
-  [...handle].reduce((n, c) => n + c.charCodeAt(0), 0)
+  Array.from(handle).reduce((n, c) => n + c.charCodeAt(0), 0)
 
 const months = [
   'Dec',

@@ -81,7 +81,7 @@ function ago(h: number) {
 }
 
 export function commitsFor(repo: Repo, count = 60): Array<Commit> {
-  const seed = [...repo.name].reduce((n, c) => n + c.charCodeAt(0), 7)
+  const seed = Array.from(repo.name).reduce((n, c) => n + c.charCodeAt(0), 7)
   const rand = seeded(seed)
   let hours = 2
   const list: Array<Commit> = []

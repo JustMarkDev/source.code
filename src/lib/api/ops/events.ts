@@ -177,7 +177,7 @@ export const streamEvents = defineOp({
           while (open && !ctx.signal.aborted) {
             // A stream is long-lived; a token revoked or expired mid-stream stops it.
             const bearer = /^Bearer\s+(.+)$/i.exec(ctx.header('authorization') ?? '')?.[1]
-            const found = bearer ? await domain.svc.auth.find(hashToken(bearer), 'api', ctx.now()) : null
+            const found = bearer ? domain.svc.auth.find(hashToken(bearer), 'api', ctx.now()) : null
             if (!found?.ok) break
             const current = principalOf(found.record)
             // Re-read access for every batch: a repository may become private,
