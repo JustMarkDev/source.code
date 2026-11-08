@@ -2303,8 +2303,9 @@ export class MemoryDomain {
     let outcome: 'created' | 'updated' | 'unchanged' = 'created'
     let rec = found
     if (found) {
+      const nextDetails = body.details_url ?? found.detailsUrl
       outcome =
-        found.state === body.state && found.detailsUrl === (body.details_url ?? null)
+        found.state === body.state && nextDetails === found.detailsUrl
           ? 'unchanged'
           : 'updated'
     }
@@ -2511,7 +2512,12 @@ export class MemoryDomain {
     // Check the first now so an obvious refusal is a plain error, not an operation.
     const first = open[0]
     const trees = body.expected_trees
-    this.checkLandable(repo, first, p!, trees[String(first.number)] ?? '')
+    const missing = open.filter((c) => !trees[String(c.number)]).map((c) => c.number)
+    if (missing.length)
+      throw apiError('invalid_request', `expected_trees is missing ${missing.map((n) => `#${n}`).join(', ')}.`, {
+        hint: 'Send the tree you checked for every open change in the stack.',
+      })
+    this.checkLandable(repo, first, p!, trees[String(first.number)])
     const op: OperationRec = {
       id: newId('operation', this.now()),
       kind: 'stack.land',
@@ -2537,7 +2543,7 @@ export class MemoryDomain {
       }
       const c = open[i]
       try {
-        this.checkLandable(repo, c, p!, trees[String(c.number)] ?? this.head(c).tree)
+        this.checkLandable(repo, c, p!, trees[String(c.number)])
         this.doLand(repo, c, by)
         op.done = i + 1
         setTimeout(() => step(i + 1), this.stepDelayMs)

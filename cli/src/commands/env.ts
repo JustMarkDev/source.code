@@ -71,7 +71,7 @@ export const env: Command = async (
     // The value is sealed on this machine. The server only ever receives ciphertext.
     const v = (
       await api.put(`${repo.path}/env/${name}/${environment}`, {
-        body: { ciphertext: seal(value) },
+        body: { ciphertext: dry ? 'dry-run' : seal(value) },
         dryRun: dry,
       })
     ).json as Var
@@ -87,11 +87,17 @@ export const env: Command = async (
     if (dry) {
       await api.get(`${repo.path}/env/${environment}/values`, { query: { check_only: 'true' } })
       const who = await whoami(ctx)
-      const vars = who.scopes.includes('secrets:schema')
-        ? ((await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>)
-        : []
-      const missing = vars.filter((v) => !v.set).map((v) => v.name)
-      print(ctx, { env: environment, written: null, dryRun: true, missing }, () => `would write .env.local for ${environment}${missing.length ? `\nmissing: ${missing.join(', ')}` : ''}`)
+      let vars: Array<Var> | null = null
+      if (who.scopes.includes('secrets:schema')) {
+        vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+        if (who.class !== 'human') {
+          const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
+          const active = grants.find((g) => g.state === 'active' && g.environment === environment)
+          if (active) vars = vars.filter((v) => active.variables.includes(v.name))
+        }
+      }
+      const missing = vars ? vars.filter((v) => !v.set).map((v) => v.name) : null
+      print(ctx, { env: environment, written: null, dryRun: true, missing }, () => `would write .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`)
       return
     }
     const values = (
@@ -100,11 +106,16 @@ export const env: Command = async (
     const text = `${Object.entries(values.values).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join('\n')}\n`
     writeFileSync('.env.local', text, { mode: 0o600 })
     chmodSync('.env.local', 0o600)
-    const missing = Object.keys(values.values).length === 0
+    const who = await whoami(ctx)
+    let missing: Array<string> | null = null
+    if (who.scopes.includes('secrets:schema')) {
+      const vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      missing = vars.filter((v) => !v.set).map((v) => v.name)
+    }
     print(
       ctx,
-      { env: environment, written: '.env.local', dryRun: false, missing: missing ? ['all values'] : [] },
-      () => `wrote .env.local for ${environment}${missing ? '\nmissing: all values' : ''}`,
+      { env: environment, written: '.env.local', dryRun: false, missing },
+      () => `wrote .env.local for ${environment}${missing?.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
     )
     return
   }
@@ -142,7 +153,7 @@ export const env: Command = async (
       [
         result.stdout.trimEnd(),
         result.stderr.trimEnd(),
-        `(${result.injected.length} variables injected, ${result.redacted.length} scrubbed from output)`,
+        `(${result.namesKnown === false ? 'variable names unavailable' : `${result.injected.length} variables injected`}, ${result.redacted.length} scrubbed from output)`,
       ]
         .filter(Boolean)
         .join('\n'),

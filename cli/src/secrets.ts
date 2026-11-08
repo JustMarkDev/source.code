@@ -80,6 +80,7 @@ export type RunResult = {
   env: string
   injected: Array<string>
   redacted: Array<string>
+  namesKnown?: boolean
   exitCode: number
   stdout: string
   stderr: string
@@ -120,18 +121,22 @@ export async function runWithEnv(opts: {
     // Ask the server to run the same access checks without reading or auditing values.
     await api.get(`${opts.repo.path}/env/${opts.env}/values`, { query: { check_only: 'true' } })
     const canSchema = who.scopes.includes('secrets:schema')
-    const vars = canSchema
+    let vars = canSchema
       ? ((await api.get(`${opts.repo.path}/env`, {
           query: { environment: opts.env as 'development' },
         })).json.data as Array<{ name: string; secret: boolean; set: boolean }>)
-      : []
-    const shown = vars.filter(
-      (v) => v.set && (!opts.only || opts.only.includes(v.name)),
-    )
+      : null
+    if (vars && who.class !== 'human') {
+      const grants = (await api.get(`${opts.repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
+      const active = grants.find((g) => g.state === 'active' && g.environment === opts.env)
+      if (active) vars = vars.filter((v) => active.variables.includes(v.name))
+    }
+    const shown = (vars ?? []).filter((v) => v.set && (!opts.only || opts.only.includes(v.name)))
     return {
       env: opts.env,
       injected: shown.map((v) => v.name),
       redacted: shown.filter((v) => v.secret).map((v) => v.name),
+      namesKnown: vars !== null,
       exitCode: 0,
       stdout: '',
       stderr: '',

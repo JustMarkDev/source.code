@@ -837,7 +837,11 @@ export function createApi(options: ApiOptions) {
       if (isRead) headers.vary = 'accept, authorization'
       if (dryRun) {
         headers['sx-dry-run'] = 'true'
-        if (status === 201 || status === 202) status = 200
+        delete headers.location
+        if (status === 201 || status === 202) {
+          if (status === 202) delete headers['retry-after']
+          status = 200
+        }
       }
       if (etag !== '') headers.etag = etag
       if (isRead && !headers['cache-control'])
