@@ -216,6 +216,7 @@ export function createApi(options: ApiOptions) {
     options.tokens.sweep?.(now())
     options.oauth?.sweepNow()
     domain.svc.uploads.sweepNow()
+    domain.sweepRunsOperations()
   }, 5 * 60_000)
   sweeper.unref?.()
   const domain = options.domain
@@ -347,7 +348,9 @@ export function createApi(options: ApiOptions) {
 
     // The path under the mount. `/v1/repos/rep_x/changes` is the id form of a
     // repository address, read as owner `rep_x` and name `~`.
-    if (!url.pathname.startsWith(mount))
+    // The mount is a path segment, not a prefix: /v1batch is outside /v1.
+    const prefix = mount === '/' ? '/' : mount.endsWith('/') ? mount : `${mount}/`
+    if (url.pathname !== mount && !url.pathname.startsWith(prefix))
       return fail(apiError('not_found', `This API lives under ${mount}.`))
     let path = url.pathname.slice(mount.length) || '/'
     path = path.replace(/^\/repos\/(rep_[0-9a-z]{18})(?!\/~)(?=\/|$)/, '/repos/$1/~')

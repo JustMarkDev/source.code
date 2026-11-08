@@ -62,11 +62,19 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
 
   private held = 0
 
-  private evict() {
+  private evict(protect?: string) {
     while ((this.entries.size > this.max || this.held > this.maxChars) && this.entries.size > 1) {
-      const oldest = this.entries.keys().next().value as string
-      this.held -= this.entries.get(oldest)!.chars
-      this.entries.delete(oldest)
+      let victim: string | undefined
+      for (const [id, entry] of this.entries)
+        if (id !== protect && entry.response) {
+          victim = id
+          break
+        }
+      // An in-progress key has no response yet. Never drop it: a retry would
+      // repeat a write that may already be running or done.
+      if (victim === undefined) break
+      this.held -= this.entries.get(victim)!.chars
+      this.entries.delete(victim)
     }
   }
 
@@ -92,13 +100,14 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
   }
 
   complete(scope: string, key: string, response: StoredResponse) {
-    const entry = this.entries.get(`${scope}\u0000${key}`)
+    const id = `${scope}\u0000${key}`
+    const entry = this.entries.get(id)
     if (entry) {
       const chars = entry.chars + sizeOf('', '', response) - 160
       this.held += chars - entry.chars
       entry.chars = chars
       entry.response = response
-      this.evict()
+      this.evict(id)
     }
     return Promise.resolve()
   }

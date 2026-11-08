@@ -327,6 +327,46 @@ describe('who can see what', () => {
     expect(r.headers.get('cache-control')).toBe('no-store')
   })
 
+  test('the mount is a path segment, not a prefix', async () => {
+    const h = harness()
+    expect((await h.call('POST', '/v1batch')).status).toBe(404)
+    expect((await h.call('GET', '/v1repos')).status).toBe(404)
+    expect((await h.call('GET', '/limits')).status).toBe(200)
+  })
+
+  test('a stack dry run checks every expected tree before landing anything', async () => {
+    const h = harness({ seed: (d) => seedStack(d) })
+    const r = await h.call('POST', `/repos/dana/stacky/stacks/${STACK_ID}/land?dry_run=true`, { body: { expected_trees: { 1: '1111111', 2: '9999999', 3: '3333333' } } })
+    expect(r.status).toBe(409)
+    expect(r.json.code).toBe('stale_head')
+    expect((await h.call('GET', '/repos/dana/stacky/changes/1')).json.state).toBe('open')
+  })
+
+  test('an in-progress idempotency key is not evicted', async () => {
+    const store = new MemoryIdempotencyStore(24 * 3_600_000, Date.now, 2, 1_000_000)
+    await store.begin('s', 'running', 'f')
+    await store.begin('s', 'done-1', 'f')
+    await store.begin('s', 'done-2', 'f')
+    expect((await store.begin('s', 'running', 'f')).state).toBe('in_progress')
+  })
+
+  test('a completed idempotency key cannot evict itself', async () => {
+    const store = new MemoryIdempotencyStore(24 * 3_600_000, Date.now, 10, 100)
+    await store.begin('s', 'big', 'f')
+    await store.complete('s', 'big', { status: 200, headers: {}, body: 'x'.repeat(500) })
+    expect((await store.begin('s', 'big', 'f')).state).toBe('replay')
+  })
+
+  test('finished runs are swept after their retention window', async () => {
+    const now = clock()
+    const h = harness({ now })
+    const made = await h.call('POST', `${REPO}/runs`, { body: { task: 'sweep' } })
+    await h.call('POST', `${REPO}/runs/${made.json.id}/finish`, { token: made.json.token, body: { state: 'succeeded' } })
+    now.advance(8 * 86_400_000)
+    h.api.domain.sweepRunsOperations()
+    expect(h.api.domain.runs.has(made.json.id)).toBe(false)
+  })
+
   test('sync accepts an old repository name without a self-redirect', async () => {
     const h = harness()
     const r = await h.call('GET', '/sync?repo=dana/git-fs')

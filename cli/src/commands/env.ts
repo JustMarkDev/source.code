@@ -109,7 +109,12 @@ export const env: Command = async (
     const who = await whoami(ctx)
     let missing: Array<string> | null = null
     if (who.scopes.includes('secrets:schema')) {
-      const vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      let vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      if (who.class !== 'human') {
+        const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string; variables: Array<string> }>
+        const active = grants.find((g) => g.state === 'active' && g.environment === environment)
+        if (active) vars = vars.filter((v) => active.variables.includes(v.name))
+      }
       missing = vars.filter((v) => !v.set).map((v) => v.name)
     }
     print(
@@ -153,7 +158,7 @@ export const env: Command = async (
       [
         result.stdout.trimEnd(),
         result.stderr.trimEnd(),
-        `(${result.namesKnown === false ? 'variable names unavailable' : dry ? `would inject ${result.injected.length} variables` : `${result.injected.length} variables injected`}, ${dry ? 'would scrub' : 'scrubbed'} ${result.redacted.length} from output)`,
+        `(${result.namesKnown === false ? 'variable names unavailable; scrub status unavailable' : dry ? `would inject ${result.injected.length} variables` : `${result.injected.length} variables injected`}, ${result.namesKnown === false ? '' : `${dry ? 'would scrub' : 'scrubbed'} ${result.redacted.length} from output`})`.replace(', )', ')'),
       ]
         .filter(Boolean)
         .join('\n'),

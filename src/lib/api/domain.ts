@@ -1324,6 +1324,24 @@ export class MemoryDomain {
     return this.presentRun(r)
   }
 
+  /** Drop finished runs and operations after a week. */
+  sweepRunsOperations() {
+    const cutoff = this.now() - 7 * 86_400_000
+    for (const [id, r] of this.runs) {
+      if (this.runState(r) === 'running') continue
+      if ((r.finished ?? r.expires) >= cutoff) continue
+      this.runs.delete(id)
+      const list = this.runsByRepo.get(r.repo)
+      if (list) {
+        const at = list.indexOf(r)
+        if (at >= 0) list.splice(at, 1)
+        if (list.length === 0) this.runsByRepo.delete(r.repo)
+      }
+    }
+    for (const [id, op] of this.operations)
+      if (op.finished !== null && op.finished < cutoff) this.operations.delete(id)
+  }
+
   // ----- teams ------------------------------------------------------------
 
   private orgFor(handle: string, p: Principal, need: 'member' | 'admin'): AccountRec {
@@ -2517,6 +2535,16 @@ export class MemoryDomain {
       throw apiError('invalid_request', `expected_trees is missing ${missing.map((n) => `#${n}`).join(', ')}.`, {
         hint: 'Send the tree you checked for every open change in the stack.',
       })
+    // Every open member must be preflighted against the tree the caller checked,
+    // so a later stale member cannot fail after earlier ones have already landed.
+    for (const c of open) {
+      const head = this.head(c)
+      const expected = trees[String(c.number)]
+      if (head.tree !== expected)
+        throw apiError('stale_head', `#${c.number} is now at ${head.tree}, not ${expected}.`, {
+          extra: { current: { patch_set: head.n, tree: head.tree, sha: head.sha } },
+        })
+    }
     this.checkLandable(repo, first, p!, trees[String(first.number)])
     const op: OperationRec = {
       id: newId('operation', this.now()),
