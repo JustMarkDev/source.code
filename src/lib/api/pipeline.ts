@@ -531,11 +531,6 @@ export function createApi(options: ApiOptions) {
       else parsedParams = p.data
     }
 
-    // A HEAD of a live stream must not open one: there is no body to read and
-    // the waiter would outlive the request.
-    if (op.streaming && req.method === 'HEAD')
-      return new Response(null, { status: 200, headers: { 'content-type': 'text/event-stream; charset=utf-8', 'server-timing': 'total;dur=0' } })
-
     // Body.
     let body: unknown = undefined
     let bodyText = ''
@@ -564,10 +559,10 @@ export function createApi(options: ApiOptions) {
     if (op.rawBody) {
       const declared = Number(req.headers.get('content-length') ?? '0')
       if (declared > op.rawBody.maxBytes)
-        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
+        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`, { hint: 'The file is larger than this upload accepts. Start an upload with the size you need.' }))
       const buf = await readLimited(req, op.rawBody.maxBytes)
       if (buf === null)
-        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
+        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`, { hint: 'The file is larger than this upload accepts. Start an upload with the size you need.' }))
       bytes = buf
     }
 
@@ -589,6 +584,7 @@ export function createApi(options: ApiOptions) {
       params: parsedParams,
       query,
       body,
+      method: req.method,
       principal,
       requestId,
       dryRun,

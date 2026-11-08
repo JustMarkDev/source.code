@@ -338,6 +338,32 @@ describe('who can see what', () => {
     expect((await h.call('POST', `/repos/dana/aclrepo/changes/${change.json.number}/reviews`, { token: h.tokens.hollis, body: { state: 'approved' } })).status).toBe(403)
   })
 
+  test('an agent review does not replace the human review from the same handle', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'actors' } })
+    const made = await h.call('POST', '/repos/dana/actors/changes', { body: { branch: 'a' } })
+    const n = made.json.number
+    await h.call('POST', `/repos/dana/actors/changes/${n}/reviews`, { token: h.tokens.hollis, body: { state: 'approved' } })
+    expect((await h.call('POST', `/repos/dana/actors/changes/${n}/reviews`, { body: { state: 'changes' } })).status).toBe(201)
+    const policy = async () =>
+      (await h.call('GET', `/repos/dana/actors/changes/${n}/policy`)).json.requirements.find((r: { id: string }) => r.id === 'core-paths').state
+    expect(await policy()).toBe('fail')
+
+    // A run started by dana acts as an agent with dana's handle.
+    const run = await h.call('POST', '/repos/dana/actors/runs', { body: { task: 'comment on this' } })
+    expect((await h.call('POST', `/repos/dana/actors/changes/${n}/reviews`, { token: run.json.token, body: { state: 'commented' } })).status).toBe(201)
+    expect(await policy()).toBe('fail')
+    const reviewers = (await h.call('GET', `/repos/dana/actors/changes/${n}`)).json.reviewers.filter((r: { actor: { handle: string } }) => r.actor.handle === 'dana')
+    expect(reviewers.map((r: { actor: { class: string } }) => r.actor.class).sort()).toEqual(['agent', 'human'])
+    expect(reviewers.find((r: { actor: { class: string } }) => r.actor.class === 'human').state).toBe('changes')
+  })
+
+  test('a repository-limited token cannot read team metadata', async () => {
+    const h = harness()
+    expect((await h.call('GET', '/accounts/northwind/teams', { token: h.tokens.limited })).status).toBe(403)
+    expect((await h.call('GET', '/accounts/northwind/teams', { token: h.tokens.hollis })).status).toBe(200)
+  })
+
   test('upload content needs a read scope too', async () => {
     const h = harness()
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
@@ -597,11 +623,14 @@ describe('generations and reuse', () => {
     expect(nd.headers.get('content-type')).toContain('x-ndjson')
   })
 
-  test('a HEAD on the event stream opens no waiter', async () => {
+  test('a HEAD on the event stream opens no waiter but answers like GET', async () => {
     const h = harness()
     const r = await h.call('HEAD', '/events/stream')
     expect(r.status).toBe(200)
     expect(h.api.events.waiting).toBe(0)
+    expect((await h.call('HEAD', '/events/stream?repo=nope/nope')).status).toBe(404)
+    expect((await h.call('HEAD', '/events/stream?bad=1')).status).toBe(400)
+    expect((await h.call('HEAD', '/events/stream?repo=dana/notes', { token: h.tokens.stranger })).status).toBe(404)
   })
 
   test('an unrelated repository event does not change a scoped events ETag', async () => {

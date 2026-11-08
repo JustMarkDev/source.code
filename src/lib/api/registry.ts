@@ -112,6 +112,8 @@ export type Ctx<TParams, TQuery, TBody> = {
   readonly params: TParams
   readonly query: TQuery
   readonly body: TBody
+  /** The HTTP method. HEAD reaches a GET handler, so it can answer without a body. */
+  readonly method: string
   readonly principal: Principal | null
   readonly requestId: string
   readonly dryRun: boolean

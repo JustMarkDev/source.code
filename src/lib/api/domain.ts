@@ -616,7 +616,7 @@ export class MemoryDomain {
     if (!l) c.latest = l = { map: new Map(), seen: 0 }
     for (; l.seen < c.reviews.length; l.seen++) {
       const r = c.reviews[l.seen]
-      l.map.set(r.actor.handle, r)
+      l.map.set(r.actor.id, r)
     }
     return [...l.map.values()]
   }
@@ -887,7 +887,7 @@ export class MemoryDomain {
       z.infer<typeof S.Change>['reviewers'][number]
     >()
     for (const r of this.latestReviews(c))
-      reviewers.set(r.actor.handle, {
+      reviewers.set(r.actor.id, {
         actor: this.actor(r.actor),
         state: r.state,
         patch_set: r.patchSet,
@@ -1387,8 +1387,8 @@ export class MemoryDomain {
       throw apiError('forbidden', `Only an owner or admin of ${handle} can change its teams.`, {
         hint: 'GET /v1/accounts shows your role in each account.',
       })
-    if (need === 'admin' && p.repos)
-      throw apiError('forbidden', 'A token limited to repositories cannot administer teams.', {
+    if (p.repos)
+      throw apiError('forbidden', 'A token limited to repositories cannot read or change teams.', {
         hint: 'Use a token that is not limited to repositories.',
       })
     return acct

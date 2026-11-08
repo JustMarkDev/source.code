@@ -139,6 +139,16 @@ export const streamEvents = defineOp({
       const repo = ctx.query.repo
       if (repo && (!repoId || !domain.canSeeId(ctx.principal)(repoId)))
         throw apiError('not_found', 'No such repository.')
+      // A HEAD answers like GET but opens no stream and leaves no waiter.
+      if (ctx.method === 'HEAD')
+        return new Raw(
+          new Response(null, {
+            headers: {
+              'content-type': 'text/event-stream; charset=utf-8',
+              'cache-control': 'no-store',
+            },
+          }),
+        )
       const encoder = new TextEncoder()
       let open = true
       const send = (text: string, controller: ReadableStreamDefaultController<Uint8Array>) => {

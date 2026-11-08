@@ -68,7 +68,7 @@ export const groupHelp: Record<string, string> = {
   set <NAME> <value|->    encrypt a value for an environment (- reads stdin)
   pull                    write .env.local for an environment
   run -- <command>        run with values injected into that process only; output is scrubbed (short values when standalone)
-  grant request|list|approve|revoke   time-limited access for agents (development only)
+  grant request|list|approve|revoke   time-limited access for agents (development or preview)
   rotate                  rotate the data key
   recipients              who can decrypt
 `,

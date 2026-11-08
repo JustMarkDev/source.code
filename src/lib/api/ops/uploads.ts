@@ -125,6 +125,7 @@ export const putUpload = defineOp({
         if (problem === 'full') throw apiError('limit_reached', 'Storage is full. Try again later.')
         if (problem)
           throw apiError(problem.startsWith('Send Content-Type') ? 'unsupported_media_type' : 'invalid_request', problem, {
+            hint: problem.startsWith('Send Content-Type') ? problem : 'Send the bytes that match the upload you started.',
             errors: [{ pointer: '/body', code: 'upload_mismatch', message: problem }],
           })
         return present(d, rec, false)

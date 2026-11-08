@@ -43,7 +43,7 @@ sxcurl -X PUT  $SX/accounts/northwind/teams/support/repos/northwind/relay -d '{"
 
 - `read` lets members read the repository, including a private one. `write` lets them change it. Setting it again changes the permission.
 - Taking a person out of the team, deleting the team or taking the repository away removes the access at once.
-- Only members of the organization can see its teams; everyone else gets `404`. Only owners and admins change them.
+- Only members of the organization can see its teams; everyone else gets `404`. Only owners and admins change them, and a token limited to repositories can neither read nor change them.
 - A team has at most 500 members and reaches only its own organization's repositories.
 
 Team access is read from the team on every request, so there is nothing to refresh.
