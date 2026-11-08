@@ -725,6 +725,18 @@ describe('generations and reuse', () => {
     expect(events.status).toBe(200)
   })
 
+  test('a rename redirect rewrites a delete confirmation', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'confirmdemo', visibility: 'public' } })
+    await h.call('PATCH', '/repos/dana/confirmdemo', { body: { name: 'confirmdemo2' } })
+    const old = await h.call('DELETE', '/repos/dana/confirmdemo?confirm=dana/confirmdemo')
+    expect(old.status).toBe(308)
+    const to = new URL(old.headers.get('location')!)
+    expect(to.searchParams.get('confirm')).toBe('dana/confirmdemo2')
+    const at = `${to.pathname.replace(/^\/v1/, '')}${to.search}`
+    expect((await h.call('DELETE', at)).status).toBe(204)
+  })
+
   test('repository names are unique without regard to case', async () => {
     const h = harness()
     const first = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'CaseRepo', visibility: 'private' } })

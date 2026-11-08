@@ -34,14 +34,29 @@ export function sharedStore(url: string | undefined, secret: string | undefined)
   return convexCaller(url)
 }
 
+/**
+ * The URL that turns on the shared store. VITE_CONVEX_URL belongs to the
+ * frontend client and is present everywhere, so it only counts when a valid
+ * secret was actually configured; an explicit CONVEX_URL is the API switch and
+ * is validated by sharedStore even when the secret is missing.
+ */
+export function storeConfig(
+  explicitUrl: string | undefined,
+  frontendUrl: string | undefined,
+  secret: string | undefined,
+): string | undefined {
+  if (explicitUrl) return explicitUrl
+  return secret && secret.length >= 16 ? frontendUrl : undefined
+}
+
 export function getApi(requestUrl: string) {
   if (current) return current
   // Links in responses point at the public address. SX_PUBLIC_URL overrides the
   // address the first request arrived on, for deployments behind a proxy.
   const origin = process.env.SX_PUBLIC_URL ?? new URL(requestUrl).origin
   const live = import.meta.env.DEV || process.env.SX_API_SAMPLE_TOKENS === '1'
-  const url = process.env.CONVEX_URL ?? process.env.VITE_CONVEX_URL
   const secret = process.env.API_STORE_SECRET
+  const url = storeConfig(process.env.CONVEX_URL, process.env.VITE_CONVEX_URL, secret)
   const shared = sharedStore(url, secret)
   current = createSampleApi({
     mount: API_MOUNT,

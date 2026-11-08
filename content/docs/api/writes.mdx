@@ -4,7 +4,7 @@ title: "Writes: retries, edits and long work"
 description: Idempotency keys, If-Match, landing only what was checked, dry runs, operations and batch.
 ---
 
-Networks fail halfway. A write that cannot be repeated safely makes every client write its own recovery code. Every write here can be repeated, and says how.
+Networks fail halfway. Every write here is either naturally repeatable or made repeat-safe with a key; secret-bearing responses are the exception and must not be retried blindly. Each write says which it is.
 
 ## Idempotency keys
 

@@ -897,7 +897,11 @@ export function createApi(options: ApiOptions) {
         if (at >= 0 && parts.length > at + 2) parts.splice(at + 1, 2, ...to.split('/'))
         const target = at >= 0 ? `/${parts.join('/')}` : path.replace(new RegExp(`/repos/${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), `/repos/${to}`)
         const configured = options.base && !/placeholder/i.test(options.base) ? options.base : `${url.origin}${mount}`
-        const location = `${configured}${target}${url.search}`
+        const search = new URLSearchParams(url.search)
+        const confirm = search.get('confirm')
+        if (confirm && confirm.toLowerCase() === from.toLowerCase()) search.set('confirm', to)
+        const query = search.size ? `?${search}` : ''
+        const location = `${configured}${target}${query}`
         return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
       }
       throw e
