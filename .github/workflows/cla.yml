@@ -1,0 +1,39 @@
+name: CLA
+
+# Fails until the pull request's author is listed in CONTRIBUTORS.md. The file
+# is read from the pull request's own merge result, so a first-time contributor
+# signs by adding their line in the same pull request.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cla-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cla:
+    name: CLA signed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AUTHOR: ${{ github.event.pull_request.user.login }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check that the author signed
+        run: |
+          case "$AUTHOR" in
+            "$OWNER" | *'[bot]') echo "$AUTHOR does not need to sign."; exit 0 ;;
+          esac
+          if grep -qiE "^- @${AUTHOR}( |$)" CONTRIBUTORS.md; then
+            echo "$AUTHOR signed the CLA."
+            exit 0
+          fi
+          echo "::error file=CONTRIBUTORS.md::$AUTHOR has not signed the CLA. Add the line '- @$AUTHOR agreed to CLA v1.0 on YYYY-MM-DD' to CONTRIBUTORS.md (see CLA.md, section 7)."
+          exit 1
