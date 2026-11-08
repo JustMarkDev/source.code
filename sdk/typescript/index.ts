@@ -1566,7 +1566,7 @@ export interface Operations {
     }
     output: NumberRef
   }
-  /** Rename a repository, change its description, visibility or default branch (`PATCH /repos/{owner}/{repo}`) */
+  /** Rename a repository, change its description, visibility, default branch or maintainers (`PATCH /repos/{owner}/{repo}`) */
   'repos.update': {
     input: {
       owner: string

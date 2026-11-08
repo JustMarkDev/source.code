@@ -1612,9 +1612,10 @@ export class MemoryDomain {
       changed.push('default_branch')
     }
     if (body.maintainers !== undefined) {
-      if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify([...body.maintainers].sort())) {
-        repo.maintainers = new Set(body.maintainers)
-        for (const h of body.maintainers) repo.collaborators.add(h)
+      const next = [...new Set(body.maintainers)].sort()
+      if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify(next)) {
+        repo.maintainers = new Set(next)
+        for (const h of next) repo.collaborators.add(h)
         for (const c of repo.changes.values()) c.policyMemo = undefined
         changed.push('maintainers')
       }

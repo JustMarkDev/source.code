@@ -163,9 +163,9 @@ export const numberRef = defineOp({
 
 export const updateRepo = defineOp({
   id: 'repos.update',
-  summary: 'Rename a repository, change its description, visibility or default branch',
+  summary: 'Rename a repository, change its description, visibility, default branch or maintainers',
   description:
-    'Owners of the account and admins of the organization only. Send `If-Match` with the ETag you read. A rename keeps working at the old address: it answers `308` with the new one, and webhooks, mirrors and variables move with the repository. Making a repository private hides it from everyone who could only see it because it was public.',
+    'Owners of the account and admins of the organization only. Send `If-Match` with the ETag you read. A rename keeps working at the old address: it answers `308` with the new one, and webhooks, mirrors and variables move with the repository. Making a repository private hides it from everyone who could only see it because it was public. Maintainers must be people; changing them re-checks policy.',
   tags: ['repositories'],
   method: 'PATCH',
   path: '/repos/{owner}/{repo}',
