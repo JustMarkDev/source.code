@@ -77,7 +77,7 @@ SVG is not accepted: it can carry script.
 
 ## Reading a file back
 
-`GET /uploads/{id}/content`. You can read your own uploads. Once a file is attached to a change, **anyone who can read that repository can read it**, including people with no token on a public repository. Until then nobody else can.
+`GET /uploads/{id}/content`. You can read your own uploads with a token that has `repo:read`; without that scope the read answers `403 insufficient_scope`. Once a file is attached to a change, **anyone who can read that repository can read it**, including people with no token on a public repository. Until then nobody else can.
 
 The file is served with:
 

@@ -418,4 +418,25 @@ describe('MCP carries the caller’s token', () => {
     })
     expect((issue as { isError?: boolean }).isError).toBeUndefined()
   })
+
+  test('check_policy answers a blocked policy without isError, but keeps permission errors', async () => {
+    const dana = await connect(sampleTokens.dana)
+    const blocked = await dana.callTool({
+      name: 'check_policy',
+      arguments: { repo: 'dana/gitfs', change: '216' },
+    })
+    expect((blocked as { isError?: boolean }).isError).toBeUndefined()
+    const body = JSON.parse(text(blocked))
+    expect(body.allowed).toBe(false)
+    expect(body.requirements.length).toBeGreaterThan(0)
+
+    // The triage bot has repo:read but not pulls:read.
+    const triage = await connect(sampleTokens.triage)
+    const denied = await triage.callTool({
+      name: 'check_policy',
+      arguments: { repo: 'dana/gitfs', change: '216' },
+    })
+    expect((denied as { isError?: boolean }).isError).toBe(true)
+    expect(JSON.parse(text(denied)).error.code).toBe('insufficient_scope')
+  })
 })

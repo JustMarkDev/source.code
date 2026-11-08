@@ -1168,6 +1168,18 @@ describe('review, policy and landing', () => {
     expect((await h.call('POST', `${REPO}/changes/218/restore`)).json.state).toBe('open')
   })
 
+  test('restoring a change whose branch is taken is refused', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'restore' } })
+    const a = await h.call('POST', '/repos/dana/restore/changes', { body: { branch: 'topic' } })
+    expect((await h.call('POST', `/repos/dana/restore/changes/${a.json.number}/abandon`)).json.state).toBe('abandoned')
+    const b = await h.call('POST', '/repos/dana/restore/changes', { body: { branch: 'topic' } })
+    expect(b.status).toBe(201)
+    const again = await h.call('POST', `/repos/dana/restore/changes/${a.json.number}/restore`)
+    expect(again.status).toBe(409)
+    expect(again.json.code).toBe('invalid_state')
+  })
+
   test('a stack lands bottom first as one operation', async () => {
     const h = harness({
       seed: (d) => {
