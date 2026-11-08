@@ -99,7 +99,8 @@ function parameters(op: Op, defs: Json): Array<Json> {
 function operationErrors(op: Op): Array<string> {
   const out = new Set<string>([
     ...(op.errors ?? []),
-    ...(op.pool === 'none' ? [] : ['rate_limited', 'concurrency_limited']),
+    ...(op.pool === 'none' ? [] : ['rate_limited']),
+    'concurrency_limited',
     'internal',
     'backend_unavailable',
     'unsupported_version',

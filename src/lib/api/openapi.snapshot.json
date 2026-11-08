@@ -1284,6 +1284,7 @@
         "x-sx-scopes": [],
         "x-sx-errors": [
           "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "token_expired",
           "token_invalid",
@@ -1658,6 +1659,7 @@
         "x-sx-scopes": [],
         "x-sx-errors": [
           "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "unsupported_version"
         ],
@@ -1701,11 +1703,6 @@
                 "schema": {
                   "type": "string"
                 }
-              },
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                }
               }
             },
             "content": {
@@ -1715,9 +1712,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "Not modified. Costs no rate-limit units."
           },
           "default": {
             "description": "An error",
@@ -1751,6 +1745,7 @@
           "insufficient_scope",
           "internal",
           "invalid_request",
+          "not_found",
           "rate_limited",
           "token_expired",
           "token_invalid",
@@ -1984,6 +1979,7 @@
         "x-sx-scopes": [],
         "x-sx-errors": [
           "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "unsupported_version"
         ],
@@ -2046,6 +2042,7 @@
         "x-sx-scopes": [],
         "x-sx-errors": [
           "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "unsupported_version"
         ],
@@ -2112,6 +2109,7 @@
         "x-sx-scopes": [],
         "x-sx-errors": [
           "backend_unavailable",
+          "concurrency_limited",
           "internal",
           "unsupported_version"
         ],
@@ -7106,11 +7104,6 @@
                 "schema": {
                   "type": "string"
                 }
-              },
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                }
               }
             },
             "content": {
@@ -7121,9 +7114,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "Not modified. Costs no rate-limit units."
           },
           "default": {
             "description": "An error",

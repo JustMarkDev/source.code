@@ -28,7 +28,7 @@ Links to every top-level collection, the OpenAPI document and the limits.
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -83,7 +83,7 @@ The account, actor class, scopes, repositories and expiry of the token. Never ra
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -234,7 +234,7 @@ The whole table, so a client or an agent can read it once.
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -292,7 +292,7 @@ Rate-limit pools, page sizes and the other numbers a client needs. Nothing is li
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -353,7 +353,7 @@ Generated from the same definitions the server runs. Every operation carries x-s
 
 **Errors**
 
-[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`unsupported_version`](/docs/api/errors#unsupported_version)
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`unsupported_version`](/docs/api/errors#unsupported_version)
 
 **Example**
 
@@ -363,7 +363,7 @@ curl "https://api.source.code/v1/openapi.json"
 
 ```http
 HTTP/1.1 200
-etag: W/"D82_VCmKOOG8q0_j"
+etag: W/"zWRQ1pSphVBsJEVF"
 ```
 
 ```json

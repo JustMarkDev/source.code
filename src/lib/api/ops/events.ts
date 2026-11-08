@@ -123,6 +123,8 @@ export const streamEvents = defineOp({
   response: z.string(),
   responseContentType: 'text/event-stream',
   streaming: true,
+  conditional: false,
+  errors: ['not_found'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

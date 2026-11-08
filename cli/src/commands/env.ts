@@ -1,4 +1,5 @@
 import { chmodSync, writeFileSync } from 'node:fs'
+import { whoami } from '../account'
 import { resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
@@ -84,7 +85,19 @@ export const env: Command = async (
 
   if (sub === 'pull') {
     if (dry) {
-      const vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      const who = await whoami(ctx)
+      if (!who.scopes.includes('secrets:decrypt'))
+        throw new SxError('insufficient_scope', 'Reading values needs secrets:decrypt.', 'Ask for a token with secrets:decrypt.', exit.needsHuman)
+      if (who.class !== 'human' && environment === 'production')
+        throw new SxError('human_required', 'Agents cannot use production values.', 'Ask a person to run this, or use development values.', exit.needsHuman)
+      if (who.class !== 'human') {
+        const grants = (await api.get(`${repo.path}/env/grants`)).json.data as Array<{ state: string; environment: string }>
+        if (!grants.some((g) => g.state === 'active' && g.environment === environment))
+          throw new SxError('grant_required', `No active grant for ${environment}.`, 'Ask a person to approve one.', exit.needsHuman)
+      }
+      const vars = who.scopes.includes('secrets:schema')
+        ? ((await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>)
+        : []
       const missing = vars.filter((v) => !v.set).map((v) => v.name)
       print(ctx, { env: environment, written: null, dryRun: true, missing }, () => `would write .env.local for ${environment}${missing.length ? `\nmissing: ${missing.join(', ')}` : ''}`)
       return
