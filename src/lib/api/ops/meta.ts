@@ -76,8 +76,8 @@ export const errorsOp = defineOp({
 export const limitsOp = defineOp({
   ...open,
   id: 'api.limits',
-  summary: 'Every limit',
-  description: 'Rate-limit pools, page sizes and the other numbers a client needs. Nothing is limited that is not listed here.',
+  summary: 'Rate, page and body limits',
+  description: 'Rate-limit pools, page sizes and request-body limits for this API. Object caps are in the guide for each resource.',
   tags: ['meta'],
   method: 'GET',
   path: '/limits',

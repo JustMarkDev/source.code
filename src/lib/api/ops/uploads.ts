@@ -75,17 +75,25 @@ export const createUpload = defineOp({
       const out = yield* run(async (d) => {
         const b = ctx.body
         if (b.size > ALLOWED[b.content_type].max)
-          throw apiError('payload_too_large', `${b.content_type} files are limited to ${ALLOWED[b.content_type].max} bytes.`)
+          throw apiError('payload_too_large', `${b.content_type} files are limited to ${ALLOWED[b.content_type].max} bytes.`, {
+            hint: 'Choose a smaller file, or use a supported type with a larger limit.',
+          })
         const owner = ctx.principal!.handle
         const store = d.svc.uploads.blobs
         if (store.capacity !== undefined && store.bytes + b.size > store.capacity)
-          throw apiError('limit_reached', 'Upload storage is full. Try again after old uploads expire.')
+          throw apiError('limit_reached', 'Upload storage is full. Try again after old uploads expire.', {
+            hint: 'Wait for pending uploads to expire, or upload a smaller file.',
+          })
         const pending = d.svc.uploads.countPending(owner)
-        if (pending >= MAX_PENDING) throw apiError('limit_reached', `You can have ${MAX_PENDING} uploads waiting for their file.`)
+        if (pending >= MAX_PENDING) throw apiError('limit_reached', `You can have ${MAX_PENDING} uploads waiting for their file.`, {
+          hint: 'Finish an upload you started, or wait for the oldest to expire.',
+        })
         const rec = ctx.dryRun
           ? { id: 'upl_dryrun', owner, filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose, state: 'pending' as const, sha256: null, expires: ctx.now() + 3_600_000, created: ctx.now(), attachedTo: null, attachedRepoId: null }
           : d.svc.uploads.create(owner, { filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose })
-        if (!rec) throw apiError('limit_reached', 'Too many uploads are stored. Try again after the oldest expire.')
+        if (!rec) throw apiError('limit_reached', 'Too many uploads are stored. Try again after the oldest expire.', {
+          hint: 'Wait for the oldest uploads to expire, then start a new one.',
+        })
         return present(d, rec, !ctx.dryRun)
       })
       return reply(out, { status: 201, headers: { location: out.url } })
@@ -122,12 +130,24 @@ export const putUpload = defineOp({
         if (!rec || !d.svc.uploads.verify(rec, ctx.query.exp, ctx.query.sig))
           throw apiError('signature_invalid', 'The upload address is not valid or has expired.')
         const problem = d.svc.uploads.put(rec, ctx.bytes ?? new Uint8Array(), ctx.header('content-type') ?? '')
-        if (problem === 'full') throw apiError('limit_reached', 'Storage is full. Try again later.')
-        if (problem)
+        if (problem === 'full') throw apiError('limit_reached', 'Storage is full. Try again later.', {
+          hint: 'Wait for pending uploads to expire, then start a new upload.',
+        })
+        if (problem) {
+          const hint = problem.startsWith('Send Content-Type')
+            ? problem
+            : problem.startsWith('This upload already')
+              ? 'Start a new upload for another file.'
+              : problem.startsWith('Expected')
+                ? 'Send exactly the declared number of bytes, or start a new upload with the right size.'
+                : problem.startsWith('The file is not a valid')
+                  ? 'Send a valid file of the declared type, or start a new upload.'
+                  : 'Send the bytes that match the upload you started.'
           throw apiError(problem.startsWith('Send Content-Type') ? 'unsupported_media_type' : 'invalid_request', problem, {
-            hint: problem.startsWith('Send Content-Type') ? problem : 'Send the bytes that match the upload you started.',
+            hint,
             errors: [{ pointer: '/body', code: 'upload_mismatch', message: problem }],
           })
+        }
         return present(d, rec, false)
       })
     }),

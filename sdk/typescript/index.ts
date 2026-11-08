@@ -827,7 +827,7 @@ export interface Operations {
     input: Record<string, never>
     output: ErrorCatalog
   }
-  /** Every limit (`GET /limits`) */
+  /** Rate, page and body limits (`GET /limits`) */
   'api.limits': {
     input: Record<string, never>
     output: Limits

@@ -169,7 +169,7 @@ export const errorCatalog = {
   },
   unsupported_media_type: {
     status: 415,
-    title: 'Send application/json',
+    title: 'Unsupported media type',
     retryable: false,
     exit: 2,
     hint: 'Set Content-Type: application/json.',

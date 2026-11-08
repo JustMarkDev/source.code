@@ -582,6 +582,7 @@
       "get": {
         "operationId": "teams.get",
         "summary": "One team, with its members and repositories",
+        "description": "Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.",
         "tags": [
           "teams"
         ],
@@ -660,6 +661,7 @@
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "forbidden",
           "insufficient_scope",
           "internal",
           "invalid_request",
@@ -804,7 +806,7 @@
       "get": {
         "operationId": "teams.list",
         "summary": "An organization's teams",
-        "description": "Members of the organization only. Everyone else gets 404.",
+        "description": "Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.",
         "tags": [
           "teams"
         ],
@@ -899,6 +901,7 @@
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "forbidden",
           "insufficient_scope",
           "internal",
           "invalid_request",
@@ -1990,8 +1993,8 @@
     "/limits": {
       "get": {
         "operationId": "api.limits",
-        "summary": "Every limit",
-        "description": "Rate-limit pools, page sizes and the other numbers a client needs. Nothing is limited that is not listed here.",
+        "summary": "Rate, page and body limits",
+        "description": "Rate-limit pools, page sizes and request-body limits for this API. Object caps are in the guide for each resource.",
         "tags": [
           "meta"
         ],

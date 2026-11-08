@@ -244,7 +244,7 @@ curl "https://api.source.code/v1/errors"
 
 ```http
 HTTP/1.1 200
-etag: W/"mFzGmso6qmbomiPl"
+etag: W/"0fqR7I3TXq5hhcYW"
 ```
 
 ```json
@@ -278,9 +278,9 @@ etag: W/"mFzGmso6qmbomiPl"
 
 `GET /limits`
 
-**Every limit**
+**Rate, page and body limits**
 
-Rate-limit pools, page sizes and the other numbers a client needs. Nothing is limited that is not listed here.
+Rate-limit pools, page sizes and request-body limits for this API. Object caps are in the guide for each resource.
 
 | About      |                        |
 | ---------- | ---------------------- |
@@ -363,7 +363,7 @@ curl "https://api.source.code/v1/openapi.json"
 
 ```http
 HTTP/1.1 200
-etag: W/"ZRkPRBg6i9bLX_SS"
+etag: W/"1LmhxVdMSnO1hgzo"
 ```
 
 ```json

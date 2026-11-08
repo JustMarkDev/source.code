@@ -32,12 +32,12 @@ export const listTeams = defineOp({
   ...read,
   id: 'teams.list',
   summary: "An organization's teams",
-  description: 'Members of the organization only. Everyone else gets 404.',
+  description: 'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
   method: 'GET',
   path: '/accounts/{handle}/teams',
   params: org,
   response: z.strictObject({ object: z.literal('list'), data: z.array(S.Team), has_more: z.literal(false), next_cursor: z.null() }),
-  errors: ['not_found'],
+  errors: ['not_found', 'forbidden'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -74,11 +74,12 @@ export const getTeam = defineOp({
   ...read,
   id: 'teams.get',
   summary: 'One team, with its members and repositories',
+  description: 'Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.',
   method: 'GET',
   path: '/accounts/{handle}/teams/{slug}',
   params: team,
   response: S.Team,
-  errors: ['not_found'],
+  errors: ['not_found', 'forbidden'],
   probe: (ctx, d) => d.teamVersion(ctx.params.handle, ctx.params.slug, ctx.principal!),
   handler: (ctx) =>
     Effect.gen(function* () {

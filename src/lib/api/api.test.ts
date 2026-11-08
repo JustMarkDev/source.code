@@ -522,6 +522,28 @@ describe('generations and reuse', () => {
     expect(h.api.domain.svc.uploads.blobs.bytes).toBe(before - png.length)
   })
 
+  test('upload errors say what to do next', async () => {
+    const h = harness()
+    const big = await h.call('POST', '/uploads', { body: { filename: 'big.png', content_type: 'image/png', size: 11 << 20 } })
+    expect(big.status).toBe(413)
+    expect(big.json.code).toBe('payload_too_large')
+    expect(big.json.hint).toContain('smaller file')
+
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+    const up = (await h.call('POST', '/uploads', { body: { filename: 'ok.png', content_type: 'image/png', size: png.length } })).json
+    const url = up.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1')
+    const wrong = await h.api.fetch(new Request(url, { method: 'PUT', headers: { 'content-type': 'text/plain' }, body: 'x' }))
+    const problem = await wrong.json() as { title: string; hint: string }
+    expect(wrong.status).toBe(415)
+    expect(problem.title).toBe('Unsupported media type')
+    expect(problem.hint).toBe('Send Content-Type: image/png.')
+
+    expect((await h.api.fetch(new Request(url, { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))).status).toBe(200)
+    const again = await h.api.fetch(new Request(url, { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))
+    expect(again.status).toBe(400)
+    expect((await again.json() as { hint: string }).hint).toContain('Start a new upload')
+  })
+
   test('event history follows a rename', async () => {
     const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'history', visibility: 'public' } })
