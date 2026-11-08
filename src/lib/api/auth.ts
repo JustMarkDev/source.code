@@ -120,7 +120,7 @@ export function secretFor(kind: TokenKind | 'refresh'): string {
 
 /** A short, stable name for a long capability key, with no unbounded map to grow. */
 export function internCapability(key: string): string {
-  return createHash('sha1').update(key).digest('base64url').slice(0, 16)
+  return createHash('sha256').update(key).digest('base64url').slice(0, 16)
 }
 
 const principals = new WeakMap<TokenRecord, Principal>()
