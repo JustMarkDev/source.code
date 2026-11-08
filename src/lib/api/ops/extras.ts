@@ -341,12 +341,13 @@ export const envValues = defineOp({
         const agent = p.class !== 'human'
         if (agent && ctx.params.environment === 'production')
           throw apiError('human_required', 'Agents cannot use production values.', { hint: 'Ask a person to run this, or use development values.' })
-        if (agent && !x.activeGrant(ctx.params.environment))
+        const grant = agent ? x.activeGrant(ctx.params.environment) : undefined
+        if (agent && !grant)
           throw apiError('grant_required', `No active grant for ${ctx.params.environment}.`, {
             hint: `POST /v1/repos/${full}/env/grants to request one. A person approves it, then retry.`,
           })
         if (ctx.query.check_only === 'true')
-          return { object: 'env_values' as const, environment: ctx.params.environment, values: {}, secrets: [], grant: x.activeGrant(ctx.params.environment)?.id ?? null }
+          return { object: 'env_values' as const, environment: ctx.params.environment, values: {}, secrets: [], grant: grant?.id ?? null }
         const r = x.values({ environment: ctx.params.environment, names: ctx.query.names?.split(','), who: `${p.handle} (${p.class})`, agent })
         return { object: 'env_values' as const, environment: ctx.params.environment, values: r.values, secrets: r.secrets, grant: r.grant }
       })
