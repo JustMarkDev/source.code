@@ -2924,11 +2924,6 @@ export class MemoryDomain {
   }
 
   /**
-   * Who and which repository a keyed write is against, for idempotency replay.
-   * A replay must not survive losing write access, a rename, or a name reused
-   * by a different repository. A delete keeps its id so a retry still gets 204.
-   */
-  /**
    * The stable repository identity and access stamp for a keyed write. It is
    * built from the routed parameters, so empty or extra slashes and rename
    * aliases cannot change it. A bare repository delete keeps only the id, so a

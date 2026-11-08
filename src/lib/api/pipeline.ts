@@ -660,6 +660,7 @@ export function createApi(options: ApiOptions) {
     // Idempotency for writes.
     const key = req.headers.get('idempotency-key')
     let scope = ''
+    let wasReplay = false
     if (!isRead && key && op.secretResponse)
       return fail(apiError('invalid_request', 'This operation cannot use Idempotency-Key because its response contains a secret.'))
     if (!isRead && key) {
@@ -676,6 +677,7 @@ export function createApi(options: ApiOptions) {
       }
       const identity = `${op.method} ${op.id} ${JSON.stringify(stable, Object.keys(stable).sort())}`
       const begun = await idem.begin(scope, key, requestFingerprint(op.method, identity, url.search, fingerprintBody, op.ifMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayKey.stamp))
+      wasReplay = begun.state === 'replay'
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
       if (begun.state === 'in_progress')
@@ -879,13 +881,19 @@ export function createApi(options: ApiOptions) {
       res.headers.set('server-timing', t.join(', '))
       return res
     } catch (e) {
-      if (!isRead && key && !applied) await idem.abort(scope, key)
+      if (!isRead && key && !applied && !(wasReplay && op.ifMatch && ifMatch !== null))
+        await idem.abort(scope, key)
       if (e instanceof ApiError && e.code === 'moved') {
         const to = (e.extra as { to: string }).to
         const from = (e.extra as { from: string }).from
-        const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        // Rebuild the address from its segments, so empty or percent-encoded
+        // segments in the request cannot make the redirect point at itself.
+        const parts = path.split('/').filter(Boolean)
+        const at = parts.indexOf('repos')
+        if (at >= 0 && parts.length > at + 2) parts.splice(at + 1, 2, ...to.split('/'))
+        const target = at >= 0 ? `/${parts.join('/')}` : path.replace(new RegExp(`/repos/${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), `/repos/${to}`)
         const configured = options.base && !/placeholder/i.test(options.base) ? options.base : `${url.origin}${mount}`
-        const location = `${configured}${path.replace(new RegExp(`/repos/${escaped}`, 'i'), `/repos/${to}`)}${url.search}`
+        const location = `${configured}${target}${url.search}`
         return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
       }
       throw e

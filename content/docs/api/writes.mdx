@@ -8,7 +8,7 @@ Networks fail halfway. A write that cannot be repeated safely makes every client
 
 ## Idempotency keys
 
-Send `Idempotency-Key` on any `POST`. The first request runs. A repeat with the same key and the same request returns the first answer, with `Sx-Replayed: true`, and does nothing.
+Send `Idempotency-Key` on any `POST` except operations whose response contains a secret; those answer `400` rather than storing the key. The first request runs. A repeat with the same key and the same request returns the first answer, with `Sx-Replayed: true`, and does nothing.
 
 ```bash
 curl -X POST "$SX/repos/dana/gitfs/issues" \
