@@ -8,8 +8,8 @@ import { afterOf, fp, listOf, pageShape } from './common'
 
 const repoWaitTopic = (repo: string | undefined) => {
   if (!repo) return '*'
-  const lower = repo.toLowerCase()
-  return lower.startsWith('rep_') ? `repo-id:${lower}` : `repo:${lower}`
+  const clean = repo.split('/')[0].toLowerCase()
+  return clean.startsWith('rep_') ? `repo-id:${clean}` : `repo:${repo.toLowerCase()}`
 }
 
 export const listEvents = defineOp({
@@ -66,8 +66,8 @@ export const syncRepo = defineOp({
   query: z.strictObject({
     repo: z
       .string()
-      .regex(/^[^/]+\/[^/]+$/)
-      .describe('`owner/name`'),
+      .regex(/^(rep_[0-9a-z]+|[^/]+\/[^/]+)$/i)
+      .describe('`owner/name` or a repository id `rep_...`'),
     cursor: z
       .string()
       .optional()

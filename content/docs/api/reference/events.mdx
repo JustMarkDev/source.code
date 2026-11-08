@@ -278,7 +278,7 @@ Call without a cursor for a snapshot of the repository, its changes and its issu
 
 | Name     | Type                     | Notes                                                                                              |
 | -------- | ------------------------ | -------------------------------------------------------------------------------------------------- |
-| `repo`   | string (pattern)         | Required. `owner/name`                                                                             |
+| `repo`   | string (pattern)         | Required. `owner/name` or a repository id `rep_...`                                                |
 | `cursor` | string                   | The `cursor` of the previous response. Omit for a snapshot.                                        |
 | `limit`  | integer (min 1, max 200) | Default `100`. Objects per response, 1 to 200                                                      |
 | `wait`   | integer (min 0, max 30)  | With If-None-Match: hold the request up to this many seconds until the ETag would change. 0 to 30. |

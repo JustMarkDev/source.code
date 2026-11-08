@@ -11554,8 +11554,8 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^[^/]+\\/[^/]+$",
-              "description": "`owner/name`"
+              "pattern": "^(rep_[0-9a-z]+|[^/]+\\/[^/]+)$",
+              "description": "`owner/name` or a repository id `rep_...`"
             }
           },
           {

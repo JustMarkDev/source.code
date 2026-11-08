@@ -1716,7 +1716,7 @@ export interface Operations {
   /** Keep a local copy of a repository up to date (`GET /sync`) */
   'sync.get': {
     input: {
-      /** `owner/name` */
+      /** `owner/name` or a repository id `rep_...` */
       repo: string
       /** The `cursor` of the previous response. Omit for a snapshot. */
       cursor?: string

@@ -319,7 +319,7 @@ describe('who can see what', () => {
     expect(r.status).toBe(200)
     expect(r.json.object).toBe('sync')
     const id = (await h.call('GET', REPO)).json.id as string
-    expect((await h.call('GET', `/sync?repo=${id}/~`)).status).toBe(200)
+    expect((await h.call('GET', `/sync?repo=${id}`)).status).toBe(200)
   })
 
   test('the context cursor can continue with sync', async () => {
