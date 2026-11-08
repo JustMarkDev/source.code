@@ -46,8 +46,8 @@ export const mirror: Command = async (
     const created = r.headers.get('sx-outcome') === 'created'
     print(
       ctx,
-      { ...r.json, created },
-      () => `${created ? 'added' : 'already mirrored'} ${host}:${slug}`,
+      { ...r.json, created, dryRun: dry },
+      () => `${created ? (dry ? 'would add' : 'added') : 'already mirrored'} ${host}:${slug}`,
     )
     return
   }
@@ -63,15 +63,15 @@ export const mirror: Command = async (
     const m = (
       await api.post(`${repo.path}/mirrors/${id}/sync`, { dryRun: dry })
     ).json as Mirror
-    print(ctx, m, () => `synced ${m.host}:${m.slug}`)
+    print(ctx, { ...m, dryRun: dry }, () => `${dry ? 'would sync' : 'synced'} ${m.host}:${m.slug}`)
     return
   }
   if (sub === 'remove') {
     await api.del(`${repo.path}/mirrors/${id}`, { dryRun: dry })
     print(
       ctx,
-      { removed: id },
-      () => `removed ${id}. History here is untouched.`,
+      { removed: id, dryRun: dry },
+      () => `${dry ? 'would remove' : 'removed'} ${id}. History here is untouched.`,
     )
     return
   }

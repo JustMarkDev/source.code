@@ -1950,6 +1950,10 @@ export class MemoryDomain {
             created: this.now(),
             files: Object.fromEntries(Object.entries(prev.files).map(([path, f]) => [path, { ...f, hash: `${f.hash.slice(0, 4)}${prev.n + 1}` }])),
           }],
+          reviews: existing.reviews.map((r) => ({ ...r, carries: false })),
+          latest: undefined,
+          policyMemo: undefined,
+          updated: Math.max(this.now(), existing.updated + 1),
           version: existing.version + 1,
         }
         return { change: this.presentChange(repo, preview, p), outcome: 'patch_set_added' as const }
@@ -2752,7 +2756,8 @@ export class MemoryDomain {
 
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
-    if (full.startsWith('rep_')) return this.reposById.has(full) ? full : this.deletedIds.get(full) ?? null
+    if (full.startsWith('rep_'))
+      return this.reposById.has(full) || this.deletedRepos.has(full) ? full : this.deletedIds.get(full) ?? null
     const direct = this.repos.get(full) ?? this.byLower(full.toLowerCase())
     if (direct) return direct.id
     let key = full.toLowerCase()

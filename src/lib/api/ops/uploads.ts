@@ -86,7 +86,7 @@ export const createUpload = defineOp({
           ? { id: 'upl_dryrun', owner, filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose, state: 'pending' as const, sha256: null, expires: ctx.now() + 3_600_000, created: ctx.now(), attachedTo: null, attachedRepoId: null }
           : d.svc.uploads.create(owner, { filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose })
         if (!rec) throw apiError('limit_reached', 'Too many uploads are stored. Try again after the oldest expire.')
-        return present(d, rec, true)
+        return present(d, rec, !ctx.dryRun)
       })
       return reply(out, { status: 201, headers: { location: out.url } })
     }),

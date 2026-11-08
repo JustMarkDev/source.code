@@ -83,19 +83,23 @@ export const env: Command = async (
   }
 
   if (sub === 'pull') {
+    if (dry) {
+      const vars = (await api.get(`${repo.path}/env`, { query: { environment } })).json.data as Array<Var>
+      const missing = vars.filter((v) => !v.set).map((v) => v.name)
+      print(ctx, { env: environment, written: null, dryRun: true, missing }, () => `would write .env.local for ${environment}${missing.length ? `\nmissing: ${missing.join(', ')}` : ''}`)
+      return
+    }
     const values = (
       await api.get(`${repo.path}/env/${environment}/values`)
     ).json as { values: Record<string, string> }
-    const text = `${Object.entries(values.values).map(([k, v]) => `${k}=${v}`).join('\n')}\n`
-    if (!dry) {
-      writeFileSync('.env.local', text, { mode: 0o600 })
-      chmodSync('.env.local', 0o600)
-    }
+    const text = `${Object.entries(values.values).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join('\n')}\n`
+    writeFileSync('.env.local', text, { mode: 0o600 })
+    chmodSync('.env.local', 0o600)
     const missing = Object.keys(values.values).length === 0
     print(
       ctx,
-      { env: environment, written: dry ? null : '.env.local', dryRun: dry, missing: missing ? ['all values'] : [] },
-      () => `${dry ? 'would write' : 'wrote'} .env.local for ${environment}${missing ? '\nmissing: all values' : ''}`,
+      { env: environment, written: '.env.local', dryRun: false, missing: missing ? ['all values'] : [] },
+      () => `wrote .env.local for ${environment}${missing ? '\nmissing: all values' : ''}`,
     )
     return
   }
@@ -175,6 +179,10 @@ export const env: Command = async (
         })
       ).json as Grant
       // A request is not access. Someone has to approve it, so this is a stop.
+      if (dry) {
+        print(ctx, { ...g, dryRun: true }, () => `would request ${g.id} for ${environment}; a person would need to approve it`)
+        return
+      }
       throw new SxError(
         'needs_human',
         `Requested ${g.id}. A person must approve it in Settings, Secrets, Agent access, or run: sx env grant approve ${g.id}.`,
@@ -196,14 +204,14 @@ export const env: Command = async (
           dryRun: dry,
         })
       ).json as Grant
-      print(ctx, g, () => `${dry ? 'would approve' : 'approved'} ${g.id}${dry ? '' : ` until ${g.expires_at ?? ''}`}`)
+      print(ctx, { ...g, dryRun: dry }, () => `${dry ? 'would approve' : 'approved'} ${g.id}${dry ? '' : ` until ${g.expires_at ?? ''}`}`)
       return
     }
     if (action === 'revoke') {
       const g = (
         await api.post(`${repo.path}/env/grants/${id}/revoke`, { dryRun: dry })
       ).json as Grant
-      print(ctx, g, () => `${dry ? 'would revoke' : 'revoked'} ${g.id}`)
+      print(ctx, { ...g, dryRun: dry }, () => `${dry ? 'would revoke' : 'revoked'} ${g.id}`)
       return
     }
     throw new SxError(

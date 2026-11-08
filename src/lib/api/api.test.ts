@@ -1257,7 +1257,8 @@ describe('OpenAPI', () => {
         expect(['read', 'write', 'destructive'], where).toContain(op['x-sx-safety'])
         expect(typeof op['x-sx-idempotent'], where).toBe('boolean')
         expect(op['x-sx-pool'], where).toBeDefined()
-        expect(op['x-sx-errors'], where).toContain('rate_limited')
+        if (op['x-sx-pool'] !== 'none') expect(op['x-sx-errors'], where).toContain('rate_limited')
+        else expect(op['x-sx-errors'], where).not.toContain('rate_limited')
         for (const code of op['x-sx-errors']) expect(errorCatalog, `${where} ${code}`).toHaveProperty(code)
         expect(op.responses.default.content['application/problem+json']).toBeDefined()
         // Every {param} in the path is declared.

@@ -2,6 +2,7 @@
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { hashToken, principalOf } from '../auth'
+import { apiError } from '../problem'
 import { Domain, Raw, defineOp } from '../registry'
 import * as S from '../schemas'
 import { afterOf, fp, listOf, pageShape } from './common'
@@ -134,6 +135,8 @@ export const streamEvents = defineOp({
       let after = last && /^\d+$/.test(last) ? Number(last) : events.head
       const types = ctx.query.type?.split(',') ?? null
       const repo = ctx.query.repo
+      if (repo && (!repoId || !domain.canSeeId(ctx.principal)(repoId)))
+        throw apiError('not_found', 'No such repository.')
       const encoder = new TextEncoder()
       let open = true
       const send = (text: string, controller: ReadableStreamDefaultController<Uint8Array>) => {

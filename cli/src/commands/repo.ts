@@ -55,6 +55,7 @@ export const repo: Command = async (
     const [owner, name] = given.includes('/')
       ? (given.split('/') as [string, string])
       : [(await activeAccount(ctx, flags)).handle, given]
+    const dry = has(flags, 'dry-run')
     const r = await api().post('/repos', {
       body: {
         name,
@@ -64,12 +65,12 @@ export const repo: Command = async (
           ? { description: str(flags, 'description') }
           : {}),
       },
-      dryRun: has(flags, 'dry-run'),
+      dryRun: dry,
     })
     const created = r.headers.get('sx-outcome') === 'created'
-    print(ctx, { ...withSlug(r.json), created }, () =>
+    print(ctx, { ...withSlug(r.json), created, dryRun: dry }, () =>
       created
-        ? `created ${r.json.full_name}`
+        ? `${dry ? 'would create' : 'created'} ${r.json.full_name}`
         : `${r.json.full_name} already exists`,
     )
     return

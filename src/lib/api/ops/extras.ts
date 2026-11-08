@@ -401,7 +401,12 @@ export const requestGrant = defineOp({
         if (p.class !== 'human' && ctx.body.environment === 'production')
           throw apiError('human_required', 'Agents cannot be granted production values.', { hint: 'Use development, or ask a person to run the command.' })
         const x = d.svc.extras.for(full)
-        if (ctx.dryRun) return { g: presentGrant(d, full, { id: 'grt_dryrun', environment: ctx.body.environment, state: 'pending', variables: [], reason: ctx.body.reason ?? null, requestedBy: p.handle, maxRuns: ctx.body.max_runs, uses: 0, expires: null, created: ctx.now() }, ctx.now()), created: true }
+        if (ctx.dryRun) {
+          const pending = x.grants.find((g) => g.environment === ctx.body.environment && g.state === 'pending')
+          if (pending) return { g: presentGrant(d, full, pending, ctx.now()), created: false }
+          const variables = x.env.filter((v) => v.set.includes(ctx.body.environment)).map((v) => v.name)
+          return { g: presentGrant(d, full, { id: 'grt_dryrun', environment: ctx.body.environment, state: 'pending', variables, reason: ctx.body.reason ?? null, requestedBy: p.handle, maxRuns: ctx.body.max_runs, uses: 0, expires: null, created: ctx.now() }, ctx.now()), created: true }
+        }
         const r = x.requestGrant({ environment: ctx.body.environment, reason: ctx.body.reason ?? null, maxRuns: ctx.body.max_runs, who: p.handle })
         return { g: presentGrant(d, full, r.grant, ctx.now()), created: r.created }
       })

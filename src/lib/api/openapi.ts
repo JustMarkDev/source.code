@@ -99,8 +99,7 @@ function parameters(op: Op, defs: Json): Array<Json> {
 function operationErrors(op: Op): Array<string> {
   const out = new Set<string>([
     ...(op.errors ?? []),
-    'rate_limited',
-    'concurrency_limited',
+    ...(op.pool === 'none' ? [] : ['rate_limited', 'concurrency_limited']),
     'internal',
     'backend_unavailable',
     'unsupported_version',
@@ -161,7 +160,7 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
           description: op.status === 204 ? 'No content' : 'Success',
           headers: {
             'Sx-Request-Id': { schema: { type: 'string' } },
-            ...(op.method === 'GET' ? { ETag: { schema: { type: 'string' } } } : {}),
+            ...(op.method === 'GET' && op.conditional !== false ? { ETag: { schema: { type: 'string' } } } : {}),
           },
           ...(op.status === 204
             ? {}
@@ -177,7 +176,7 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
                 },
               }),
         },
-        ...(op.probe || op.waitOn ? { '304': { description: 'Not modified. Costs no rate-limit units.' } } : {}),
+        ...(op.method === 'GET' && op.conditional !== false ? { '304': { description: 'Not modified. Costs no rate-limit units.' } } : {}),
         default: {
           description: 'An error',
           content: { 'application/problem+json': { schema: problemRef } },

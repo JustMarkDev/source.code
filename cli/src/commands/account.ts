@@ -69,6 +69,7 @@ export const account: Command = async (
     const target = await findAccount(ctx, handle)
     if (!target) throw accountNotFound(handle)
     const previous = readConfig().account || (await personal(ctx)).handle
+    const dry = flags['dry-run'] === true
     // Switching to where you already are changes nothing, so it is safe to repeat.
     const switched = previous !== target.handle
     if (switched && flags['dry-run'] !== true)
@@ -91,7 +92,7 @@ export const account: Command = async (
       overriddenBy
         ? `saved ${target.handle}, but SX_ACCOUNT is set in this shell and wins`
         : switched
-          ? `now acting as ${target.handle}`
+          ? `${dry ? 'would act' : 'now acting'} as ${target.handle}`
           : `already acting as ${target.handle}`,
     )
     return

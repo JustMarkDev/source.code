@@ -32,13 +32,14 @@ export const issue: Command = async (
         exit.usage,
       )
     const labels = str(flags, 'label')?.split(',')
+    const dry = has(flags, 'dry-run')
     const r = await api.post(`${repo.path}/issues`, {
       body: { title, ...(labels ? { labels } : {}) },
-      dryRun: has(flags, 'dry-run'),
+      dryRun: dry,
     })
     const created = r.headers.get('sx-outcome') !== 'unchanged'
-    print(ctx, { ...r.json, created }, () =>
-      created ? `created #${r.json.number}` : `#${r.json.number} already open`,
+    print(ctx, { ...r.json, created, dryRun: dry }, () =>
+      created ? `${dry ? 'would create' : 'created'} #${r.json.number}` : `#${r.json.number} already open`,
     )
     return
   }
@@ -56,13 +57,14 @@ export const issue: Command = async (
     return
   }
   if (sub === 'close') {
+    const dry = has(flags, 'dry-run')
     const found = (
       await api.patch(`${repo.path}/issues/${n}`, {
         body: { state: 'closed' },
-        dryRun: has(flags, 'dry-run'),
+        dryRun: dry,
       })
     ).json
-    print(ctx, found, () => `closed #${found.number}`)
+    print(ctx, { ...found, dryRun: dry }, () => `${dry ? 'would close' : 'closed'} #${found.number}`)
     return
   }
   throw new SxError(
