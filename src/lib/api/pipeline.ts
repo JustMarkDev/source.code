@@ -667,12 +667,15 @@ export function createApi(options: ApiOptions) {
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
       scope = principal ? `${principal.handle}@${principal.actingAs}:${principal.capId}` : `ip:${clientAddress(req)}`
       const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
-      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, fingerprintBody))
+      const replayStamp = principal ? domain.replayStamp(path, principal, op.method) : ''
+      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, fingerprintBody, ifMatch ?? '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayStamp))
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
       if (begun.state === 'in_progress')
         return fail(apiError('request_in_progress', 'A request with this key is still running.', { retryAfter: 1 }))
-      if (begun.state === 'replay') {
+      // A conditional write must be checked against the current version, not
+      // answered from the version it saw the first time.
+      if (begun.state === 'replay' && ifMatch === null) {
         const replayBody = begun.response.status === 204 || begun.response.status === 304 || begun.response.body === '' ? null : begun.response.body
         return new Response(replayBody, {
           status: begun.response.status,

@@ -135,6 +135,9 @@ export const streamEvents = defineOp({
       }))
       const last = ctx.header('last-event-id')
       let after = last && /^\d+$/.test(last) ? Number(last) : events.head
+      // A cursor from another deployment or a restarted preview is ahead of
+      // this log; start at the end rather than waiting for a future it passed.
+      after = Math.min(after, events.head)
       const types = ctx.query.type?.split(',') ?? null
       const repo = ctx.query.repo
       if (repo && (!repoId || !domain.canSeeId(ctx.principal)(repoId)))

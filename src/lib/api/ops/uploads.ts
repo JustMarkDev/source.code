@@ -170,7 +170,15 @@ export const getUpload = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => reply(present(d, ownerOnly(d.svc.uploads.get(ctx.params.id), ctx.principal!.handle), true), { headers: { 'cache-control': 'no-store' } }))
+      return yield* run(async (d) => {
+        const rec = d.svc.uploads.get(ctx.params.id)
+        // A repository-limited token cannot use ownership to step around the
+        // repository limit of an attached upload.
+        const mine = rec && rec.owner === ctx.principal!.handle &&
+          (!rec.attachedRepoId || d.mayReadId(rec.attachedRepoId, ctx.principal))
+        if (!mine) throw apiError('not_found', 'No such upload.')
+        return reply(present(d, rec, true), { headers: { 'cache-control': 'no-store' } })
+      })
     }),
 })
 
@@ -196,7 +204,8 @@ export const uploadContent = defineOp({
       const { run } = yield* Domain
       return yield* run(async (d) => {
         const rec = d.svc.uploads.get(ctx.params.id)
-        const mine = rec && ctx.principal?.handle === rec.owner
+        const mine = rec && ctx.principal?.handle === rec.owner &&
+          (!rec.attachedRepoId || d.mayReadId(rec.attachedRepoId, ctx.principal))
         if (!rec || !(mine || (rec.attachedRepoId && d.mayReadId(rec.attachedRepoId, ctx.principal))))
           throw apiError('not_found', 'No such upload.')
         if (rec.state !== 'uploaded') throw apiError('upload_incomplete', 'The file has not been uploaded yet.')

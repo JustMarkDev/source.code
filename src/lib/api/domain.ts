@@ -1183,6 +1183,7 @@ export class MemoryDomain {
       }
     const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })
     rec.maintainerGrants = new Set(maintainers)
+    this.accessRevision++
     const lower = `${owner}/${input.name}`.toLowerCase()
     this.aliases.delete(lower)
     for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
@@ -1677,7 +1678,7 @@ export class MemoryDomain {
     }
     if (changed.length) {
       repo.version++
-      if (changed.includes('visibility')) this.accessRevision++
+      if (changed.includes('visibility') || changed.includes('name')) this.accessRevision++
       // Search keeps the repository's name, description and visibility in every document.
       if (renaming || changed.includes('visibility') || changed.includes('description')) this.svc.search?.reset()
       this.emit(repo, 'repo.updated', this.asActor(p), { object: 'repo', id: repo.id, number: null }, changed, this.presentRepo(repo))
@@ -2906,6 +2907,42 @@ export class MemoryDomain {
     return `${id}.${list.at(-1)?.sequence ?? 0}.${this.events.oldest}`
   }
 
+  /** The current owner/name for an address, following rename aliases without a permission check. */
+  canonicalRepoName(full: string): string {
+    const direct = this.repos.get(full) ?? this.byLower(full.toLowerCase())
+    if (direct) return `${direct.owner}/${direct.name}`
+    let key = full.toLowerCase()
+    const seen = new Set<string>([key])
+    for (let i = 0; i < 10; i++) {
+      const next = this.aliases.get(key)
+      if (!next || seen.has(next.toLowerCase())) break
+      key = next.toLowerCase()
+      seen.add(key)
+    }
+    const repo = this.repos.get(key) ?? this.byLower(key)
+    return repo ? `${repo.owner}/${repo.name}` : full
+  }
+
+  /**
+   * Who and which repository a keyed write is against, for idempotency replay.
+   * A replay must not survive losing write access, a rename, or a name reused
+   * by a different repository. A delete keeps its id so a retry still gets 204.
+   */
+  replayStamp(path: string, p: Principal, method: string): string {
+    const m = /^\/repos\/([^/]+)\/([^/]+)/.exec(path)
+    if (!m) return ''
+    const owner = m[1]
+    const name = m[2]
+    let repo = owner.startsWith('rep_') && name === '~' ? this.reposById.get(owner) : undefined
+    if (!repo) {
+      const canonical = this.canonicalRepoName(`${owner}/${name}`)
+      repo = this.repos.get(canonical) ?? this.byLower(canonical.toLowerCase())
+    }
+    const id = repo?.id ?? this.deletedIds.get(`${owner}/${name}`.toLowerCase()) ?? ''
+    if (!id) return 'none'
+    return method === 'DELETE' ? id : `${id}:${repo ? this.canWrite(repo, p) : false}`
+  }
+
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
     if (full.startsWith('rep_'))
@@ -2992,7 +3029,7 @@ export class MemoryDomain {
       if (snap[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
         errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
       })
-      return snapshot(Number(snap[3]), Number(snap[2]), false)
+      return snapshot(Number(snap[3]), Math.min(Number(snap[2]), this.events.head), false)
     }
     const ev = /^e_(.+)_(\d+)$/.exec(c)
     if (!ev) throw apiError('invalid_request', 'The cursor is not valid.', {
@@ -3002,6 +3039,7 @@ export class MemoryDomain {
       errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
     })
     const after = Number(ev[2])
+    if (after > this.events.head) return snapshot(0, this.events.head, true)
     if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
     const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id && scopeOk(e.type) && /^(repo|change|issue|finding|check|ci)\./.test(e.type))
     // Keep only the newest state of each object, and remember what was deleted

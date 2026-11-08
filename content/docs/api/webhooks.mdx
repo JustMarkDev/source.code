@@ -16,7 +16,7 @@ curl -X POST "$SX/repos/dana/gitfs/webhooks" \
 
 The response is the only time the signing secret is shown (`whsec_…`). You need the `webhooks:write` scope and write access to the repository. A repository can have 10.
 
-`events` takes exact types (`change.landed`), families (`change.*`) or `*`. The types are listed in [Events and sync](/docs/api/events-and-sync#the-event-log), plus `webhook.ping` and `webhook.disabled`.
+`events` takes exact types (`change.landed`), families (`change.*`) or `*`. The types are listed in [Events and sync](/docs/api/events-and-sync#the-event-log), plus `webhook.ping` and `webhook.disabled`. A repository's webhooks are removed with it, so `repo.deleted` is written to the event log but not delivered to them.
 
 ## What arrives
 

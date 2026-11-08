@@ -22,6 +22,12 @@ describe('parse', () => {
     expect(p.positionals).toEqual(['change', 'view', 'ch_1'])
     expect(p.flags).toEqual({ repo: 'dana/gitfs', json: true })
   })
+
+  test('--private is a boolean even before the name', () => {
+    const p = parse(['repo', 'create', '--private', 'notes'])
+    expect(p.positionals).toEqual(['repo', 'create', 'notes'])
+    expect(p.flags.private).toBe(true)
+  })
 })
 
 describe('scrub', () => {

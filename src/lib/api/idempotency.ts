@@ -139,8 +139,11 @@ export function requestFingerprint(
   path: string,
   query: string,
   body: string,
+  ifMatch: string = '',
+  contentType: string = '',
+  replayStamp: string = '',
 ): string {
   return createHash('sha256')
-    .update(`${method}\n${path}\n${query}\n${body}`)
+    .update(`${method}\n${path}\n${query}\n${body}\n${ifMatch}\n${contentType}\n${replayStamp}`)
     .digest('base64url')
 }

@@ -544,6 +544,37 @@ describe('generations and reuse', () => {
     expect((await again.json() as { hint: string }).hint).toContain('Start a new upload')
   })
 
+  test('a repository-limited token cannot read an attached upload elsewhere', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'secretrepo', visibility: 'private' } })
+    const change = await h.call('POST', '/repos/dana/secretrepo/changes', { body: { branch: 'x' } })
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 4, 5, 6])
+    const up = (await h.call('POST', '/uploads', { body: { filename: 's.png', content_type: 'image/png', size: png.length } })).json
+    await h.api.fetch(new Request(up.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))
+    await h.call('POST', `/repos/dana/secretrepo/changes/${change.json.number}/evidence`, { body: { upload: up.id, kind: 'image' } })
+    expect((await h.call('GET', `/uploads/${up.id}`, { token: h.tokens.limited })).status).toBe(404)
+    expect((await h.call('GET', `/uploads/${up.id}/content`, { token: h.tokens.limited })).status).toBe(404)
+    expect((await h.call('GET', `/uploads/${up.id}`)).status).toBe(200)
+  })
+
+  test('a cursor ahead of the log resets sync and the stream', async () => {
+    const h = harness()
+    const repo = (await h.call('GET', REPO)).json.id as string
+    const future = (await h.call('GET', `/sync?repo=dana/gitfs&cursor=e_${repo}_999999`)).json
+    expect(future.reset).toBe(true)
+    await h.call('POST', `${REPO}/issues`, { body: { title: 'After the future' } })
+    const delta = (await h.call('GET', `/sync?repo=dana/gitfs&cursor=${future.cursor}`)).json
+    expect(delta.objects.some((o: { title?: string }) => o.title === 'After the future')).toBe(true)
+
+    const res = await h.api.fetch(new Request('https://api.test/v1/events/stream?repo=dana/gitfs', { headers: { authorization: `Bearer ${T(h).dana}`, 'last-event-id': '999999' } }))
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    expect(decoder.decode((await reader.read()).value)).toContain(': connected')
+    await h.call('POST', `${REPO}/issues`, { body: { title: 'Stream after the future' } })
+    expect(decoder.decode((await reader.read()).value)).toContain('Stream after the future')
+    await reader.cancel()
+  })
+
   test('event history follows a rename', async () => {
     const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'history', visibility: 'public' } })
@@ -1013,6 +1044,52 @@ describe('writes', () => {
     const r = await h.call('POST', `${REPO}/issues`, { body: { title: 'Two' }, headers })
     expect(r.status).toBe(422)
     expect(r.json.code).toBe('idempotency_key_reused')
+  })
+
+  test('a replay cannot outlive access or a reused repository name', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault', visibility: 'private' } })
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'vault-access' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault-access/repos/northwind/vault', { body: { permission: 'write' } })
+    await h.call('PUT', '/accounts/northwind/teams/vault-access/members/stranger')
+    const headers = { 'idempotency-key': 'acl-replay' }
+    const first = await h.call('POST', '/repos/northwind/vault/issues', { token: h.tokens.stranger, body: { title: 'Private issue' }, headers })
+    expect(first.status).toBe(201)
+    await h.call('DELETE', '/accounts/northwind/teams/vault-access/members/stranger')
+    const denied = await h.call('POST', '/repos/northwind/vault/issues', { token: h.tokens.stranger, body: { title: 'Private issue' }, headers })
+    expect(denied.status).toBe(422)
+    expect(denied.json.code).toBe('idempotency_key_reused')
+    expect(denied.text).not.toContain('Private issue')
+
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'reuse', visibility: 'private' } })
+    const key = { 'idempotency-key': 'reuse-replay' }
+    await h.call('POST', '/repos/dana/reuse/issues', { body: { title: 'Old repo' }, headers: key })
+    await h.call('PATCH', '/repos/dana/reuse', { body: { name: 'reuse-old' } })
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'reuse', visibility: 'private' } })
+    const fresh = await h.call('POST', '/repos/dana/reuse/issues', { body: { title: 'Old repo' }, headers: key })
+    expect(fresh.status).toBe(422)
+    expect(fresh.json.code).toBe('idempotency_key_reused')
+    expect(fresh.text).not.toContain('Old repo')
+  })
+
+  test('a conditional write is checked again instead of replayed', async () => {
+    const h = harness()
+    const made = await h.call('POST', `${REPO}/issues`, { body: { title: 'conditional' } })
+    const issue = await h.call('GET', `${REPO}/issues/${made.json.number}`)
+    const headers = { 'idempotency-key': 'if-match-key', 'if-match': issue.headers.get('etag')! }
+    const body = { title: 'first edit' }
+    expect((await h.call('PATCH', `${REPO}/issues/${made.json.number}`, { body, headers })).status).toBe(200)
+    await h.call('PATCH', `${REPO}/issues/${made.json.number}`, { body: { title: 'someone else' } })
+    const again = await h.call('PATCH', `${REPO}/issues/${made.json.number}`, { body, headers })
+    expect(again.status).toBe(412)
+    expect(again.headers.get('sx-replayed')).toBeNull()
+  })
+
+  test('token repositories are stored under their current name', async () => {
+    const h = harness()
+    const made = await h.call('POST', '/tokens', { body: { name: 'alias', scopes: ['repo:read'], repos: ['dana/git-fs'] } })
+    expect(made.status).toBe(201)
+    expect(made.json.repos).toEqual(['dana/gitfs'])
   })
 
   test('a failed request frees its key, so a corrected retry works', async () => {

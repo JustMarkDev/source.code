@@ -97,7 +97,9 @@ export const createToken = defineOp({
       const p = ctx.principal!
       const body = ctx.body
       const t = yield* run(async (d) => {
-        const repos = body.repos?.map((r) => r.toLowerCase()) ?? null
+        const repos = body.repos
+          ? [...new Set(body.repos.map((r) => d.canonicalRepoName(r).toLowerCase()))]
+          : null
         const missing = body.scopes.filter((s) => !p.scopes.has(s))
         if (missing.length)
           throw apiError('insufficient_scope', `You cannot give a token scopes you do not have: ${missing.join(', ')}.`, {
@@ -105,7 +107,7 @@ export const createToken = defineOp({
           })
         if (p.repos && (!repos || repos.some((r) => !p.repos!.includes(r))))
           throw apiError('forbidden', 'Your token is limited to repositories, so a token you create must be limited to some of them.')
-        for (const r of body.repos ?? []) await d.getRepo(...(r.split('/') as [string, string]), p)
+        for (const r of repos ?? []) await d.getRepo(...(r.split('/') as [string, string]), p)
         if (d.svc.auth.countActive(p.handle, ctx.now()) >= MAX_TOKENS)
           throw apiError('limit_reached', `You can have ${MAX_TOKENS} active tokens.`)
         if (ctx.dryRun) return present(d, { id: 'tok_dryrun', name: body.name, kind: 'personal', handle: p.handle, actingAs: p.handle, class: p.class, scopes: body.scopes, repos, audience: ['api', 'mcp'], prefix: 'sxp_', createdAt: ctx.now(), expiresAt: ctx.now() + body.expires_in_days * 86_400_000, lastUsedAt: null, revokedAt: null }, null)
