@@ -87,6 +87,7 @@ export const account: Command = async (
       switched,
       previous,
       overriddenBy,
+      dryRun: dry,
     }
     print(ctx, data, () =>
       overriddenBy

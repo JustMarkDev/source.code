@@ -108,7 +108,7 @@ export const change: Command = async (
       () =>
         action === 'created'
           ? `${dry ? 'would create' : 'created'} #${r.json.number}  ${title}`
-          : `#${r.json.number} now at patch set ${r.json.patch_set_count}`,
+          : `#${r.json.number} ${dry ? 'would be' : 'now'} at patch set ${r.json.patch_set_count}`,
     )
     return
   }
