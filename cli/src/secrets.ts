@@ -124,7 +124,12 @@ export async function runWithEnv(opts: {
         new SxError('human_required', '', undefined, exit.needsHuman),
         opts.env,
       )
-    if (agent) {
+    if (!who.scopes.includes('secrets:decrypt'))
+      cliError(
+        new SxError('insufficient_scope', '', 'Ask for a token with secrets:decrypt.', exit.needsHuman),
+        opts.env,
+      )
+    if (agent && who.scopes.includes('secrets:schema')) {
       const grants = (await api.get(`${opts.repo.path}/env/grants`)).json
         .data as Array<{ state: string; environment: string }>
       if (
@@ -135,11 +140,11 @@ export async function runWithEnv(opts: {
           opts.env,
         )
     }
-    const vars = (
-      await api.get(`${opts.repo.path}/env`, {
-        query: { environment: opts.env as 'development' },
-      })
-    ).json.data as Array<{ name: string; secret: boolean; set: boolean }>
+    const vars = who.scopes.includes('secrets:schema')
+      ? ((await api.get(`${opts.repo.path}/env`, {
+          query: { environment: opts.env as 'development' },
+        })).json.data as Array<{ name: string; secret: boolean; set: boolean }>)
+      : []
     const shown = vars.filter(
       (v) => v.set && (!opts.only || opts.only.includes(v.name)),
     )
