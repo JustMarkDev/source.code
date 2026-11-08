@@ -900,8 +900,8 @@ export function createApi(options: ApiOptions) {
         const search = new URLSearchParams(url.search)
         const confirm = search.get('confirm')
         if (confirm && confirm.toLowerCase() === from.toLowerCase()) search.set('confirm', to)
-        const query = search.size ? `?${search}` : ''
-        const location = `${configured}${target}${query}`
+        const queryString = search.size ? `?${search}` : ''
+        const location = `${configured}${target}${queryString}`
         return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
       }
       throw e
