@@ -379,7 +379,7 @@ function trim(value: unknown, depth = 0): unknown {
   if (typeof value === 'string') {
     const redacted = value
       .replace(/\b((?:sxp|sxb|sxr|sxo|sxf)_)[A-Za-z0-9_-]{6,}/g, '$1…')
-      .replace(/\b(whsec_)[A-Za-z0-9_-]{6,}/g, '$1…')
+      .replace(/\b(whsec_)[A-Za-z0-9_+/=-]{6,}/g, '$1…')
       .replace(/([?&]sig=)[^&]+/g, '$1…')
     return redacted.length > 160 ? `${redacted.slice(0, 157)}…` : redacted
   }

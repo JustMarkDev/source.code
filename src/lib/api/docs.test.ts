@@ -40,8 +40,10 @@ describe('the API documentation', () => {
 
   test('examples never publish a token, webhook secret or signed URL', async () => {
     const files = await generateReference()
-    for (const [file, text] of files)
-      expect(text, file).not.toMatch(/(?:sxp|sxb|sxr|sxo|sxf)_[A-Za-z0-9_-]{8,}|whsec_[A-Za-z0-9_-]{8,}|[?&]sig=[A-Za-z0-9_-]{8,}/)
+    for (const [file, text] of files) {
+      expect(text, file).not.toMatch(/(?:sxp|sxb|sxr|sxo|sxf)_[A-Za-z0-9_+/=-]{8,}|whsec_[A-Za-z0-9_+/=-]{8,}|[?&]sig=[A-Za-z0-9_+/=-]{8,}/)
+      expect(text, file).not.toMatch(/whsec_…[A-Za-z0-9_+/=]/)
+    }
   })
 
   test('every operation has a real example in the reference', async () => {
