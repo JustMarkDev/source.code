@@ -95,6 +95,7 @@ export function seedSample(d: MemoryDomain) {
   d.seedAccount('lumen-studio', 'Lumen Studio', 'organization', [['dana', 'member']], days(45))
 
   const gitfs = d.seedRepo('dana', 'gitfs', {
+    storeId: 'gitfs',
     description: 'Git over object storage.', stars: 2140, created: days(40),
     collaborators: ['hollis', 'ines'], installs: ['triage-bot', 'fix-agent'], maintainers: ['dana', 'hollis'],
     env: [
@@ -103,7 +104,7 @@ export function seedSample(d: MemoryDomain) {
       { name: 'API_PORT', kind: 'port', set: ['development', 'production'] },
     ],
   })
-  d.seedRepo('dana', 'tinyqueue', { description: 'Zero-dependency job queue.', stars: 640, created: days(30) })
+  d.seedRepo('dana', 'tinyqueue', { storeId: 'tinyqueue', description: 'Zero-dependency job queue.', stars: 640, created: days(30) })
   d.seedRepo('dana', 'notes', { description: 'Private notes.', visibility: 'private', created: days(20) })
   d.seedRepo('northwind', 'relay', { description: 'A small message relay with at-least-once delivery.', stars: 310, created: days(25), collaborators: ['hollis'] })
   d.seedAlias('dana/git-fs', 'dana/gitfs')

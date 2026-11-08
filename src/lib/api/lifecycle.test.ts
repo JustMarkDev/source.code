@@ -230,8 +230,18 @@ describe('git data', () => {
     expect((await h.call('GET', '/repos/dana/empty/git/tree')).status).toBe(404)
   })
 
-  test('git follows a rename and cannot be inherited by a reused name', async () => {
-    const h = harness()
+  test('two seeds with the same name get separate git stores', async () => {
+    const h = harness({
+      seed: (d) => {
+        d.seedRepo('alice', 'same', { storeId: 'gitfs' })
+        d.seedRepo('bob', 'same')
+      },
+    })
+    expect((await h.call('GET', '/repos/alice/same/git/tree')).status).toBe(200)
+    expect((await h.call('GET', '/repos/bob/same/git/tree')).status).toBe(404)
+  })
+
+  test('git follows a rename and cannot be inherited by a reused name', async () => {    const h = harness()
     await h.call('PATCH', REPO, { body: { name: 'gitfs2' } })
     expect((await h.call('GET', '/repos/dana/gitfs/git/tree')).status).toBe(308)
     expect((await h.call('GET', '/repos/dana/gitfs2/git/tree')).status).toBe(200)
@@ -409,6 +419,12 @@ describe('runs', () => {
     const b = await h.call('POST', `${REPO}/runs`, { body: { task: 'b' } })
     const denied = await h.call('POST', `${REPO}/runs/${a.json.id}/cancel`, { token: b.json.token })
     expect(denied.status).toBe(403)
+  })
+
+  test('a repository-limited token cannot note a run outside its grant', async () => {
+    const h = harness()
+    const a = await h.call('POST', `${REPO}/runs`, { body: { task: 'a' } })
+    expect((await h.call('POST', `${REPO}/runs/${a.json.id}/notes`, { token: h.tokens.limited, body: { text: 'nope' } })).status).toBe(403)
   })
 
   test('cancelling stops the token at once; only the starter or an admin may', async () => {    const h = harness()

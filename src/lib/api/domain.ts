@@ -399,7 +399,7 @@ export class MemoryDomain {
     const id = init.id ?? seededId('repo', at, `${owner}/${name}`)
     const rec: RepoRec = {
       id,
-      storeId: init.storeId ?? (init.id ? init.id : name),
+      storeId: init.storeId ?? id,
       owner,
       name,
       description: init.description ?? '',
@@ -1277,6 +1277,8 @@ export class MemoryDomain {
 
   /** The run's own token, the person who started it, or an admin of the account may act on it. */
   private assertRunOwner(repo: RepoRec, r: RunRec, p: Principal) {
+    if (p.repos && !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase()))
+      throw apiError('forbidden', 'This token is not granted for this repository.')
     if (p.tokenId === r.tokenId) return
     if (p.class === 'human' && r.handle === p.handle) return
     if (p.class === 'human') return this.assertAdmin(repo, p)
