@@ -3838,7 +3838,10 @@ export function createClient(options: ClientOptions = {}): Client {
         const text = await res.text()
         const data = text ? JSON.parse(text) : undefined
         const etag = res.headers.get('etag')
-        if (read && etag && cacheSize > 0) {
+        const noStore = (res.headers.get('cache-control') ?? '').includes(
+          'no-store',
+        )
+        if (read && etag && cacheSize > 0 && !noStore) {
           cache.delete(url)
           cache.set(url, { etag, body: data })
           if (cache.size > cacheSize)

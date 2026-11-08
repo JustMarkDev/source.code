@@ -5,7 +5,9 @@ import * as S from '../schemas'
 import { issueMarkdown } from '../markdown'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 
-const topic = (p: { owner: string; repo: string }) => {
+const topic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+  const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
+  if (id) return `repo-id:${id}`
   const owner = p.owner.toLowerCase()
   return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
 }
@@ -35,7 +37,7 @@ export const listIssues = defineOp({
   response: S.listOf(S.Issue),
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
-  waitOn: topic,
+  waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) => d.issueListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -71,7 +73,7 @@ export const getIssue = defineOp({
   errors: ['not_found', 'moved'],
   shapeable: true,
   markdown: issueMarkdown,
-  waitOn: topic,
+  waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) =>
       d.issueVersion(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal),
   handler: (ctx) =>

@@ -1295,7 +1295,8 @@ export class MemoryDomain {
     const r = this.runRec(repo, id)
     this.assertRunOwner(repo, r, p)
     if (this.runState(r) !== 'running') throw apiError('invalid_state', `Run ${id} is ${this.runState(r)}.`, { hint: 'Start another run.' })
-    if (!dry) {
+    if (dry) return this.presentRun({ ...r, notes: [...r.notes, { at: this.now(), text }] })
+    {
       r.notes.push({ at: this.now(), text })
       if (r.notes.length > MemoryDomain.RUN_NOTES) r.notes.splice(0, r.notes.length - MemoryDomain.RUN_NOTES)
       r.version++
@@ -1311,7 +1312,8 @@ export class MemoryDomain {
     // Finishing twice with the same outcome is a no-op, so a retry is safe.
     if (now === state) return this.presentRun(r)
     if (now !== 'running') throw apiError('invalid_state', `Run ${id} is already ${now}.`)
-    if (!dry) {
+    if (dry) return this.presentRun({ ...r, state, finished: this.now(), summary: summary ?? r.summary })
+    {
       r.state = state
       r.finished = this.now()
       if (summary !== undefined) r.summary = summary
@@ -1484,7 +1486,8 @@ export class MemoryDomain {
   async removeTeamRepo(org: string, slug: string, owner: string, name: string, p: Principal, dry: boolean) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
-    const full = `${owner}/${name}`
+    const repo = this.resolve(owner, name, p, 'read')
+    const full = `${repo.owner}/${repo.name}`
     if (!t.repos.has(full)) throw apiError('not_found', `${slug} has no access to ${full}.`)
     if (dry) return
     t.repos.delete(full)
@@ -1932,8 +1935,15 @@ export class MemoryDomain {
     if (existing) {
       if (this.head(existing).sha === sha)
         return { change: this.presentChange(repo, existing, p), outcome: 'unchanged' as const }
-      if (body.dry_run)
-        return { change: this.presentChange(repo, existing, p), outcome: 'patch_set_added' as const }
+      if (body.dry_run) {
+        const prev = this.head(existing)
+        const preview = {
+          ...existing,
+          patchSets: [...existing.patchSets, { ...prev, n: prev.n + 1, sha, kind: 'update' as const, note: 'Updated from branch', author: by, created: this.now() }],
+          version: existing.version + 1,
+        }
+        return { change: this.presentChange(repo, preview, p), outcome: 'patch_set_added' as const }
+      }
       this.pushPatchSet(repo, existing, by, { sha, kind: 'update', note: 'Updated from branch' })
       return { change: this.presentChange(repo, existing, p), outcome: 'patch_set_added' as const }
     }
@@ -2255,6 +2265,7 @@ export class MemoryDomain {
       })
       this.changeEvent(repo, c, 'finding.resolved', this.asActor(p!), ['findings', 'policy.state'])
     }
+    if (dry && f.state !== to) return this.presentFinding(repo, c, { ...f, state: to, reason })
     return this.presentFinding(repo, c, f)
   }
 
@@ -2311,16 +2322,18 @@ export class MemoryDomain {
         ['checks', 'policy.state'],
       )
     }
-    const out = rec ?? {
-      id: newId('check', this.now()),
-      key: body.key,
-      name: body.name ?? body.key,
-      state: body.state,
-      tree: body.tree,
-      detailsUrl: body.details_url ?? null,
-      created: this.now(),
-      updated: this.now(),
-    }
+    const out = dry && found
+      ? { ...found, state: body.state, detailsUrl: body.details_url ?? found.detailsUrl, updated: this.now() }
+      : rec ?? {
+          id: newId('check', this.now()),
+          key: body.key,
+          name: body.name ?? body.key,
+          state: body.state,
+          tree: body.tree,
+          detailsUrl: body.details_url ?? null,
+          created: this.now(),
+          updated: this.now(),
+        }
     return { check: this.presentCheck(out), outcome }
   }
 
@@ -2404,6 +2417,7 @@ export class MemoryDomain {
     const c = this.getChangeRec(repo, ref)
     this.checkLandable(repo, c, p!, body.expected_tree)
     if (!dry) this.doLand(repo, c, this.asActor(p!))
+    else return this.presentChange(repo, { ...c, state: 'landed', landed: this.now() }, p)
     return this.presentChange(repo, c, p)
   }
 

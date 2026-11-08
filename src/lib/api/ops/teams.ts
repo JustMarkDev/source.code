@@ -173,7 +173,7 @@ export const setTeamRepo = defineOp({
   params: team.extend(repoParams.shape),
   body: z.strictObject({ permission: z.enum(['read', 'write']) }),
   response: S.Team,
-  errors: ['not_found', 'forbidden', 'invalid_request'],
+  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -194,7 +194,7 @@ export const removeTeamRepo = defineOp({
   idempotent: false,
   response: z.null(),
   status: 204,
-  errors: ['not_found', 'forbidden'],
+  errors: ['not_found', 'forbidden', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

@@ -166,8 +166,9 @@ export type OpSpec<
   status?: number
   /** The response contains a secret or a one-time capability, so it is not stored for idempotency. */
   secretResponse?: boolean
-  /** The response is not JSON: the media type it is served as. */
-  responseContentType?: string
+  /** Default true. False turns off ETags, conditional reads and the body cache. */
+  conditional?: boolean
+  /** The response is not JSON: the media type it is served as. */  responseContentType?: string
   /** The response stays open, so it cannot be run inside a batch. */
   streaming?: boolean
   /** Codes beyond the ones every operation can return. */

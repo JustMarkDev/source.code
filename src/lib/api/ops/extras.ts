@@ -158,7 +158,8 @@ export const syncMirror = defineOp({
           m.lastSync = ctx.now()
           m.detail = null
         }
-        return presentMirror(d, full, m)
+        const synced = ctx.dryRun ? { ...m, state: 'in-sync' as const, lastSync: ctx.now(), detail: null } : m
+        return presentMirror(d, full, synced)
       })
     }),
 })
@@ -321,6 +322,7 @@ export const envValues = defineOp({
   query: z.strictObject({ names: z.string().optional().describe('Comma list. Default: every variable set here') }),
   auth: 'required',
   scopes: ['secrets:decrypt'],
+  conditional: false,
   pool: 'write',
   safety: 'read',
   idempotent: false,
@@ -440,7 +442,8 @@ export const approveGrant = defineOp({
           g.expires = ctx.now() + ctx.body.ttl_minutes * 60_000
           x.note(p.handle, `approved ${g.id} for ${g.environment} (${ctx.body.ttl_minutes} minutes)`)
         }
-        return presentGrant(d, full, g, ctx.now())
+        const granted = ctx.dryRun ? { ...g, state: 'active' as const, expires: ctx.now() + ctx.body.ttl_minutes * 60_000 } : g
+        return presentGrant(d, full, granted, ctx.now())
       })
     }),
 })
@@ -474,7 +477,8 @@ export const revokeGrant = defineOp({
           g.state = 'revoked'
           x.note(ctx.principal!.handle, `revoked ${g.id}`)
         }
-        return presentGrant(d, full, g, ctx.now())
+        const revoked = ctx.dryRun ? { ...g, state: 'revoked' as const } : g
+        return presentGrant(d, full, revoked, ctx.now())
       })
     }),
 })
@@ -488,7 +492,7 @@ export const envAudit = defineOp({
   path: '/repos/{owner}/{repo}/env/audit',
   params: repoParams,
   response: S.listOf(S.AuditEntry),
-  errors: ['not_found', 'moved'],
+  errors: ['not_found', 'forbidden', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

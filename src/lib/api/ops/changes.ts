@@ -30,7 +30,9 @@ const read = {
 
 const expandChange = ['repo', 'findings', 'check_runs']
 const states = ['draft', 'open', 'landed', 'abandoned', 'all']
-const topic = (p: { owner: string; repo: string }) => {
+const topic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+  const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
+  if (id) return `repo-id:${id}`
   const owner = p.owner.toLowerCase()
   return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
 }
@@ -65,7 +67,7 @@ export const listChanges = defineOp({
   response: list(S.Change),
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
-  waitOn: topic,
+  waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) => d.changeListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -106,7 +108,7 @@ export const getChange = defineOp({
   errors: ['not_found', 'moved'],
   shapeable: true,
   markdown: changeMarkdown,
-  waitOn: topic,
+  waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) =>
       d.changeVersion(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.query.expand?.split(',') ?? []),
   handler: (ctx) =>
@@ -441,7 +443,7 @@ export const getPolicy = defineOp({
   params: changeParams,
   response: S.PolicyEvaluation,
   errors: ['not_found', 'moved'],
-  waitOn: topic,
+  waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) => d.changeVersion(ctx.params.owner, ctx.params.repo, String(ctx.params.number), ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {

@@ -115,7 +115,7 @@ function operationErrors(op: Op): Array<string> {
     out.add('payload_too_large')
   }
   if (op.rawBody) out.add('payload_too_large')
-  if (op.method !== 'GET') {
+  if (op.method !== 'GET' && !op.secretResponse) {
     out.add('idempotency_key_reused')
     out.add('request_in_progress')
   }

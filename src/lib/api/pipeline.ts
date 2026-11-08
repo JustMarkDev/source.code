@@ -350,7 +350,7 @@ export function createApi(options: ApiOptions) {
     if (!url.pathname.startsWith(mount))
       return fail(apiError('not_found', `This API lives under ${mount}.`))
     let path = url.pathname.slice(mount.length) || '/'
-    path = path.replace(/^\/repos\/(rep_[0-9a-z]{18})(?=\/|$)/, '/repos/$1/~')
+    path = path.replace(/^\/repos\/(rep_[0-9a-z]{18})(?!\/~)(?=\/|$)/, '/repos/$1/~')
 
     const version = req.headers.get('sx-version')
     if (version && !SUPPORTED_VERSIONS.includes(version))
@@ -687,14 +687,14 @@ export function createApi(options: ApiOptions) {
       // Conditional reads and the body cache, before any body is built.
       let versionKey: string | null = null
       const etagOf = (v: string) => `W/"${v}-${variant}"`
-      const wantsWait = waitSeconds > 0 && op.waitOn && ifNoneMatch !== null
+      const wantsWait = waitSeconds > 0 && op.waitOn && ifNoneMatch !== null && op.conditional !== false
 
       type Step =
         | { kind: 'not_modified'; etag: string }
         | { kind: 'hit'; json: string; etag: string; status: number }
         | { kind: 'built'; out: unknown; versionKey: string | null }
       const compute = async (): Promise<Step> => {
-        if (isRead && op.probe) {
+        if (isRead && op.probe && op.conditional !== false) {
           const t0 = performance.now()
           try {
             versionKey = await op.probe(ctx, domain)
@@ -705,7 +705,7 @@ export function createApi(options: ApiOptions) {
           }
           timing.handler = (timing.handler as number | undefined ?? 0) + (performance.now() - t0)
         }
-        if (versionKey !== null) {
+        if (versionKey !== null && op.conditional !== false) {
           const etag = etagOf(versionKey)
           if (ifNoneMatch && matches(ifNoneMatch, etag)) return { kind: 'not_modified', etag }
           const hit = cache.get(cacheKey(versionKey))
@@ -726,11 +726,11 @@ export function createApi(options: ApiOptions) {
           step = await compute()
         }
       }
-    const notModified = (etag: string) => {
+    const notModified = (etag: string, source: Record<string, string> = {}) => {
       const headers: Record<string, string> = { etag, ...extraHeaders }
       if (isRead) {
         headers.vary = 'accept, authorization'
-        headers['cache-control'] = principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate'
+        headers['cache-control'] = source['cache-control'] ?? (principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate')
       }
       return new Response(null, { status: 304, headers })
     }
@@ -801,27 +801,34 @@ export function createApi(options: ApiOptions) {
           const lines = list.data.map((d) => JSON.stringify(d))
           lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
           const text = `${lines.join('\n')}\n`
+          const ndEtag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${hash(text)}"`
+          const ndHeaders: Record<string, string> = {
+            'content-type': 'application/x-ndjson; charset=utf-8',
+            ...headers,
+            etag: ndEtag,
+            vary: 'accept, authorization',
+            'cache-control': principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate',
+          }
+          if (ifNoneMatch && matches(ifNoneMatch, ndEtag)) {
+            refund?.()
+            return notModified(ndEtag, ndHeaders)
+          }
           return new Response(req.method === 'HEAD' ? null : text, {
             status,
-            headers: {
-              'content-type': 'application/x-ndjson; charset=utf-8',
-              ...headers,
-              // The same URL answers JSON or NDJSON depending on Accept.
-              vary: 'accept, authorization',
-            },
+            headers: ndHeaders,
           })
         }
         json = ready ?? JSON.stringify(out)
         // The readable form is made from the JSON, so the two cannot disagree.
         if (markdown !== null) json = markdown
         else if (wantsMarkdown && status < 300) json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
-        if (isRead) {
+        if (isRead && op.conditional !== false) {
           etag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
           if (step.versionKey !== null && step.versionKey !== undefined)
             cache.set(cacheKey(step.versionKey), json)
           if (ifNoneMatch && matches(ifNoneMatch, etag)) {
             refund?.()
-            return notModified(etag)
+            return notModified(etag, headers)
           }
         }
       }

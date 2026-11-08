@@ -36,7 +36,11 @@ export const listEvents = defineOp({
   response: S.listOf(S.Event),
   errors: ['not_found', 'cursor_mismatch'],
   shapeable: true,
-  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
+  waitOn: (_p, q, d) => {
+    const repo = (q as { repo?: string } | undefined)?.repo
+    const id = repo ? d?.repoIdForHistory(repo) : null
+    return id ? `repo-id:${id}` : repoWaitTopic(repo)
+  },
   probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -81,8 +85,12 @@ export const syncRepo = defineOp({
       .describe('Objects per response, 1 to 200'),
   }),
   response: S.Sync,
-  errors: ['not_found', 'cursor_mismatch', 'moved'],
-  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
+  errors: ['not_found', 'cursor_mismatch'],
+  waitOn: (_p, q, d) => {
+    const repo = (q as { repo?: string } | undefined)?.repo
+    const id = repo ? d?.repoIdForHistory(repo) : null
+    return id ? `repo-id:${id}` : repoWaitTopic(repo)
+  },
   probe: (ctx, d) => {
     const [owner, name] = ctx.query.repo.split('/')
     return d.syncVersion(owner, name ?? '', ctx.principal)
@@ -178,7 +186,7 @@ export const streamEvents = defineOp({
             if (batch.length === 0) after = Math.max(after, events.head)
             if (batch.length === 100) continue
             const before = events.head
-            await events.wait(repoWaitTopic(repo), 15_000, ctx.signal)
+            await events.wait(repoId ? `repo-id:${repoId}` : repoWaitTopic(repo), 15_000, ctx.signal)
             if (events.head === before && open && !ctx.signal.aborted) send(': keepalive\n\n', controller)
           }
           try {

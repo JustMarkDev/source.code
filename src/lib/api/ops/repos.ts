@@ -12,6 +12,13 @@ const common = {
   idempotent: true,
 }
 
+const repoTopic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+  const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
+  if (id) return `repo-id:${id}`
+  const owner = p.owner.toLowerCase()
+  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+}
+
 export const listAccounts = defineOp({
   ...common,
   id: 'accounts.list',
@@ -98,7 +105,7 @@ export const getRepo = defineOp({
   response: S.Repo,
   errors: ['not_found', 'moved'],
   shapeable: true,
-  waitOn: (p) => p.owner.toLowerCase().startsWith('rep_') ? `repo-id:${p.owner.toLowerCase()}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
+  waitOn: (p, _q, d) => repoTopic(p, d),
   probe: (ctx, d) =>
       d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
@@ -123,7 +130,7 @@ export const repoContext = defineOp({
   errors: ['not_found', 'moved'],
   shapeable: true,
   markdown: contextMarkdown,
-  waitOn: (p) => p.owner.toLowerCase().startsWith('rep_') ? `repo-id:${p.owner.toLowerCase()}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
+  waitOn: (p, _q, d) => repoTopic(p, d),
   probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {

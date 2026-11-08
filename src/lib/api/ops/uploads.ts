@@ -149,7 +149,7 @@ export const getUpload = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run(async (d) => present(d, ownerOnly(d.svc.uploads.get(ctx.params.id), ctx.principal!.handle), true))
+      return yield* run(async (d) => reply(present(d, ownerOnly(d.svc.uploads.get(ctx.params.id), ctx.principal!.handle), true), { headers: { 'cache-control': 'no-store' } }))
     }),
 })
 

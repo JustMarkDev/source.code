@@ -313,6 +313,20 @@ describe('who can see what', () => {
     expect((await h.call('GET', `${REPO}/context`)).json.env.length).toBeGreaterThan(0)
   })
 
+  test('a repository id works in the explicit owner/repo form', async () => {
+    const h = harness()
+    const id = (await h.call('GET', REPO)).json.id as string
+    expect((await h.call('GET', `/repos/${id}/~`)).status).toBe(200)
+    expect((await h.call('GET', `/repos/${id}/~/issues`)).status).toBe(200)
+  })
+
+  test('a conditional env values read is still 200 and no-store', async () => {
+    const h = harness()
+    const r = await h.call('GET', `${REPO}/env/development/values`, { headers: { 'if-none-match': '*' } })
+    expect(r.status).toBe(200)
+    expect(r.headers.get('cache-control')).toBe('no-store')
+  })
+
   test('sync accepts an old repository name without a self-redirect', async () => {
     const h = harness()
     const r = await h.call('GET', '/sync?repo=dana/git-fs')

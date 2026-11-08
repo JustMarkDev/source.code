@@ -180,7 +180,7 @@ export const updateWebhook = defineOp({
         }
         if (!ctx.dryRun) d.svc.hooks.update(h, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description, active: ctx.body.active })
         const shown = ctx.dryRun
-          ? { ...h, url: ctx.body.endpoint ?? h.url, events: ctx.body.events ?? h.events, description: ctx.body.description ?? h.description, active: ctx.body.active ?? h.active }
+          ? { ...h, url: ctx.body.endpoint ?? h.url, events: ctx.body.events ?? h.events, description: ctx.body.description ?? h.description, active: ctx.body.active ?? h.active, ...(ctx.body.active ? { disabledReason: null, failures: 0 } : {}) }
           : h
         return presentHook(d, shown, null)
       })

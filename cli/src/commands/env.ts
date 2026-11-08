@@ -1,3 +1,4 @@
+import { chmodSync, writeFileSync } from 'node:fs'
 import { resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
@@ -82,17 +83,19 @@ export const env: Command = async (
   }
 
   if (sub === 'pull') {
-    const vars = (
-      await api.get(`${repo.path}/env`, {
-        query: { environment: environment as 'development' },
-      })
-    ).json.data as Array<Var>
-    const missing = vars.filter((v) => !v.set).map((v) => v.name)
+    const values = (
+      await api.get(`${repo.path}/env/${environment}/values`)
+    ).json as { values: Record<string, string> }
+    const text = `${Object.entries(values.values).map(([k, v]) => `${k}=${v}`).join('\n')}\n`
+    if (!dry) {
+      writeFileSync('.env.local', text, { mode: 0o600 })
+      chmodSync('.env.local', 0o600)
+    }
+    const missing = Object.keys(values.values).length === 0
     print(
       ctx,
-      { env: environment, written: '.env.local', missing },
-      () =>
-        `wrote .env.local for ${environment}${missing.length ? `\nmissing: ${missing.join(', ')}` : ''}`,
+      { env: environment, written: dry ? null : '.env.local', dryRun: dry, missing: missing ? ['all values'] : [] },
+      () => `${dry ? 'would write' : 'wrote'} .env.local for ${environment}${missing ? '\nmissing: all values' : ''}`,
     )
     return
   }

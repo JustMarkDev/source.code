@@ -90,7 +90,7 @@ export const createToken = defineOp({
   }),
   response: S.Token,
   status: 201,
-  errors: ['insufficient_scope', 'limit_reached', 'not_found'],
+  errors: ['forbidden', 'insufficient_scope', 'limit_reached', 'not_found'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
