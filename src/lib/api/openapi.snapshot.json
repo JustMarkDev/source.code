@@ -13944,6 +13944,13 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
+          "maintainers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "People who can approve core-path changes"
+          },
           "open_changes": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -13984,6 +13991,7 @@
           "visibility",
           "default_branch",
           "stars",
+          "maintainers",
           "open_changes",
           "open_issues",
           "url",

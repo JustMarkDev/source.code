@@ -327,6 +327,37 @@ describe('who can see what', () => {
     expect(r.headers.get('cache-control')).toBe('no-store')
   })
 
+  test('removing an approving maintainer clears policy before landing', async () => {
+    const h = harness({ seed: (d) => seedStack(d) })
+    const policy = await h.call('GET', '/repos/dana/stacky/changes/1/policy')
+    expect(policy.json.requirements.find((r: { id: string }) => r.id === 'core-paths').state).toBe('pass')
+    await h.call('PATCH', '/repos/dana/stacky', { body: { maintainers: ['dana'] } })
+    const after = await h.call('GET', '/repos/dana/stacky/changes/1/policy')
+    expect(after.json.requirements.find((r: { id: string }) => r.id === 'core-paths').state).toBe('pending')
+    const land = await h.call('POST', '/repos/dana/stacky/changes/1/land', { body: { expected_tree: '1111111' } })
+    expect(land.status).toBe(409)
+  })
+
+  test('maintainers are people who can review, and the list cannot be empty', async () => {
+    const h = harness()
+    const made = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'maint', maintainers: ['hollis'] } })
+    expect(made.json.maintainers).toEqual(['hollis'])
+    const change = await h.call('POST', '/repos/dana/maint/changes', { body: { branch: 'b' } })
+    expect((await h.call('POST', `/repos/dana/maint/changes/${change.json.number}/reviews`, { token: h.tokens.hollis, body: { state: 'approved' } })).status).toBe(201)
+    expect((await h.call('POST', '/repos', { body: { name: 'empty-maint', maintainers: [] } })).status).toBe(400)
+  })
+
+  test('a webhook GET reflects a new delivery and cannot answer a stale 304', async () => {
+    const h = harness()
+    const made = (await h.call('POST', `${REPO}/webhooks`, { body: { endpoint: 'https://hooks.example.com/x', events: ['*'] } })).json
+    const first = await h.call('GET', `${REPO}/webhooks/${made.id}`)
+    expect(first.json.last_delivery).toBeNull()
+    await h.call('POST', `${REPO}/webhooks/${made.id}/ping`)
+    const second = await h.call('GET', `${REPO}/webhooks/${made.id}`)
+    expect(second.json.last_delivery).not.toBeNull()
+    expect((await h.call('GET', `${REPO}/webhooks/${made.id}`, { headers: { 'if-none-match': first.headers.get('etag')! } })).status).toBe(200)
+  })
+
   test('the mount is a path segment, not a prefix', async () => {
     const h = harness()
     const at = (method: string, pathname: string) =>

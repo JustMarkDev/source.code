@@ -143,7 +143,8 @@ export const getWebhook = defineOp({
   errors: ['not_found', 'forbidden', 'moved'],
   probe: async (ctx, d) => {
     const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
-    return `${h.id}.${h.version}`
+    const last = h.lastDelivery ? d.svc.hooks.getDelivery(h.lastDelivery) : null
+    return `${h.id}.${h.version}.${h.lastDelivery ?? ''}.${last?.state ?? ''}.${last?.attempts.length ?? 0}`
   },
   handler: (ctx) =>
     Effect.gen(function* () {

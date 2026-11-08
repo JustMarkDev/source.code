@@ -576,6 +576,7 @@ export class MemoryDomain {
       visibility: r.visibility,
       default_branch: r.defaultBranch,
       stars: r.stars,
+      maintainers: [...r.maintainers].sort(),
       open_changes: openChanges,
       open_issues: openIssues,
       url: this.repoUrl(r),
@@ -1147,6 +1148,10 @@ export class MemoryDomain {
     if (p.repos) throw apiError('forbidden', 'A token limited to repositories cannot create new ones.')
     const maintainers = new Set(input.maintainers ?? [])
     if (input.maintainers) {
+      if (input.maintainers.length === 0)
+        throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
+          errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
+        })
       for (const h of input.maintainers)
         if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
           errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
@@ -1157,14 +1162,18 @@ export class MemoryDomain {
         if ((r === 'owner' || r === 'admin') && this.accounts.get(h)?.kind === 'person') maintainers.add(h)
       if (this.accounts.get(p.handle)?.kind === 'person') maintainers.add(p.handle)
     }
+    if (maintainers.size === 0)
+      throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
+        errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
+      })
     const existing = this.repos.get(`${owner}/${input.name}`) ?? this.byLower(`${owner}/${input.name}`.toLowerCase())
     if (existing) return { repo: this.presentRepo(existing), created: false }
     if (dry)
       return {
-        repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers] })),
+        repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })),
         created: true,
       }
-    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers] })
+    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })
     const lower = `${owner}/${input.name}`.toLowerCase()
     this.aliases.delete(lower)
     for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
@@ -1570,6 +1579,10 @@ export class MemoryDomain {
         })
     }
     if (body.maintainers !== undefined) {
+      if (body.maintainers.length === 0)
+        throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
+          errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
+        })
       for (const h of body.maintainers)
         if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
           errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
@@ -1582,6 +1595,7 @@ export class MemoryDomain {
         description: body.description ?? repo.description,
         visibility: body.visibility ?? repo.visibility,
         defaultBranch: body.default_branch ?? repo.defaultBranch,
+        maintainers: body.maintainers ? new Set(body.maintainers) : repo.maintainers,
       })
     const from = `${repo.owner}/${repo.name}`
     const changed: Array<string> = []
@@ -1600,6 +1614,8 @@ export class MemoryDomain {
     if (body.maintainers !== undefined) {
       if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify([...body.maintainers].sort())) {
         repo.maintainers = new Set(body.maintainers)
+        for (const h of body.maintainers) repo.collaborators.add(h)
+        for (const c of repo.changes.values()) c.policyMemo = undefined
         changed.push('maintainers')
       }
     }

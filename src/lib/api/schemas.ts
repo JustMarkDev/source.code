@@ -48,6 +48,7 @@ export const Repo = named('Repo', obj({
   visibility: z.enum(['public', 'private']),
   default_branch: z.string(),
   stars: z.number().int(),
+  maintainers: z.array(z.string()).describe('People who can approve core-path changes'),
   open_changes: z.number().int(),
   open_issues: z.number().int(),
   url: z.string(),

@@ -580,6 +580,8 @@ export type Repo = {
   visibility: 'public' | 'private'
   default_branch: string
   stars: number
+  /** People who can approve core-path changes */
+  maintainers: Array<string>
   open_changes: number
   open_issues: number
   url: string
