@@ -15,7 +15,11 @@ const read = (p: string) => readFileSync(join(root, p), 'utf8')
 function mdxFiles(dir: string): Array<string> {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f)
-    return statSync(p).isDirectory() ? mdxFiles(p) : p.endsWith('.mdx') ? [p] : []
+    return statSync(p).isDirectory()
+      ? mdxFiles(p)
+      : p.endsWith('.mdx')
+        ? [p]
+        : []
   })
 }
 
@@ -24,8 +28,14 @@ function allEventTypes(): Array<string> {
   const dir = new URL('.', import.meta.url).pathname
   const types = new Set<string>()
   for (const f of ['domain.ts', 'webhooks.ts'])
-    for (const m of readFileSync(dir + f, 'utf8').matchAll(/(?:emit|changeEvent)\([^)]*?'((?:issue|change|finding|check|ci|operation|webhook|repo|run)\.[a-z_]+)'/gs)) types.add(m[1])
-  for (const m of readFileSync(dir + 'domain.ts', 'utf8').matchAll(/'(change\.[a-z_]+|issue\.[a-z_]+|finding\.resolved|check\.reported|ci\.failed|operation\.finished|repo\.[a-z_]+|run\.[a-z_]+)'/g)) types.add(m[1])
+    for (const m of readFileSync(dir + f, 'utf8').matchAll(
+      /(?:emit|changeEvent)\([^)]*?'((?:issue|change|finding|check|ci|operation|webhook|repo|run)\.[a-z_]+)'/gs,
+    ))
+      types.add(m[1])
+  for (const m of readFileSync(dir + 'domain.ts', 'utf8').matchAll(
+    /'(change\.[a-z_]+|issue\.[a-z_]+|finding\.resolved|check\.reported|ci\.failed|operation\.finished|repo\.[a-z_]+|run\.[a-z_]+)'/g,
+  ))
+    types.add(m[1])
   types.add('webhook.disabled')
   return [...types]
 }
@@ -41,7 +51,9 @@ describe('the API documentation', () => {
   test('examples never publish a token, webhook secret or signed URL', async () => {
     const files = await generateReference()
     for (const [file, text] of files) {
-      expect(text, file).not.toMatch(/(?:sxp|sxb|sxr|sxo|sxf)_[A-Za-z0-9_+/=-]{8,}|whsec_[A-Za-z0-9_+/=-]{8,}|[?&]sig=[A-Za-z0-9_+/=-]{8,}/)
+      expect(text, file).not.toMatch(
+        /(?:sxp|sxb|sxr|sxo|sxf)_[A-Za-z0-9_+/=-]{8,}|whsec_[A-Za-z0-9_+/=-]{8,}|[?&]sig=[A-Za-z0-9_+/=-]{8,}/,
+      )
       expect(text, file).not.toMatch(/whsec_…[A-Za-z0-9_+/=]/)
     }
   })
@@ -61,7 +73,9 @@ describe('the API documentation', () => {
 
   test('every error code has a section on the errors page, and nothing else does', () => {
     const page = read('api/errors.mdx')
-    const documented = [...page.matchAll(/^### `([a-z_]+)`$/gm)].map((m) => m[1])
+    const documented = [...page.matchAll(/^### `([a-z_]+)`$/gm)].map(
+      (m) => m[1],
+    )
     expect(documented.sort()).toEqual(Object.keys(errorCatalog).sort())
     for (const [code, e] of Object.entries(errorCatalog)) {
       const section = page.split(`### \`${code}\``)[1].split('\n###')[0]
@@ -76,27 +90,38 @@ describe('the API documentation', () => {
     const limits = read('api/rate-limits.mdx')
     for (const [name, p] of Object.entries(pools)) {
       expect(limits, name).toContain(`\`${name}\``)
-      if (name !== 'anonymous') expect(limits, name).toContain(`${p.limit.toLocaleString('en-US')} per minute`)
+      if (name !== 'anonymous')
+        expect(limits, name).toContain(
+          `${p.limit.toLocaleString('en-US')} per minute`,
+        )
     }
   })
 
   test('every sample token in the docs is the real one, and none is missing', () => {
     const auth = read('api/authentication.mdx')
-    for (const token of Object.values(sampleTokens)) expect(auth, token).toContain(token)
+    for (const token of Object.values(sampleTokens))
+      expect(auth, token).toContain(token)
   })
 
   test('the pages link only to pages and error codes that exist', () => {
     const exists = (url: string) => {
       const [path] = url.split('#')
       const rel = path.replace(/^\/docs\/?/, '')
-      return rel === '' || existsSync(join(root, `${rel}.mdx`)) || existsSync(join(root, rel, 'index.mdx'))
+      return (
+        rel === '' ||
+        existsSync(join(root, `${rel}.mdx`)) ||
+        existsSync(join(root, rel, 'index.mdx'))
+      )
     }
     const broken: Array<string> = []
     for (const file of mdxFiles(join(root, 'api'))) {
-      for (const m of readFileSync(file, 'utf8').matchAll(/\]\((\/docs[^)\s]*)\)/g)) {
+      for (const m of readFileSync(file, 'utf8').matchAll(
+        /\]\((\/docs[^)\s]*)\)/g,
+      )) {
         if (!exists(m[1])) broken.push(`${file.replace(root, '')} -> ${m[1]}`)
         const anchor = m[1].split('#')[1]
-        if (m[1].startsWith('/docs/api/errors#') && !(anchor in errorCatalog)) broken.push(`${file.replace(root, '')} -> ${m[1]}`)
+        if (m[1].startsWith('/docs/api/errors#') && !(anchor in errorCatalog))
+          broken.push(`${file.replace(root, '')} -> ${m[1]}`)
       }
     }
     expect(broken).toEqual([])
@@ -106,18 +131,30 @@ describe('the API documentation', () => {
     const top = JSON.parse(read('meta.json')) as { pages: Array<string> }
     expect(top.pages).toContain('api')
     const meta = JSON.parse(read('api/meta.json')) as { pages: Array<string> }
-    const onDisk = readdirSync(join(root, 'api')).filter((f) => f.endsWith('.mdx')).map((f) => f.replace('.mdx', ''))
-    expect(meta.pages.filter((p) => p !== 'reference').sort()).toEqual(onDisk.sort())
-    const ref = JSON.parse(read('api/reference/meta.json')) as { pages: Array<string> }
-    const refOnDisk = readdirSync(join(root, 'api/reference')).filter((f) => f.endsWith('.mdx')).map((f) => f.replace('.mdx', ''))
+    const onDisk = readdirSync(join(root, 'api'))
+      .filter((f) => f.endsWith('.mdx'))
+      .map((f) => f.replace('.mdx', ''))
+    expect(meta.pages.filter((p) => p !== 'reference').sort()).toEqual(
+      onDisk.sort(),
+    )
+    const ref = JSON.parse(read('api/reference/meta.json')) as {
+      pages: Array<string>
+    }
+    const refOnDisk = readdirSync(join(root, 'api/reference'))
+      .filter((f) => f.endsWith('.mdx'))
+      .map((f) => f.replace('.mdx', ''))
     expect(ref.pages.sort()).toEqual(refOnDisk.sort())
   })
 
   test('the numbers quoted in prose are the real ones', () => {
     const h = harness()
     const ops = allOperations()
-    expect(read('api/compared.mdx')).toContain(`We have ${ops.length} operations`)
-    expect(read('api/compared.mdx')).toContain(`${new Set(allEventTypes()).size} event types`)
+    expect(read('api/compared.mdx')).toContain(
+      `We have ${ops.length} operations`,
+    )
+    expect(read('api/compared.mdx')).toContain(
+      `${new Set(allEventTypes()).size} event types`,
+    )
     expect(h.api.ops.length).toBe(ops.length)
   })
 
@@ -125,8 +162,13 @@ describe('the API documentation', () => {
     const h = harness()
     const page = read('api/quickstart.mdx')
     const principal = (await h.call('GET', '/auth/principal')).json
-    expect(page).toContain(JSON.stringify(principal.scopes).replace(/","/g, '", "'))
-    const blocked = (await h.call('POST', '/repos/dana/gitfs/changes/216/land', { body: { expected_tree: '9c4d7e1' } })).json
+    const shown = /"scopes": (\[[^\]]*\])/.exec(page)?.[1]
+    expect(JSON.parse(shown ?? 'null')).toEqual(principal.scopes)
+    const blocked = (
+      await h.call('POST', '/repos/dana/gitfs/changes/216/land', {
+        body: { expected_tree: '9c4d7e1' },
+      })
+    ).json
     expect(page).toContain(blocked.detail)
     expect(page).toContain(blocked.hint)
     expect(blocked.retryable).toBe(false)
@@ -135,7 +177,9 @@ describe('the API documentation', () => {
 
   test('HEAD answers like GET without a body', async () => {
     const h = harness()
-    const res = await h.api.fetch(new Request('https://api.test/v1/limits', { method: 'HEAD' }))
+    const res = await h.api.fetch(
+      new Request('https://api.test/v1/limits', { method: 'HEAD' }),
+    )
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('')
     expect(res.headers.get('etag')).toBeTruthy()

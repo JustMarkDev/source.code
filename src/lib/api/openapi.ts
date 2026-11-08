@@ -12,7 +12,11 @@ import type { Op } from './registry'
  */
 type Json = Record<string, unknown>
 
-function jsonSchema(schema: z.ZodType, io: 'input' | 'output', defs: Json): Json {
+function jsonSchema(
+  schema: z.ZodType,
+  io: 'input' | 'output',
+  defs: Json,
+): Json {
   const out = z.toJSONSchema(schema, {
     target: 'draft-2020-12',
     io,
@@ -48,7 +52,10 @@ const rewriteRefs = (value: unknown): unknown => {
   if (value && typeof value === 'object') {
     const o: Json = {}
     for (const [k, v] of Object.entries(value as Json))
-      o[k] = k === '$ref' && typeof v === 'string' ? v.replace('#/$defs/', '#/components/schemas/') : rewriteRefs(v)
+      o[k] =
+        k === '$ref' && typeof v === 'string'
+          ? v.replace('#/$defs/', '#/components/schemas/')
+          : rewriteRefs(v)
     return o
   }
   return value
@@ -58,9 +65,16 @@ function parameters(op: Op, defs: Json): Array<Json> {
   const out: Array<Json> = []
   for (const m of op.path.matchAll(/\{(\w+)\}/g)) {
     const prop = op.params
-      ? (jsonSchema(op.params, 'input', defs).properties as Json | undefined)?.[m[1]]
+      ? (jsonSchema(op.params, 'input', defs).properties as Json | undefined)?.[
+          m[1]
+        ]
       : undefined
-    out.push({ name: m[1], in: 'path', required: true, schema: prop ?? { type: 'string' } })
+    out.push({
+      name: m[1],
+      in: 'path',
+      required: true,
+      schema: prop ?? { type: 'string' },
+    })
   }
   if (op.query) {
     const js = jsonSchema(op.query, 'input', defs)
@@ -73,7 +87,8 @@ function parameters(op: Op, defs: Json): Array<Json> {
       name: 'fields',
       in: 'query',
       required: false,
-      description: 'Comma list of fields to return, dotted for nested. `object` and `id` always stay.',
+      description:
+        'Comma list of fields to return, dotted for nested. `object` and `id` always stay.',
       schema: { type: 'string' },
     })
   if (op.waitOn)
@@ -89,7 +104,8 @@ function parameters(op: Op, defs: Json): Array<Json> {
       name: 'dry_run',
       in: 'query',
       required: false,
-      description: 'Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.',
+      description:
+        'Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.',
       schema: { type: 'boolean' },
     })
   return out
@@ -106,7 +122,8 @@ function operationErrors(op: Op): Array<string> {
     'unsupported_version',
   ])
   if (op.auth !== 'none')
-    for (const code of ['token_invalid', 'token_expired', 'token_revoked']) out.add(code)
+    for (const code of ['token_invalid', 'token_expired', 'token_revoked'])
+      out.add(code)
   if (op.auth === 'required') out.add('unauthenticated')
   if (op.scopes?.length) out.add('insufficient_scope')
   if (op.params || op.query || op.body) out.add('invalid_request')
@@ -122,14 +139,19 @@ function operationErrors(op: Op): Array<string> {
   return [...out].sort()
 }
 
-export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.code/v1'): Json {
+export function buildOpenApi(
+  ops: ReadonlyArray<Op>,
+  base = 'https://api.source.code/v1',
+): Json {
   // Input and output schemas relax differently, so their definitions are
   // collected separately and only then combined.
   const inputDefs: Json = {}
   const outputDefs: Json = {}
   const paths: Json = {}
   const problemRef = { $ref: '#/components/schemas/Problem' }
-  for (const op of [...ops].sort((a, b) => (a.path + a.method).localeCompare(b.path + b.method))) {
+  for (const op of [...ops].sort((a, b) =>
+    (a.path + a.method).localeCompare(b.path + b.method),
+  )) {
     const entry: Json = {
       operationId: op.id,
       summary: op.summary,
@@ -140,7 +162,11 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
         ? {
             requestBody: {
               required: true,
-              content: { 'application/json': { schema: jsonSchema(op.body, 'input', inputDefs) } },
+              content: {
+                'application/json': {
+                  schema: jsonSchema(op.body, 'input', inputDefs),
+                },
+              },
             },
           }
         : op.rawBody
@@ -150,7 +176,8 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
                 content: {
                   '*/*': {
                     schema: { type: 'string', format: 'binary' },
-                    description: 'Send the bytes with the Content-Type declared when the upload was created.',
+                    description:
+                      'Send the bytes with the Content-Type declared when the upload was created.',
                   },
                 },
               },
@@ -161,7 +188,9 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
           description: op.status === 204 ? 'No content' : 'Success',
           headers: {
             'Sx-Request-Id': { schema: { type: 'string' } },
-            ...(op.method === 'GET' && op.conditional !== false ? { ETag: { schema: { type: 'string' } } } : {}),
+            ...(op.method === 'GET' && op.conditional !== false
+              ? { ETag: { schema: { type: 'string' } } }
+              : {}),
           },
           ...(op.status === 204
             ? {}
@@ -169,21 +198,35 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
                 content: {
                   [op.responseContentType ?? 'application/json']: {
                     schema:
-                      op.responseContentType === 'application/octet-stream' || op.responseContentType === '*/*'
+                      op.responseContentType === 'application/octet-stream' ||
+                      op.responseContentType === '*/*'
                         ? { type: 'string', format: 'binary' }
                         : jsonSchema(op.response, 'output', outputDefs),
                   },
-                  ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),
+                  ...(op.markdown
+                    ? { 'text/markdown': { schema: { type: 'string' } } }
+                    : {}),
                 },
               }),
         },
-        ...(op.method === 'GET' && op.conditional !== false ? { '304': { description: 'Not modified. Costs no rate-limit units.' } } : {}),
+        ...(op.method === 'GET' && op.conditional !== false
+          ? {
+              '304': {
+                description: 'Not modified. Costs no rate-limit units.',
+              },
+            }
+          : {}),
         default: {
           description: 'An error',
           content: { 'application/problem+json': { schema: problemRef } },
         },
       },
-      security: op.auth === 'required' ? [{ bearer: op.scopes ?? [] }] : op.auth === 'optional' ? [{}, { bearer: op.scopes ?? [] }] : [],
+      security:
+        op.auth === 'required'
+          ? [{ bearer: op.scopes ?? [] }]
+          : op.auth === 'optional'
+            ? [{}, { bearer: op.scopes ?? [] }]
+            : [],
       'x-sx-safety': op.safety,
       'x-sx-idempotent': op.idempotent,
       'x-sx-dry-run': !!op.dryRun,
@@ -207,7 +250,10 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
       summary: 'The source.code API',
       description:
         'Everything the web app does, over HTTP. Within v1 we only add fields and endpoints. Clients must ignore members they do not know. Errors are application/problem+json with a stable `code`.',
-      license: { name: 'Business Source License 1.1', url: 'https://source.code/legal/terms' },
+      license: {
+        name: 'Business Source License 1.1',
+        url: 'https://source.code/legal/terms',
+      },
     },
     servers: [{ url: base }],
     paths,
@@ -217,15 +263,22 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
         bearer: {
           type: 'http',
           scheme: 'bearer',
-          description: 'A token starting sxp_ (person), sxb_ (bot), sxr_ (run) or sxo_ (OAuth). Tokens always expire.',
+          description:
+            'A token starting sxp_ (person), sxb_ (bot), sxr_ (run) or sxo_ (OAuth). Tokens always expire.',
         },
       },
     },
     'x-sx-errors': Object.fromEntries(
-      Object.entries(errorCatalog).map(([code, e]) => [code, { status: e.status, retryable: e.retryable, exit_code: e.exit }]),
+      Object.entries(errorCatalog).map(([code, e]) => [
+        code,
+        { status: e.status, retryable: e.retryable, exit_code: e.exit },
+      ]),
     ),
     'x-sx-pools': Object.fromEntries(
-      Object.entries(pools).map(([n, p]) => [n, { limit: p.limit, window_seconds: p.windowMs / 1000 }]),
+      Object.entries(pools).map(([n, p]) => [
+        n,
+        { limit: p.limit, window_seconds: p.windowMs / 1000 },
+      ]),
     ),
     'x-sx-page': PAGE,
   }

@@ -5,11 +5,16 @@ import * as S from '../schemas'
 import { issueMarkdown } from '../markdown'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 
-const topic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+const topic = (
+  p: { owner: string; repo: string },
+  d?: { repoIdForHistory?: (full: string) => string | null },
+) => {
   const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
   if (id) return `repo-id:${id}`
   const owner = p.owner.toLowerCase()
-  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+  return owner.startsWith('rep_')
+    ? `repo-id:${owner}`
+    : `repo:${owner}/${p.repo.toLowerCase()}`
 }
 const issueParams = repoParams.extend({
   number: z.coerce.number().int().min(1).describe('The issue number'),
@@ -38,12 +43,20 @@ export const listIssues = defineOp({
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
   waitOn: (p, _q, d) => topic(p, d),
-  probe: (ctx, d) => d.issueListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
+  probe: (ctx, d) =>
+    d.issueListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const q = ctx.query
-      const f = fp('issues.list', ctx.params.owner, ctx.params.repo, q.state, q.label, q.author)
+      const f = fp(
+        'issues.list',
+        ctx.params.owner,
+        ctx.params.repo,
+        q.state,
+        q.label,
+        q.author,
+      )
       const page = yield* run((d) =>
         d.listIssues(ctx.params.owner, ctx.params.repo, ctx.principal, {
           state: q.state,
@@ -53,7 +66,11 @@ export const listIssues = defineOp({
           limit: q.limit,
         }),
       )
-      return listOf(page.items as unknown as Array<z.infer<typeof S.Issue>>, page.next, f)
+      return listOf(
+        page.items as unknown as Array<z.infer<typeof S.Issue>>,
+        page.next,
+        f,
+      )
     }),
 })
 
@@ -75,11 +92,23 @@ export const getIssue = defineOp({
   markdown: issueMarkdown,
   waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) =>
-      d.issueVersion(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal),
+    d.issueVersion(
+      ctx.params.owner,
+      ctx.params.repo,
+      ctx.params.number,
+      ctx.principal,
+    ),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.getIssue(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal))
+      return yield* run((d) =>
+        d.getIssue(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
     }),
 })
 
@@ -110,7 +139,13 @@ export const createIssue = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const r = yield* run((d) =>
-        d.createIssue(ctx.params.owner, ctx.params.repo, ctx.principal, ctx.body, ctx.dryRun),
+        d.createIssue(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
       return reply(r.issue, {
         status: r.outcome === 'created' ? 201 : 200,
@@ -149,7 +184,15 @@ export const updateIssue = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.updateIssue(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.ifMatch, ctx.dryRun),
+        d.updateIssue(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.ifMatch,
+          ctx.dryRun,
+        ),
       )
     }),
 })

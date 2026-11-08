@@ -81,13 +81,16 @@ export function createSampleApi(
   const domain = new MemoryDomain(urls, now, events)
   seedSample(domain)
   overrides.seed?.(domain)
-  const auth = (overrides.tokens as AuthStore | undefined) ?? sampleTokenStore(now())
+  const auth =
+    (overrides.tokens as AuthStore | undefined) ?? sampleTokenStore(now())
   domain.svc.auth = auth
   domain.svc.hooks = new WebhookService({
     events,
     now,
     scheduler: overrides.scheduler,
-    transport: overrides.transport ?? new HttpTransport(overrides.allowPrivateWebhooks ?? false),
+    transport:
+      overrides.transport ??
+      new HttpTransport(overrides.allowPrivateWebhooks ?? false),
     allowPrivate: overrides.allowPrivateWebhooks ?? false,
   })
   domain.svc.search = new SearchIndex(() => domain.searchDocs(), events)
@@ -112,7 +115,9 @@ export function createSampleApi(
       issuer.startsWith('https:'),
     ),
     userScopes: (handle) =>
-      handle === 'dana' ? oauthScopes : oauthScopes.filter((s) => s !== 'repo:write' && s !== 'issues:write'),
+      handle === 'dana'
+        ? oauthScopes
+        : oauthScopes.filter((s) => s !== 'repo:write' && s !== 'issues:write'),
     now,
   })
   return createApi({
@@ -132,12 +137,36 @@ function seedExtras(d: MemoryDomain) {
     const full = `${r.owner}/${r.name}`
     const x = d.svc.extras.for(full)
     for (const v of r.env)
-      x.env.push({ name: v.name, kind: v.kind, secret: v.kind !== 'port', set: v.set as Array<Environment>, description: '' })
+      x.env.push({
+        name: v.name,
+        kind: v.kind,
+        secret: v.kind !== 'port',
+        set: v.set as Array<Environment>,
+        description: '',
+      })
   }
   const x = d.svc.extras.for('dana/gitfs')
   const at = T0 - 2 * 86_400_000
   x.mirrors.push(
-    { id: 'mir_gitfsgithub0000000', host: 'github', slug: 'dana/gitfs', direction: 'two-way', state: 'in-sync', lastSync: at, detail: null, created: at - 86_400_000 },
-    { id: 'mir_gitfsgitlab0000000', host: 'gitlab', slug: 'dana-labs/gitfs', direction: 'push', state: 'failing', lastSync: at - 86_400_000, detail: 'Authentication failed. Reconnect GitLab.', created: at - 86_400_000 },
+    {
+      id: 'mir_gitfsgithub0000000',
+      host: 'github',
+      slug: 'dana/gitfs',
+      direction: 'two-way',
+      state: 'in-sync',
+      lastSync: at,
+      detail: null,
+      created: at - 86_400_000,
+    },
+    {
+      id: 'mir_gitfsgitlab0000000',
+      host: 'gitlab',
+      slug: 'dana-labs/gitfs',
+      direction: 'push',
+      state: 'failing',
+      lastSync: at - 86_400_000,
+      detail: 'Authentication failed. Reconnect GitLab.',
+      created: at - 86_400_000,
+    },
   )
 }

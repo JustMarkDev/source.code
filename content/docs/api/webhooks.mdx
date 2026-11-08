@@ -47,7 +47,9 @@ export function verify(secret, headers, rawBody) {
   if (!(age < 300)) return false
   const key = Buffer.from(secret.replace('whsec_', ''), 'base64')
   const want = createHmac('sha256', key)
-    .update(`${headers['webhook-id']}.${headers['webhook-timestamp']}.${rawBody}`)
+    .update(
+      `${headers['webhook-id']}.${headers['webhook-timestamp']}.${rawBody}`,
+    )
     .digest()
   // The header may hold several signatures, one per live secret.
   return headers['webhook-signature'].split(' ').some((s) => {
@@ -78,10 +80,10 @@ Answer with any `2xx` within **10 seconds** and the delivery is done. Anything e
 
 | Attempt | After the last one | Attempt | After the last one |
 | ------: | -----------------: | ------: | -----------------: |
-| 1       | at once            | 5       | 2 hours            |
-| 2       | 5 seconds          | 6       | 5 hours            |
-| 3       | 5 minutes          | 7       | 10 hours           |
-| 4       | 30 minutes         | 8       | 10 hours           |
+|       1 |            at once |       5 |            2 hours |
+|       2 |          5 seconds |       6 |            5 hours |
+|       3 |          5 minutes |       7 |           10 hours |
+|       4 |         30 minutes |       8 |           10 hours |
 
 Eight attempts over about 28 hours. Then the delivery is `failed`.
 

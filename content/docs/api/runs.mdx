@@ -17,7 +17,14 @@ sxcurl -X POST $SX/repos/dana/gitfs/runs \
   "id": "run_01m6…",
   "state": "running",
   "actor": { "handle": "dana", "class": "agent" },
-  "scopes": ["repo:read", "issues:read", "issues:comment", "pulls:read", "pulls:comment", "secrets:schema"],
+  "scopes": [
+    "repo:read",
+    "issues:read",
+    "issues:comment",
+    "pulls:read",
+    "pulls:comment",
+    "secrets:schema"
+  ],
   "token": "sxr_…",
   "expires_at": "2026-11-08T12:00:00Z"
 }
@@ -30,7 +37,7 @@ The `token` is in this response and nowhere else. Give it to the agent and keep 
 - **Only this repository.** It cannot read another private repository, whatever you can read.
 - **Only the scopes asked for.** The default is to read, comment on issues and changes, and read the env schema. You can ask for more, never more than you have, and never `tokens:manage`: a run token that could mint tokens would outlive its run.
 - **Only for a while.** `ttl_minutes` is 1 to 240. A run past its time is `expired` whether or not anyone said so, and its token answers `token_expired`.
-- **Recorded as an agent.** Everything the agent does is attributed to you *as an agent*: same handle, class `agent`. Policy counts approvals from people, so an agent's review is never mistaken for yours, even though it is your account.
+- **Recorded as an agent.** Everything the agent does is attributed to you _as an agent_: same handle, class `agent`. Policy counts approvals from people, so an agent's review is never mistaken for yours, even though it is your account.
 - **Limited in number.** You can have 20 runs going at once.
 
 ## Reporting

@@ -45,12 +45,12 @@ curl "$SX/repos/dana/gitfs/changes?state=open,draft&author=ines&label=perf&sort=
 curl "$SX/repos/dana/gitfs/issues?state=all&label=bug"
 ```
 
-| List      | Filters                                          | Sort                                         |
-| --------- | ------------------------------------------------ | -------------------------------------------- |
-| Changes   | `state`, `author`, `label`                       | `-updated_at` (default), `updated_at`, `-number`, `number` |
-| Issues    | `state` (`open`, `closed`, `all`), `label`, `author` | newest number first                      |
-| Repos     | `owner`                                          | newest first                                 |
-| Events    | `repo`, `type` (`change.*` matches the family)   | oldest first                                 |
+| List    | Filters                                              | Sort                                                       |
+| ------- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| Changes | `state`, `author`, `label`                           | `-updated_at` (default), `updated_at`, `-number`, `number` |
+| Issues  | `state` (`open`, `closed`, `all`), `label`, `author` | newest number first                                        |
+| Repos   | `owner`                                              | newest first                                               |
+| Events  | `repo`, `type` (`change.*` matches the family)       | oldest first                                               |
 
 `state` on changes takes a comma list of `draft`, `open`, `landed`, `abandoned`, or `all`. It defaults to `open,draft`.
 

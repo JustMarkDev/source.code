@@ -22,7 +22,11 @@ export type Begin =
 
 export interface IdempotencyStore {
   begin: (scope: string, key: string, fingerprint: string) => Promise<Begin>
-  complete: (scope: string, key: string, response: StoredResponse) => Promise<void>
+  complete: (
+    scope: string,
+    key: string,
+    response: StoredResponse,
+  ) => Promise<void>
   /** The request failed before it had an effect we can replay; allow a retry. */
   abort: (scope: string, key: string) => Promise<void>
 }
@@ -36,11 +40,16 @@ type Entry = {
 }
 
 /** What a stored response costs, near enough: its text plus a fixed overhead per entry. */
-function sizeOf(id: string, fingerprint: string, response?: StoredResponse): number {
+function sizeOf(
+  id: string,
+  fingerprint: string,
+  response?: StoredResponse,
+): number {
   let n = 160 + id.length + fingerprint.length
   if (response) {
     n += response.body.length
-    for (const k in response.headers) n += k.length + response.headers[k].length + 24
+    for (const k in response.headers)
+      n += k.length + response.headers[k].length + 24
   }
   return n
 }
@@ -63,7 +72,10 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
   private held = 0
 
   private evict(protect?: string) {
-    while ((this.entries.size > this.max || this.held > this.maxChars) && this.entries.size > 1) {
+    while (
+      (this.entries.size > this.max || this.held > this.maxChars) &&
+      this.entries.size > 1
+    ) {
       let victim: string | undefined
       for (const [id, entry] of this.entries)
         if (id !== protect && entry.response) {
@@ -144,6 +156,8 @@ export function requestFingerprint(
   replayStamp: string = '',
 ): string {
   return createHash('sha256')
-    .update(`${method}\n${path}\n${query}\n${body}\n${ifMatch}\n${contentType}\n${replayStamp}`)
+    .update(
+      `${method}\n${path}\n${query}\n${body}\n${ifMatch}\n${contentType}\n${replayStamp}`,
+    )
     .digest('base64url')
 }

@@ -17,27 +17,27 @@ Applications that act for a person sign in with OAuth. The server implements the
 
 These are the rules, each covered by a test.
 
-| It does not allow                                       | Instead                                                               |
-| ------------------------------------------------------- | --------------------------------------------------------------------- |
-| The implicit flow, the password grant                   | Authorization code with PKCE, or the device flow                      |
-| A request without PKCE, or with `plain` PKCE            | `S256` on every request                                               |
-| A redirect URI that is not an exact match               | Register it; a prefix, a query or another host is refused             |
-| A redirect that is not `https` or loopback `http`       | A native app's reverse-DNS scheme (`com.example.app:/cb`) is allowed  |
-| Redirecting on a bad `client_id` or `redirect_uri`      | An error page. It never redirects until both are known to be good     |
-| Reusing an authorization code                           | The second use fails **and revokes what the first produced**          |
-| Replaying a refresh token                               | The whole grant is revoked, thief and owner both                       |
-| Asking for more than you may delegate                   | `invalid_scope`. `tokens:manage` and `secrets:decrypt` are never grantable |
-| A client secret                                         | Clients are public: `token_endpoint_auth_method` must be `none`        |
+| It does not allow                                  | Instead                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| The implicit flow, the password grant              | Authorization code with PKCE, or the device flow                           |
+| A request without PKCE, or with `plain` PKCE       | `S256` on every request                                                    |
+| A redirect URI that is not an exact match          | Register it; a prefix, a query or another host is refused                  |
+| A redirect that is not `https` or loopback `http`  | A native app's reverse-DNS scheme (`com.example.app:/cb`) is allowed       |
+| Redirecting on a bad `client_id` or `redirect_uri` | An error page. It never redirects until both are known to be good          |
+| Reusing an authorization code                      | The second use fails **and revokes what the first produced**               |
+| Replaying a refresh token                          | The whole grant is revoked, thief and owner both                           |
+| Asking for more than you may delegate              | `invalid_scope`. `tokens:manage` and `secrets:decrypt` are never grantable |
+| A client secret                                    | Clients are public: `token_endpoint_auth_method` must be `none`            |
 
 ## Discovery
 
 A client needs only the address of the server.
 
-| Document                                       | Is                                                       |
-| ---------------------------------------------- | -------------------------------------------------------- |
-| `/.well-known/oauth-authorization-server`      | Endpoints, scopes, grant types (RFC 8414)                 |
-| `/.well-known/oauth-protected-resource`        | What protects the API (RFC 9728)                          |
-| `/.well-known/oauth-protected-resource/mcp`    | What protects the [MCP server](/docs/mcp)                 |
+| Document                                    | Is                                        |
+| ------------------------------------------- | ----------------------------------------- |
+| `/.well-known/oauth-authorization-server`   | Endpoints, scopes, grant types (RFC 8414) |
+| `/.well-known/oauth-protected-resource`     | What protects the API (RFC 9728)          |
+| `/.well-known/oauth-protected-resource/mcp` | What protects the [MCP server](/docs/mcp) |
 
 A `401` from the API or from MCP carries `WWW-Authenticate: Bearer resource_metadata="…"` pointing at the right one, so a client that has never heard of source.code can find the way in.
 
@@ -53,7 +53,11 @@ curl -X POST "$SX/oauth/register" -H "Content-Type: application/json" \
   "client_id": "cl_5mT0kX9v2QfH1sYbN8cD",
   "client_name": "My agent",
   "redirect_uris": ["http://127.0.0.1:8123/callback"],
-  "grant_types": ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"],
+  "grant_types": [
+    "authorization_code",
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
   "token_endpoint_auth_method": "none"
 }
 ```
@@ -141,12 +145,12 @@ curl -X POST "$SX/oauth/token" \
   -d grant_type=urn:ietf:params:oauth:grant-type:device_code -d device_code=sxd_… -d client_id=cl_…
 ```
 
-| `error`                 | Means                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| `authorization_pending` | Not yet. Wait `interval` and ask again                  |
-| `slow_down`             | You asked too soon. Add 5 seconds to your interval      |
-| `access_denied`         | The person said no                                      |
-| `expired_token`         | 15 minutes passed. Start again                          |
+| `error`                 | Means                                              |
+| ----------------------- | -------------------------------------------------- |
+| `authorization_pending` | Not yet. Wait `interval` and ask again             |
+| `slow_down`             | You asked too soon. Add 5 seconds to your interval |
+| `access_denied`         | The person said no                                 |
+| `expired_token`         | 15 minutes passed. Start again                     |
 
 The user code uses only consonants, so it cannot spell a word, and guesses are limited to 10 per address per 15 minutes. `sx auth login` does all of this for you.
 
@@ -162,12 +166,12 @@ Always answers `200`, so the caller learns nothing about which tokens exist. Rev
 
 Token-endpoint errors follow RFC 6749, not the API's problem format, because OAuth clients expect them: `{"error": "invalid_grant", "error_description": "…"}` with `400` (or `401` for `invalid_client`, `429` for the rate limit).
 
-| Endpoint                       | Limit, per client address            |
-| ------------------------------ | ------------------------------------ |
-| `/oauth/register`              | 20 per hour                          |
-| `/oauth/token`                 | 120 per minute                       |
-| `/oauth/device_authorization`  | 30 per minute                        |
-| Entering a user code           | 10 per 15 minutes                    |
+| Endpoint                      | Limit, per client address |
+| ----------------------------- | ------------------------- |
+| `/oauth/register`             | 20 per hour               |
+| `/oauth/token`                | 120 per minute            |
+| `/oauth/device_authorization` | 30 per minute             |
+| Entering a user code          | 10 per 15 minutes         |
 
 ## Scopes
 

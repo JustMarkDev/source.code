@@ -35,16 +35,16 @@ Anonymous callers can search too; they see public repositories. A result is a po
 
 ## The query
 
-| You write                 | It means                                                                         |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| `negative cache`          | Both words must match. The **last** word also matches as a prefix (`cach`)       |
-| `"negative cache"`        | The exact phrase, in the title or the body                                       |
-| `#216` or `216`           | The number                                                                       |
-| `type:change`             | `change`, `issue` or `repo`. Repeatable                                          |
-| `repo:dana/gitfs`         | Only this repository. With no words, lists everything in it                      |
-| `state:open`              | The state: `open`, `draft`, `landed`, `abandoned`, `closed`, or a repository's visibility |
-| `author:ines`             | Written by this handle                                                           |
-| `label:bug`               | Has this label. Repeat for all of several                                        |
+| You write          | It means                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `negative cache`   | Both words must match. The **last** word also matches as a prefix (`cach`)                |
+| `"negative cache"` | The exact phrase, in the title or the body                                                |
+| `#216` or `216`    | The number                                                                                |
+| `type:change`      | `change`, `issue` or `repo`. Repeatable                                                   |
+| `repo:dana/gitfs`  | Only this repository. With no words, lists everything in it                               |
+| `state:open`       | The state: `open`, `draft`, `landed`, `abandoned`, `closed`, or a repository's visibility |
+| `author:ines`      | Written by this handle                                                                    |
+| `label:bug`        | Has this label. Repeat for all of several                                                 |
 
 Words are matched whole except the last. Case is ignored. A query with nothing to look for (`!!`) is a `400` with `empty_query`.
 
@@ -52,11 +52,11 @@ Words are matched whole except the last. Case is ignored. A query with nothing t
 
 Best first, then newest:
 
-| `score` | When                                               |
-| ------: | -------------------------------------------------- |
-| 3       | Every word is in the title                         |
-| 2       | Some words are in the title                        |
-| 1       | The words are only in the body. `snippet` shows where |
+| `score` | When                                                  |
+| ------: | ----------------------------------------------------- |
+|       3 | Every word is in the title                            |
+|       2 | Some words are in the title                           |
+|       1 | The words are only in the body. `snippet` shows where |
 
 Among equal scores the most recently updated comes first.
 

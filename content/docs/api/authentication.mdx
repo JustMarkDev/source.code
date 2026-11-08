@@ -16,11 +16,11 @@ Public data (public repositories, the OpenAPI document, the error list) needs no
 
 The prefix says what a token is, so secret scanners can find a leaked one and you can tell at a glance what you are holding.
 
-| Prefix | Is                                                | Lives                                        |
-| ------ | ------------------------------------------------- | -------------------------------------------- |
-| `sxp_` | A person's personal token                         | 30, 60, 90 days or 1 year. Always expires.   |
-| `sxb_` | A bot or agent installed on repositories          | Until revoked or expired. Scopes only shrink. |
-| `sxr_` | A run token: one repository, one run              | The length of the run                        |
+| Prefix | Is                                                   | Lives                                         |
+| ------ | ---------------------------------------------------- | --------------------------------------------- |
+| `sxp_` | A person's personal token                            | 30, 60, 90 days or 1 year. Always expires.    |
+| `sxb_` | A bot or agent installed on repositories             | Until revoked or expired. Scopes only shrink. |
+| `sxr_` | A run token: one repository, one run                 | The length of the run                         |
 | `sxo_` | An OAuth access token, from [OAuth](/docs/api/oauth) | 1 hour, renewed with a refresh token (`sxf_`) |
 
 Tokens are stored as hashes and shown once. A token may be limited to named repositories. See [what an agent never gets](/docs/concepts/agents).
@@ -52,23 +52,23 @@ It returns the login, the account the request acts as, the actor `class` (`human
 
 ## Scopes
 
-| Scope             | Allows                                                    |
-| ----------------- | --------------------------------------------------------- |
-| `repo:read`       | Read repositories, mirrors, uploads                        |
-| `repo:write`      | Create repositories and mirrors, announce uploads         |
-| `issues:read`     | Read issues                                               |
-| `issues:comment`  | Comment on issues                                         |
-| `issues:write`    | Open, edit and close issues                               |
-| `pulls:read`      | Read changes, run policy simulations                      |
-| `pulls:comment`   | Review, comment, resolve and dismiss findings             |
+| Scope             | Allows                                                                  |
+| ----------------- | ----------------------------------------------------------------------- |
+| `repo:read`       | Read repositories, mirrors, uploads                                     |
+| `repo:write`      | Create repositories and mirrors, announce uploads                       |
+| `issues:read`     | Read issues                                                             |
+| `issues:comment`  | Comment on issues                                                       |
+| `issues:write`    | Open, edit and close issues                                             |
+| `pulls:read`      | Read changes, run policy simulations                                    |
+| `pulls:comment`   | Review, comment, resolve and dismiss findings                           |
 | `pulls:write`     | Create changes, add patch sets, report checks, attach evidence, abandon |
-| `pulls:merge`     | Land a change or a stack                                  |
-| `secrets:schema`  | Read names and kinds of environment variables, request a grant |
-| `secrets:write`   | Set variables, approve and revoke grants (people only)    |
-| `secrets:decrypt` | Read values, through a grant for agents. Never granted by OAuth |
-| `webhooks:read`   | Read webhooks and their deliveries                        |
-| `webhooks:write`  | Create, change, delete and replay webhooks                |
-| `tokens:manage`   | Create and revoke tokens and authorizations. Never granted by OAuth |
+| `pulls:merge`     | Land a change or a stack                                                |
+| `secrets:schema`  | Read names and kinds of environment variables, request a grant          |
+| `secrets:write`   | Set variables, approve and revoke grants (people only)                  |
+| `secrets:decrypt` | Read values, through a grant for agents. Never granted by OAuth         |
+| `webhooks:read`   | Read webhooks and their deliveries                                      |
+| `webhooks:write`  | Create, change, delete and replay webhooks                              |
+| `tokens:manage`   | Create and revoke tokens and authorizations. Never granted by OAuth     |
 
 `pulls:*` is the scope family for changes. The names match the ones shown in **Settings, Agents and tokens**.
 
@@ -110,12 +110,12 @@ The `Sx-Agent` header is reserved: clients may send it, but this version does no
 
 For local development only. They are in `src/lib/api/sample.ts` and work when you run the app yourself, or set `SX_API_SAMPLE_TOKENS=1`. A deployed preview refuses them, so nobody can write into shared sample data, and its OAuth page offers no sample accounts.
 
-| Token                          | Is                                                   | Try                                           |
-| ------------------------------ | ---------------------------------------------------- | --------------------------------------------- |
-| `sxp_dana_full_access_0001`    | dana, owner of the sample repositories               | Everything                                    |
-| `sxp_hollis_maintainer_02`     | hollis, a maintainer who can review and land         | Approve a change, then land it                |
-| `sxb_fix_agent_scoped_03`      | An agent: reads, writes and comments, cannot land    | Open a change; see `insufficient_scope`       |
-| `sxb_triage_bot_issues_04`     | A bot installed on `dana/gitfs` for issues only      | `403` on anything that is not an issue        |
-| `sxp_dana_limited_repo_05`     | dana, limited to `dana/tinyqueue`                    | Read `dana/gitfs`, fail to write to it        |
-| `sxp_dana_expired_token_06`    | An expired token                                     | `401 token_expired`                           |
-| `sxp_stranger_no_access_07`    | Someone with no access to private repositories       | `404` on `dana/notes`                         |
+| Token                       | Is                                                | Try                                     |
+| --------------------------- | ------------------------------------------------- | --------------------------------------- |
+| `sxp_dana_full_access_0001` | dana, owner of the sample repositories            | Everything                              |
+| `sxp_hollis_maintainer_02`  | hollis, a maintainer who can review and land      | Approve a change, then land it          |
+| `sxb_fix_agent_scoped_03`   | An agent: reads, writes and comments, cannot land | Open a change; see `insufficient_scope` |
+| `sxb_triage_bot_issues_04`  | A bot installed on `dana/gitfs` for issues only   | `403` on anything that is not an issue  |
+| `sxp_dana_limited_repo_05`  | dana, limited to `dana/tinyqueue`                 | Read `dana/gitfs`, fail to write to it  |
+| `sxp_dana_expired_token_06` | An expired token                                  | `401 token_expired`                     |
+| `sxp_stranger_no_access_07` | Someone with no access to private repositories    | `404` on `dana/notes`                   |

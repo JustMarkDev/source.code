@@ -77,7 +77,16 @@ export function pageSorted<T>(
   // Is this item strictly after the cursor, in the order the caller wants?
   const isAfter = (t: T) => {
     const k = key(t)
-    const c = k < after!.key ? -1 : k > after!.key ? 1 : id(t) < after!.id ? -1 : id(t) > after!.id ? 1 : 0
+    const c =
+      k < after!.key
+        ? -1
+        : k > after!.key
+          ? 1
+          : id(t) < after!.id
+            ? -1
+            : id(t) > after!.id
+              ? 1
+              : 0
     return sign * c > 0
   }
   let start = forward ? 0 : n - 1

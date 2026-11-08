@@ -1,4 +1,3 @@
- 
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { Domain, Raw, defineOp, reply } from '../registry'
@@ -17,7 +16,8 @@ const base = {
 }
 
 /** A full commit id never changes what it names, so its answer can be kept for good. */
-const isFullSha = (ref: string | undefined) => !!ref && /^[0-9a-f]{40}$/.test(ref)
+const isFullSha = (ref: string | undefined) =>
+  !!ref && /^[0-9a-f]{40}$/.test(ref)
 // Always `private`: whether the repository is public is not this function's to know, and a
 // shared cache must never hand a private repository's file to someone else.
 const immutable = () => 'private, max-age=31536000, immutable'
@@ -26,9 +26,17 @@ const BLOB_MAX = 1 << 20
 const TREE_MAX = 2000
 const PATCH_MAX = 64 * 1024
 
-const refQuery = z.string().max(200).optional().describe('A branch, or a commit id. Default: the default branch')
+const refQuery = z
+  .string()
+  .max(200)
+  .optional()
+  .describe('A branch, or a commit id. Default: the default branch')
 
-const present = (d: { urls: { api: string } }, full: string, c: GitCommit): z.infer<typeof S.GitCommit> => ({
+const present = (
+  d: { urls: { api: string } },
+  full: string,
+  c: GitCommit,
+): z.infer<typeof S.GitCommit> => ({
   object: 'commit',
   sha: c.sha,
   url: `${d.urls.api}/repos/${full}/git/commits/${c.sha}`,
@@ -49,7 +57,13 @@ export const gitTree = defineOp({
   params: repoParams,
   query: z.strictObject({
     ref: refQuery,
-    path: z.string().max(1000).default('').describe('A directory, without a leading or trailing slash. Default: the root'),
+    path: z
+      .string()
+      .max(1000)
+      .default('')
+      .describe(
+        'A directory, without a leading or trailing slash. Default: the root',
+      ),
   }),
   response: S.GitTree,
   errors: ['not_found', 'moved'],
@@ -57,7 +71,12 @@ export const gitTree = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const out = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         const { ref, paths } = await d.svc.git.files(full, ctx.query.ref)
         const dir = ctx.query.path.replace(/^\/+|\/+$/g, '')
         const prefix = dir ? `${dir}/` : ''
@@ -69,9 +88,15 @@ export const gitTree = defineOp({
           if (slash === -1) seen.set(rest, 'blob')
           else seen.set(rest.slice(0, slash), 'tree')
         }
-        if (dir && seen.size === 0) throw apiError('not_found', `No directory ${dir} at ${ref.slice(0, 7)}.`)
+        if (dir && seen.size === 0)
+          throw apiError(
+            'not_found',
+            `No directory ${dir} at ${ref.slice(0, 7)}.`,
+          )
         const entries = [...seen]
-          .sort((a, b) => (a[1] === b[1] ? (a[0] < b[0] ? -1 : 1) : a[1] === 'tree' ? -1 : 1))
+          .sort((a, b) =>
+            a[1] === b[1] ? (a[0] < b[0] ? -1 : 1) : a[1] === 'tree' ? -1 : 1,
+          )
           .map(([name, type]) => ({ name, path: `${prefix}${name}`, type }))
         return {
           object: 'tree' as const,
@@ -83,7 +108,10 @@ export const gitTree = defineOp({
         }
       })
       const { fixed, ...body } = out
-      return reply(body, fixed ? { headers: { 'cache-control': immutable() } } : {})
+      return reply(
+        body,
+        fixed ? { headers: { 'cache-control': immutable() } } : {},
+      )
     }),
 })
 
@@ -102,13 +130,22 @@ export const gitBlob = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const out = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         const bytes = await d.svc.git.blob(full, ctx.query.path, ctx.query.ref)
         if (!bytes) throw apiError('not_found', `No file ${ctx.query.path}.`)
         if (bytes.byteLength > BLOB_MAX)
-          throw apiError('payload_too_large', `${ctx.query.path} is ${bytes.byteLength} bytes; this endpoint returns up to ${BLOB_MAX}.`, {
-            hint: 'Read it with git.raw instead.',
-          })
+          throw apiError(
+            'payload_too_large',
+            `${ctx.query.path} is ${bytes.byteLength} bytes; this endpoint returns up to ${BLOB_MAX}.`,
+            {
+              hint: 'Read it with git.raw instead.',
+            },
+          )
         let text: string | null = null
         try {
           text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
@@ -124,7 +161,12 @@ export const gitBlob = defineOp({
           content: text ?? Buffer.from(bytes).toString('base64'),
         }
       })
-      return reply(out, isFullSha(ctx.query.ref) ? { headers: { 'cache-control': immutable() } } : {})
+      return reply(
+        out,
+        isFullSha(ctx.query.ref)
+          ? { headers: { 'cache-control': immutable() } }
+          : {},
+      )
     }),
 })
 
@@ -146,12 +188,20 @@ export const gitRaw = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const found = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         const bytes = await d.svc.git.blob(full, ctx.query.path, ctx.query.ref)
         if (!bytes) throw apiError('not_found', `No file ${ctx.query.path}.`)
         return bytes
       })
-      const name = ctx.query.path.split('/').pop()!.replace(/[^\w.\- ]+/g, '_')
+      const name = ctx.query.path
+        .split('/')
+        .pop()!
+        .replace(/[^\w.\- ]+/g, '_')
       return new Raw(
         new Response(found as BodyInit, {
           headers: {
@@ -159,7 +209,9 @@ export const gitRaw = defineOp({
             'content-disposition': `attachment; filename="${name}"`,
             'x-content-type-options': 'nosniff',
             'content-security-policy': "sandbox; default-src 'none'",
-            'cache-control': isFullSha(ctx.query.ref) ? immutable() : 'private, no-cache',
+            'cache-control': isFullSha(ctx.query.ref)
+              ? immutable()
+              : 'private, no-cache',
           },
         }),
       )
@@ -183,7 +235,12 @@ export const gitCommits = defineOp({
       const f = fp('git.commits', ctx.params.owner, ctx.params.repo)
       const after = afterOf(ctx.query.cursor, f)
       const page = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         const all = await d.svc.git.commits(full, 1000)
         let start = 0
         if (after) {
@@ -191,9 +248,17 @@ export const gitCommits = defineOp({
           const at = all.findIndex((c) => c.sha === after.id)
           start = at === -1 ? all.length : at + 1
         }
-        const items = all.slice(start, start + ctx.query.limit).map((c) => present(d, full, c))
+        const items = all
+          .slice(start, start + ctx.query.limit)
+          .map((c) => present(d, full, c))
         const last = items.at(-1)
-        return { items, next: start + ctx.query.limit < all.length && last ? { key: start + ctx.query.limit, id: last.sha } : null }
+        return {
+          items,
+          next:
+            start + ctx.query.limit < all.length && last
+              ? { key: start + ctx.query.limit, id: last.sha }
+              : null,
+        }
       })
       return listOf(page.items, page.next, f)
     }),
@@ -205,17 +270,33 @@ export const gitCommit = defineOp({
   summary: 'One commit',
   method: 'GET',
   path: '/repos/{owner}/{repo}/git/commits/{sha}',
-  params: repoParams.extend({ sha: z.string().regex(/^[0-9a-f]{4,40}$/).describe('A commit id, or its first characters') }),
+  params: repoParams.extend({
+    sha: z
+      .string()
+      .regex(/^[0-9a-f]{4,40}$/)
+      .describe('A commit id, or its first characters'),
+  }),
   response: S.GitCommit,
   errors: ['not_found', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const c = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         return present(d, full, await d.svc.git.commit(full, ctx.params.sha))
       })
-      return reply(c, { headers: { 'cache-control': isFullSha(ctx.params.sha) ? immutable() : 'private, no-cache' } })
+      return reply(c, {
+        headers: {
+          'cache-control': isFullSha(ctx.params.sha)
+            ? immutable()
+            : 'private, no-cache',
+        },
+      })
     }),
 })
 
@@ -226,7 +307,12 @@ export const gitDiff = defineOp({
   description: `Per file: state, counts and the unified diff, each cut at ${PATCH_MAX / 1024} KB (\`truncated\` says so; read the file with \`git.raw\` for the rest).`,
   method: 'GET',
   path: '/repos/{owner}/{repo}/git/commits/{sha}/diff',
-  params: repoParams.extend({ sha: z.string().regex(/^[0-9a-f]{4,40}$/).describe('A commit id, or its first characters') }),
+  params: repoParams.extend({
+    sha: z
+      .string()
+      .regex(/^[0-9a-f]{4,40}$/)
+      .describe('A commit id, or its first characters'),
+  }),
   pool: 'heavy',
   cost: 2,
   response: S.GitCommitDiff,
@@ -235,25 +321,41 @@ export const gitDiff = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const out = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccess(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal,
+          'read',
+        )
         const diff = await d.svc.git.diff(full, ctx.params.sha)
         const files = diff.files.map((f) => ({
           path: f.path,
           state: f.state,
           additions: f.additions,
           deletions: f.deletions,
-          patch: f.patch.length > PATCH_MAX ? f.patch.slice(0, PATCH_MAX) : f.patch,
+          patch:
+            f.patch.length > PATCH_MAX ? f.patch.slice(0, PATCH_MAX) : f.patch,
           truncated: f.patch.length > PATCH_MAX,
         }))
         return {
           object: 'commit_diff' as const,
           sha: diff.sha,
           base_sha: diff.base,
-          stats: { files: files.length, additions: files.reduce((n, f) => n + f.additions, 0), deletions: files.reduce((n, f) => n + f.deletions, 0) },
+          stats: {
+            files: files.length,
+            additions: files.reduce((n, f) => n + f.additions, 0),
+            deletions: files.reduce((n, f) => n + f.deletions, 0),
+          },
           files,
         }
       })
-      return reply(out, { headers: { 'cache-control': isFullSha(ctx.params.sha) ? immutable() : 'private, no-cache' } })
+      return reply(out, {
+        headers: {
+          'cache-control': isFullSha(ctx.params.sha)
+            ? immutable()
+            : 'private, no-cache',
+        },
+      })
     }),
 })
 

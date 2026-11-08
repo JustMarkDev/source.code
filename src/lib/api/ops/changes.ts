@@ -30,11 +30,16 @@ const read = {
 
 const expandChange = ['repo', 'findings', 'check_runs']
 const states = ['draft', 'open', 'landed', 'abandoned', 'all']
-const topic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+const topic = (
+  p: { owner: string; repo: string },
+  d?: { repoIdForHistory?: (full: string) => string | null },
+) => {
   const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
   if (id) return `repo-id:${id}`
   const owner = p.owner.toLowerCase()
-  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+  return owner.startsWith('rep_')
+    ? `repo-id:${owner}`
+    : `repo:${owner}/${p.repo.toLowerCase()}`
 }
 
 const list = <T extends z.ZodType>(item: T) => S.listOf(item)
@@ -60,20 +65,36 @@ export const listChanges = defineOp({
       .describe('Comma list. Default: open,draft'),
     author: z.string().optional().describe('Handle of the author'),
     label: z.string().optional().describe('A label name'),
-    branch: z.string().optional().describe('The branch the change was made from'),
-    sort: z.enum(['-updated_at', 'updated_at', '-number', 'number']).default('-updated_at'),
+    branch: z
+      .string()
+      .optional()
+      .describe('The branch the change was made from'),
+    sort: z
+      .enum(['-updated_at', 'updated_at', '-number', 'number'])
+      .default('-updated_at'),
     expand: expandSchema(expandChange),
   }),
   response: list(S.Change),
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
   waitOn: (p, _q, d) => topic(p, d),
-  probe: (ctx, d) => d.changeListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
+  probe: (ctx, d) =>
+    d.changeListVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const q = ctx.query
-      const f = fp('changes.list', ctx.params.owner, ctx.params.repo, q.state, q.author, q.label, q.branch, q.sort, q.expand)
+      const f = fp(
+        'changes.list',
+        ctx.params.owner,
+        ctx.params.repo,
+        q.state,
+        q.author,
+        q.label,
+        q.branch,
+        q.sort,
+        q.expand,
+      )
       const sort = q.sort.replace('-', '') as 'updated_at' | 'number'
       const page = yield* run((d) =>
         d.listChanges(ctx.params.owner, ctx.params.repo, ctx.principal, {
@@ -89,7 +110,11 @@ export const listChanges = defineOp({
         }),
       )
       // The items are already JSON text; the pipeline joins them without parsing.
-      return listOf(page.items as unknown as Array<z.infer<typeof S.Change>>, page.next, f)
+      return listOf(
+        page.items as unknown as Array<z.infer<typeof S.Change>>,
+        page.next,
+        f,
+      )
     }),
 })
 
@@ -110,12 +135,24 @@ export const getChange = defineOp({
   markdown: changeMarkdown,
   waitOn: (p, _q, d) => topic(p, d),
   probe: (ctx, d) =>
-      d.changeVersion(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.query.expand?.split(',') ?? []),
+    d.changeVersion(
+      ctx.params.owner,
+      ctx.params.repo,
+      ctx.params.number,
+      ctx.principal,
+      ctx.query.expand?.split(',') ?? [],
+    ),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.getChange(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.query.expand?.split(',') ?? []),
+        d.getChange(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.query.expand?.split(',') ?? [],
+        ),
       )
     }),
 })
@@ -138,7 +175,10 @@ export const createChange = defineOp({
     title: z.string().max(300).optional(),
     description: z.string().max(65536).optional(),
     draft: z.boolean().optional(),
-    sha: z.string().regex(/^[0-9a-f]{7,40}$/).optional(),
+    sha: z
+      .string()
+      .regex(/^[0-9a-f]{7,40}$/)
+      .optional(),
   }),
   response: S.Change,
   status: 201,
@@ -147,7 +187,10 @@ export const createChange = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const r = yield* run((d) =>
-        d.createChange(ctx.params.owner, ctx.params.repo, ctx.principal, { ...ctx.body, dry_run: ctx.dryRun }),
+        d.createChange(ctx.params.owner, ctx.params.repo, ctx.principal, {
+          ...ctx.body,
+          dry_run: ctx.dryRun,
+        }),
       )
       return reply(r.change, {
         status: r.outcome === 'created' ? 201 : 200,
@@ -163,7 +206,8 @@ export const updateChange = defineOp({
   ...write,
   id: 'changes.update',
   summary: 'Edit title, description or labels',
-  description: 'Send If-Match with the ETag you read to avoid overwriting someone else’s edit.',
+  description:
+    'Send If-Match with the ETag you read to avoid overwriting someone else’s edit.',
   tags: ['changes'],
   method: 'PATCH',
   path: '/repos/{owner}/{repo}/changes/{number}',
@@ -182,7 +226,15 @@ export const updateChange = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.updateChange(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.ifMatch, ctx.dryRun),
+        d.updateChange(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.ifMatch,
+          ctx.dryRun,
+        ),
       )
     }),
 })
@@ -200,8 +252,20 @@ export const listPatchSets = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run((d) => d.listPatchSets(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal))
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      const data = yield* run((d) =>
+        d.listPatchSets(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -221,7 +285,13 @@ export const getPatchSet = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.getPatchSet(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.params.patchSet, ctx.principal),
+        d.getPatchSet(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.params.patchSet,
+          ctx.principal,
+        ),
       )
     }),
 })
@@ -249,7 +319,14 @@ export const createPatchSet = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const ps = yield* run((d) =>
-        d.addPatchSet(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.dryRun),
+        d.addPatchSet(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
       return reply(ps, { status: 201, headers: { location: ps.url } })
     }),
@@ -268,8 +345,16 @@ export const comparePatchSets = defineOp({
   pool: 'heavy',
   cost: 2,
   query: z.strictObject({
-    from: z.coerce.number().int().min(1).describe('Patch set number to compare from'),
-    to: z.coerce.number().int().min(1).describe('Patch set number to compare to'),
+    from: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .describe('Patch set number to compare from'),
+    to: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .describe('Patch set number to compare to'),
   }),
   response: S.PatchSetComparison,
   errors: ['not_found', 'moved'],
@@ -277,7 +362,14 @@ export const comparePatchSets = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.comparePatchSets(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.query.from, ctx.query.to, ctx.principal),
+        d.comparePatchSets(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.query.from,
+          ctx.query.to,
+          ctx.principal,
+        ),
       )
     }),
 })
@@ -300,12 +392,25 @@ export const createReview = defineOp({
   }),
   response: S.Review,
   status: 201,
-  errors: ['not_found', 'forbidden', 'human_required', 'invalid_state', 'moved'],
+  errors: [
+    'not_found',
+    'forbidden',
+    'human_required',
+    'invalid_state',
+    'moved',
+  ],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const r = yield* run((d) =>
-        d.review(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.dryRun),
+        d.review(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
       return reply(r, { status: 201 })
     }),
@@ -319,21 +424,36 @@ export const listFindings = defineOp({
   method: 'GET',
   path: '/repos/{owner}/{repo}/changes/{number}/findings',
   params: changeParams,
-  query: z.strictObject({ state: z.enum(['open', 'resolved', 'dismissed', 'all']).default('all') }),
+  query: z.strictObject({
+    state: z.enum(['open', 'resolved', 'dismissed', 'all']).default('all'),
+  }),
   response: S.listOf(S.Finding),
   errors: ['not_found', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run((d) =>
-        d.listFindings(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.query.state),
+        d.listFindings(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.query.state,
+        ),
       )
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
 const findingParams = changeParams.extend({
-  finding: z.string().describe('The finding `fnd_` id, or its label such as F-2'),
+  finding: z
+    .string()
+    .describe('The finding `fnd_` id, or its label such as F-2'),
 })
 
 export const resolveFinding = defineOp({
@@ -352,7 +472,16 @@ export const resolveFinding = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.setFinding(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.params.finding, ctx.principal, 'resolved', null, ctx.dryRun),
+        d.setFinding(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.params.finding,
+          ctx.principal,
+          'resolved',
+          null,
+          ctx.dryRun,
+        ),
       )
     }),
 })
@@ -374,7 +503,16 @@ export const dismissFinding = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.setFinding(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.params.finding, ctx.principal, 'dismissed', ctx.body.reason, ctx.dryRun),
+        d.setFinding(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.params.finding,
+          ctx.principal,
+          'dismissed',
+          ctx.body.reason,
+          ctx.dryRun,
+        ),
       )
     }),
 })
@@ -392,8 +530,20 @@ export const listChecks = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const data = yield* run((d) => d.listChecks(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal))
-      return { object: 'list' as const, data, has_more: false, next_cursor: null }
+      const data = yield* run((d) =>
+        d.listChecks(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -414,7 +564,12 @@ export const reportCheck = defineOp({
     state: z.enum(['pending', 'pass', 'fail']),
     tree: z.string().regex(/^[0-9a-f]{7,40}$/),
     name: z.string().max(200).optional(),
-    details_url: z.url().refine((v) => /^https?:\/\//i.test(v), { message: 'Use an http or https URL.' }).optional(),
+    details_url: z
+      .url()
+      .refine((v) => /^https?:\/\//i.test(v), {
+        message: 'Use an http or https URL.',
+      })
+      .optional(),
   }),
   response: S.CheckRun,
   status: 201,
@@ -423,7 +578,14 @@ export const reportCheck = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const r = yield* run((d) =>
-        d.reportCheck(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.dryRun),
+        d.reportCheck(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
       return reply(r.check, {
         status: r.outcome === 'created' ? 201 : 200,
@@ -445,11 +607,24 @@ export const getPolicy = defineOp({
   response: S.PolicyEvaluation,
   errors: ['not_found', 'moved'],
   waitOn: (p, _q, d) => topic(p, d),
-  probe: (ctx, d) => d.changeVersion(ctx.params.owner, ctx.params.repo, String(ctx.params.number), ctx.principal),
+  probe: (ctx, d) =>
+    d.changeVersion(
+      ctx.params.owner,
+      ctx.params.repo,
+      String(ctx.params.number),
+      ctx.principal,
+    ),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.policy(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal))
+      return yield* run((d) =>
+        d.policy(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
     }),
 })
 
@@ -467,7 +642,9 @@ export const simulatePolicy = defineOp({
   scopes: ['pulls:read'],
   body: z.strictObject({
     approve: z.array(z.string()).max(20).optional(),
-    checks: z.record(z.string(), z.enum(['pending', 'pass', 'fail'])).optional(),
+    checks: z
+      .record(z.string(), z.enum(['pending', 'pass', 'fail']))
+      .optional(),
     resolve: z.array(z.string()).max(100).optional(),
   }),
   response: S.PolicyEvaluation,
@@ -476,7 +653,13 @@ export const simulatePolicy = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.policy(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body),
+        d.policy(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+        ),
       )
     }),
 })
@@ -495,17 +678,36 @@ export const landChange = defineOp({
   safety: 'destructive',
   body: z.strictObject({ expected_tree: z.string().regex(/^[0-9a-f]{7,40}$/) }),
   response: S.Change,
-  errors: ['not_found', 'forbidden', 'stale_head', 'policy_blocked', 'parent_not_landed', 'invalid_state', 'moved'],
+  errors: [
+    'not_found',
+    'forbidden',
+    'stale_head',
+    'policy_blocked',
+    'parent_not_landed',
+    'invalid_state',
+    'moved',
+  ],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.land(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, ctx.body, ctx.dryRun),
+        d.land(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
     }),
 })
 
-const transitionOp = (action: 'ready' | 'abandon' | 'restore', summary: string, safety: 'write' | 'destructive') =>
+const transitionOp = (
+  action: 'ready' | 'abandon' | 'restore',
+  summary: string,
+  safety: 'write' | 'destructive',
+) =>
   defineOp({
     ...write,
     id: `changes.${action === 'ready' ? 'mark_ready' : action}`,
@@ -523,14 +725,33 @@ const transitionOp = (action: 'ready' | 'abandon' | 'restore', summary: string, 
       Effect.gen(function* () {
         const { run } = yield* Domain
         return yield* run((d) =>
-          d.transition(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal, action, ctx.dryRun),
+          d.transition(
+            ctx.params.owner,
+            ctx.params.repo,
+            ctx.params.number,
+            ctx.principal,
+            action,
+            ctx.dryRun,
+          ),
         )
       }),
   })
 
-export const markReady = transitionOp('ready', 'Take a draft out of draft', 'write')
-export const abandonChange = transitionOp('abandon', 'Abandon a change', 'destructive')
-export const restoreChange = transitionOp('restore', 'Reopen an abandoned change', 'write')
+export const markReady = transitionOp(
+  'ready',
+  'Take a draft out of draft',
+  'write',
+)
+export const abandonChange = transitionOp(
+  'abandon',
+  'Abandon a change',
+  'destructive',
+)
+export const restoreChange = transitionOp(
+  'restore',
+  'Reopen an abandoned change',
+  'write',
+)
 
 export const landStack = defineOp({
   ...write,
@@ -542,7 +763,9 @@ export const landStack = defineOp({
   method: 'POST',
   path: '/repos/{owner}/{repo}/stacks/{stack}/land',
   params: repoParams.extend({
-    stack: z.string().describe('The stack `stk_` id, from the `stack` member of a change'),
+    stack: z
+      .string()
+      .describe('The stack `stk_` id, from the `stack` member of a change'),
   }),
   scopes: ['pulls:merge'],
   safety: 'destructive',
@@ -550,14 +773,33 @@ export const landStack = defineOp({
   body: z.strictObject({ expected_trees: z.record(z.string(), z.string()) }),
   response: S.Operation,
   status: 202,
-  errors: ['not_found', 'forbidden', 'stale_head', 'parent_not_landed', 'policy_blocked', 'invalid_state', 'invalid_request', 'moved'],
+  errors: [
+    'not_found',
+    'forbidden',
+    'stale_head',
+    'parent_not_landed',
+    'policy_blocked',
+    'invalid_state',
+    'invalid_request',
+    'moved',
+  ],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       const op = yield* run((d) =>
-        d.landStack(ctx.params.owner, ctx.params.repo, ctx.params.stack, ctx.principal, ctx.body, ctx.dryRun),
+        d.landStack(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.stack,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
       )
-      return reply(op, { status: 202, headers: { location: op.url, 'retry-after': '1' } })
+      return reply(op, {
+        status: 202,
+        headers: { location: op.url, 'retry-after': '1' },
+      })
     }),
 })
 

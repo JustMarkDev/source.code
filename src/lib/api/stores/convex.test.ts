@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  setSystemTime,
+  test,
+} from 'bun:test'
 import { convexTest } from 'convex-test'
 import { makeFunctionReference } from 'convex/server'
 import { internal } from '../../../../convex/_generated/api'
@@ -10,7 +17,9 @@ import type { ConvexCall } from './convex'
 // The Convex functions, loaded the way Vite's `import.meta.glob` would load them.
 const dir = new URL('../../../../convex/', import.meta.url).pathname
 const modules: Record<string, () => Promise<never>> = {}
-for (const f of new Bun.Glob('**/*.{ts,js}').scanSync(dir)) if (!f.endsWith('.d.ts')) modules[`./${f}`] = () => import(`${dir}${f}`) as Promise<never>
+for (const f of new Bun.Glob('**/*.{ts,js}').scanSync(dir))
+  if (!f.endsWith('.d.ts'))
+    modules[`./${f}`] = () => import(`${dir}${f}`) as Promise<never>
 
 const SECRET = 'test-secret-0123456789'
 
@@ -20,7 +29,9 @@ function deployment() {
   const calls: Array<string> = []
   const call: ConvexCall = (name, args) => {
     calls.push(name)
-    return (t.mutation as unknown as (ref: unknown, args: unknown) => Promise<unknown>)(makeFunctionReference<'mutation'>(name), args)
+    return (
+      t.mutation as unknown as (ref: unknown, args: unknown) => Promise<unknown>
+    )(makeFunctionReference<'mutation'>(name), args)
   }
   return { t, call, calls }
 }
@@ -34,7 +45,8 @@ describe('rate limits on Convex', () => {
     const store = new ConvexLimitStore(call, SECRET)
     const policy = { limit: 100, windowMs: 60_000 }
     let granted = 0
-    for (const want of [30, 30, 30, 30, 30]) granted += (await store.take('k', want, policy, 0)).granted
+    for (const want of [30, 30, 30, 30, 30])
+      granted += (await store.take('k', want, policy, 0)).granted
     expect(granted).toBe(100)
     const last = await store.take('k', 5, policy, 0)
     expect(last).toMatchObject({ granted: 0, remaining: 0 })
@@ -46,7 +58,9 @@ describe('rate limits on Convex', () => {
     const { call } = deployment()
     const store = new ConvexLimitStore(call, SECRET)
     const policy = { limit: 50, windowMs: 60_000 }
-    const grants = await Promise.all(Array.from({ length: 20 }, () => store.take('hot', 10, policy, 0)))
+    const grants = await Promise.all(
+      Array.from({ length: 20 }, () => store.take('hot', 10, policy, 0)),
+    )
     expect(grants.reduce((n, g) => n + g.granted, 0)).toBe(50)
   })
 
@@ -67,7 +81,8 @@ describe('rate limits on Convex', () => {
     const policy = { limit: 200, windowMs: 60_000 }
     const nodes = [new Limiter(store), new Limiter(store), new Limiter(store)]
     let admitted = 0
-    for (let i = 0; i < 400; i++) if ((await nodes[i % 3].check('token', policy, 1)).allowed) admitted++
+    for (let i = 0; i < 400; i++)
+      if ((await nodes[i % 3].check('token', policy, 1)).allowed) admitted++
     expect(admitted).toBeLessThanOrEqual(200)
     expect(admitted).toBeGreaterThan(150)
     expect(calls.length).toBeLessThan(60)
@@ -75,29 +90,68 @@ describe('rate limits on Convex', () => {
 
   test('a caller without the secret is refused', async () => {
     const { call } = deployment()
-    await expect(new ConvexLimitStore(call, 'wrong-secret-0123456789').take('k', 1, { limit: 1, windowMs: 1000 }, 0)).rejects.toThrow()
-    await expect(new ConvexLimitStore(call, '').take('k', 1, { limit: 1, windowMs: 1000 }, 0)).rejects.toThrow()
+    await expect(
+      new ConvexLimitStore(call, 'wrong-secret-0123456789').take(
+        'k',
+        1,
+        { limit: 1, windowMs: 1000 },
+        0,
+      ),
+    ).rejects.toThrow()
+    await expect(
+      new ConvexLimitStore(call, '').take(
+        'k',
+        1,
+        { limit: 1, windowMs: 1000 },
+        0,
+      ),
+    ).rejects.toThrow()
   })
 
   test('a deployment with no secret set refuses everyone', async () => {
     const { call } = deployment()
     delete process.env.API_STORE_SECRET
-    await expect(new ConvexLimitStore(call, '').take('k', 1, { limit: 1, windowMs: 1000 }, 0)).rejects.toThrow()
-    await expect(new ConvexLimitStore(call, 'undefined').take('k', 1, { limit: 1, windowMs: 1000 }, 0)).rejects.toThrow()
+    await expect(
+      new ConvexLimitStore(call, '').take(
+        'k',
+        1,
+        { limit: 1, windowMs: 1000 },
+        0,
+      ),
+    ).rejects.toThrow()
+    await expect(
+      new ConvexLimitStore(call, 'undefined').take(
+        'k',
+        1,
+        { limit: 1, windowMs: 1000 },
+        0,
+      ),
+    ).rejects.toThrow()
   })
 })
 
 describe('idempotency on Convex', () => {
-  const response = { status: 201, headers: { 'content-type': 'application/json', location: '/issues/9' }, body: '{"number":9}' }
+  const response = {
+    status: 201,
+    headers: { 'content-type': 'application/json', location: '/issues/9' },
+    body: '{"number":9}',
+  }
 
   test('the first request runs, a repeat replays its answer, a different request with the same key is refused', async () => {
     const { call } = deployment()
     const store = new ConvexIdempotencyStore(call, SECRET)
     expect(await store.begin('tok', 'k1', 'fp-a')).toEqual({ state: 'new' })
-    expect(await store.begin('tok', 'k1', 'fp-a')).toEqual({ state: 'in_progress' })
+    expect(await store.begin('tok', 'k1', 'fp-a')).toEqual({
+      state: 'in_progress',
+    })
     await store.complete('tok', 'k1', response)
-    expect(await store.begin('tok', 'k1', 'fp-a')).toEqual({ state: 'replay', response })
-    expect(await store.begin('tok', 'k1', 'fp-b')).toEqual({ state: 'conflict' })
+    expect(await store.begin('tok', 'k1', 'fp-a')).toEqual({
+      state: 'replay',
+      response,
+    })
+    expect(await store.begin('tok', 'k1', 'fp-b')).toEqual({
+      state: 'conflict',
+    })
     // The same key under another scope is another key.
     expect(await store.begin('other', 'k1', 'fp-a')).toEqual({ state: 'new' })
   })
@@ -106,7 +160,11 @@ describe('idempotency on Convex', () => {
     const { call } = deployment()
     const a = new ConvexIdempotencyStore(call, SECRET)
     const b = new ConvexIdempotencyStore(call, SECRET)
-    const results = await Promise.all([a.begin('tok', 'race', 'fp'), b.begin('tok', 'race', 'fp'), a.begin('tok', 'race', 'fp')])
+    const results = await Promise.all([
+      a.begin('tok', 'race', 'fp'),
+      b.begin('tok', 'race', 'fp'),
+      a.begin('tok', 'race', 'fp'),
+    ])
     expect(results.filter((r) => r.state === 'new')).toHaveLength(1)
     expect(results.filter((r) => r.state === 'in_progress')).toHaveLength(2)
   })
@@ -126,7 +184,11 @@ describe('idempotency on Convex', () => {
     const { call } = deployment()
     const store = new ConvexIdempotencyStore(call, SECRET)
     await store.begin('tok', 'big', 'fp')
-    await store.complete('tok', 'big', { status: 200, headers: {}, body: 'x'.repeat(950_000) })
+    await store.complete('tok', 'big', {
+      status: 200,
+      headers: {},
+      body: 'x'.repeat(950_000),
+    })
     const again = await store.begin('tok', 'big', 'fp')
     expect(again.state).toBe('replay')
     if (again.state === 'replay') {
@@ -168,9 +230,19 @@ describe('when Convex cannot be reached', () => {
   test(
     'rate limits admit a small block on each node instead of failing the request',
     quiet(async () => {
-      const g = await new ConvexLimitStore(down, SECRET).take('k', 50, { limit: 1000, windowMs: 60_000 }, 0)
+      const g = await new ConvexLimitStore(down, SECRET).take(
+        'k',
+        50,
+        { limit: 1000, windowMs: 60_000 },
+        0,
+      )
       expect(g.granted).toBe(10)
-      const small = await new ConvexLimitStore(down, SECRET).take('k', 50, { limit: 20, windowMs: 60_000 }, 0)
+      const small = await new ConvexLimitStore(down, SECRET).take(
+        'k',
+        50,
+        { limit: 20, windowMs: 60_000 },
+        0,
+      )
       expect(small.granted).toBe(1)
     }),
   )
@@ -179,7 +251,9 @@ describe('when Convex cannot be reached', () => {
     'a write with an Idempotency-Key is refused, not risked',
     quiet(async () => {
       const store = new ConvexIdempotencyStore(down, SECRET)
-      await expect(store.begin('tok', 'k', 'fp')).rejects.toMatchObject({ code: 'backend_unavailable' })
+      await expect(store.begin('tok', 'k', 'fp')).rejects.toMatchObject({
+        code: 'backend_unavailable',
+      })
     }),
   )
 })

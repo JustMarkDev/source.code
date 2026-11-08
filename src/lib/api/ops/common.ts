@@ -6,7 +6,9 @@ import type { CursorPosition } from '../cursor'
 export const repoParams = z.object({
   owner: z
     .string()
-    .describe('Account handle. A repository `rep_` id can stand in for owner and repo.'),
+    .describe(
+      'Account handle. A repository `rep_` id can stand in for owner and repo.',
+    ),
   repo: z.string().describe('Repository name'),
 })
 export const changeParams = repoParams.extend({
@@ -51,8 +53,16 @@ export function listOf<T>(
   }
 }
 
-export function expandOf(value: string | undefined, allowed: ReadonlyArray<string>) {
-  const parts = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
+export function expandOf(
+  value: string | undefined,
+  allowed: ReadonlyArray<string>,
+) {
+  const parts = value
+    ? value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
   const bad = parts.filter((p) => !allowed.includes(p))
   if (bad.length) throw new Error(`unknown expand ${bad.join(',')}`)
   return parts

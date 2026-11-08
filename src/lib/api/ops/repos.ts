@@ -12,11 +12,16 @@ const common = {
   idempotent: true,
 }
 
-const repoTopic = (p: { owner: string; repo: string }, d?: { repoIdForHistory?: (full: string) => string | null }) => {
+const repoTopic = (
+  p: { owner: string; repo: string },
+  d?: { repoIdForHistory?: (full: string) => string | null },
+) => {
   const id = d?.repoIdForHistory?.(`${p.owner}/${p.repo}`)
   if (id) return `repo-id:${id}`
   const owner = p.owner.toLowerCase()
-  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+  return owner.startsWith('rep_')
+    ? `repo-id:${owner}`
+    : `repo:${owner}/${p.repo.toLowerCase()}`
 }
 
 export const listAccounts = defineOp({
@@ -39,7 +44,12 @@ export const listAccounts = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run((d) => d.listAccounts(ctx.principal!))
-      return { object: 'list' as const, data, has_more: false as const, next_cursor: null }
+      return {
+        object: 'list' as const,
+        data,
+        has_more: false as const,
+        next_cursor: null,
+      }
     }),
 })
 
@@ -54,8 +64,7 @@ export const getAccount = defineOp({
   response: S.Account,
   errors: ['not_found'],
   shapeable: true,
-  probe: (ctx, d) =>
-      d.accountVersion(ctx.params.handle),
+  probe: (ctx, d) => d.accountVersion(ctx.params.handle),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -107,11 +116,13 @@ export const getRepo = defineOp({
   shapeable: true,
   waitOn: (p, _q, d) => repoTopic(p, d),
   probe: (ctx, d) =>
-      d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
+    d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.getRepo(ctx.params.owner, ctx.params.repo, ctx.principal))
+      return yield* run((d) =>
+        d.getRepo(ctx.params.owner, ctx.params.repo, ctx.principal),
+      )
     }),
 })
 
@@ -131,11 +142,14 @@ export const repoContext = defineOp({
   shapeable: true,
   markdown: contextMarkdown,
   waitOn: (p, _q, d) => repoTopic(p, d),
-  probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
+  probe: (ctx, d) =>
+    d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.context(ctx.params.owner, ctx.params.repo, ctx.principal))
+      return yield* run((d) =>
+        d.context(ctx.params.owner, ctx.params.repo, ctx.principal),
+      )
     }),
 })
 
@@ -157,13 +171,21 @@ export const numberRef = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) => d.numberRef(ctx.params.owner, ctx.params.repo, ctx.params.number, ctx.principal))
+      return yield* run((d) =>
+        d.numberRef(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
     }),
 })
 
 export const updateRepo = defineOp({
   id: 'repos.update',
-  summary: 'Rename a repository, change its description, visibility, default branch or maintainers',
+  summary:
+    'Rename a repository, change its description, visibility, default branch or maintainers',
   description:
     'Owners of the account and admins of the organization only. Send `If-Match` with the ETag you read. A rename keeps working at the old address: it answers `308` with the new one, and webhooks, mirrors and variables move with the repository. Making a repository private hides it from everyone who could only see it because it was public. Maintainers must be people; changing them re-checks policy.',
   tags: ['repositories'],
@@ -180,7 +202,10 @@ export const updateRepo = defineOp({
   body: z.strictObject({
     name: z
       .string()
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/, 'Letters, digits, dot, dash and underscore; up to 100')
+      .regex(
+        /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/,
+        'Letters, digits, dot, dash and underscore; up to 100',
+      )
       .optional(),
     description: z.string().max(500).optional(),
     visibility: z.enum(['public', 'private']).optional(),
@@ -194,12 +219,25 @@ export const updateRepo = defineOp({
       ),
   }),
   response: S.Repo,
-  errors: ['not_found', 'forbidden', 'version_mismatch', 'invalid_state', 'moved'],
+  errors: [
+    'not_found',
+    'forbidden',
+    'version_mismatch',
+    'invalid_state',
+    'moved',
+  ],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run((d) =>
-        d.updateRepo(ctx.params.owner, ctx.params.repo, ctx.principal!, ctx.body, ctx.ifMatch, ctx.dryRun),
+        d.updateRepo(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal!,
+          ctx.body,
+          ctx.ifMatch,
+          ctx.dryRun,
+        ),
       )
     }),
 })
@@ -219,7 +257,9 @@ export const deleteRepo = defineOp({
   idempotent: false,
   dryRun: true,
   params: repoParams,
-  query: z.strictObject({ confirm: z.string().optional().describe('`owner/name`, to confirm') }),
+  query: z.strictObject({
+    confirm: z.string().optional().describe('`owner/name`, to confirm'),
+  }),
   response: z.null(),
   status: 204,
   errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
@@ -227,10 +267,25 @@ export const deleteRepo = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       yield* run((d) =>
-        d.deleteRepo(ctx.params.owner, ctx.params.repo, ctx.principal!, ctx.query.confirm, ctx.dryRun),
+        d.deleteRepo(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.principal!,
+          ctx.query.confirm,
+          ctx.dryRun,
+        ),
       )
       return reply(null, { status: 204 })
     }),
 })
 
-export const repoOps = [listAccounts, getAccount, listRepos, getRepo, repoContext, numberRef, updateRepo, deleteRepo]
+export const repoOps = [
+  listAccounts,
+  getAccount,
+  listRepos,
+  getRepo,
+  repoContext,
+  numberRef,
+  updateRepo,
+  deleteRepo,
+]

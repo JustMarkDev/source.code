@@ -9,14 +9,30 @@ describe('shared store configuration', () => {
   })
 
   test('Convex without a long enough secret fails fast', () => {
-    expect(() => sharedStore('https://example.convex.cloud', undefined)).toThrow(/API_STORE_SECRET/)
-    expect(() => sharedStore('https://example.convex.cloud', 'short')).toThrow(/16/)
+    expect(() =>
+      sharedStore('https://example.convex.cloud', undefined),
+    ).toThrow(/API_STORE_SECRET/)
+    expect(() => sharedStore('https://example.convex.cloud', 'short')).toThrow(
+      /16/,
+    )
   })
 
   test('the frontend Convex URL alone does not turn on the shared store', () => {
-    expect(storeConfig(undefined, 'http://127.0.0.1:3210', undefined)).toBeUndefined()
-    expect(storeConfig(undefined, 'http://127.0.0.1:3210', 'short')).toBeUndefined()
-    expect(storeConfig(undefined, 'http://127.0.0.1:3210', SECRET)).toBe('http://127.0.0.1:3210')
-    expect(storeConfig('http://api.convex.cloud', 'http://127.0.0.1:3210', undefined)).toBe('http://api.convex.cloud')
+    expect(
+      storeConfig(undefined, 'http://127.0.0.1:3210', undefined),
+    ).toBeUndefined()
+    expect(
+      storeConfig(undefined, 'http://127.0.0.1:3210', 'short'),
+    ).toBeUndefined()
+    expect(storeConfig(undefined, 'http://127.0.0.1:3210', SECRET)).toBe(
+      'http://127.0.0.1:3210',
+    )
+    expect(
+      storeConfig(
+        'http://api.convex.cloud',
+        'http://127.0.0.1:3210',
+        undefined,
+      ),
+    ).toBe('http://api.convex.cloud')
   })
 })

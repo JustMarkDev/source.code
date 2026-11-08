@@ -52,7 +52,10 @@ export function fragmentsOf(doc: SearchDoc, iso: (ms: number) => string) {
 }
 
 const WORD = /[\p{L}\p{N}]+/gu
-const words = (s: string) => (s.toLowerCase().match(WORD) ?? []).filter((w) => w.length >= 2 || /^\d$/.test(w))
+const words = (s: string) =>
+  (s.toLowerCase().match(WORD) ?? []).filter(
+    (w) => w.length >= 2 || /^\d$/.test(w),
+  )
 
 export type ParsedQuery = {
   terms: Array<string>
@@ -65,7 +68,15 @@ export type ParsedQuery = {
 }
 
 export function parseQuery(q: string): ParsedQuery {
-  const out: ParsedQuery = { terms: [], phrases: [], types: [], repo: [], state: [], author: [], label: [] }
+  const out: ParsedQuery = {
+    terms: [],
+    phrases: [],
+    types: [],
+    repo: [],
+    state: [],
+    author: [],
+    label: [],
+  }
   for (const m of q.matchAll(/"([^"]+)"|(\S+)/g)) {
     if (m[1]) {
       out.phrases.push(m[1].toLowerCase())
@@ -79,7 +90,10 @@ export function parseQuery(q: string): ParsedQuery {
       const v = qual[2].replace(/^"|"$/g, '')
       // `is:open` is a state, while `is:issue` is a type. Keep the shorthand
       // useful instead of treating every `is:` value as a document type.
-      if (k === 'is' && ['open', 'closed', 'merged', 'draft'].includes(v.toLowerCase()))
+      if (
+        k === 'is' &&
+        ['open', 'closed', 'merged', 'draft'].includes(v.toLowerCase())
+      )
         out.state.push(v)
       else if (k === 'type' || k === 'is') out.types.push(v.toLowerCase())
       else out[k as 'repo' | 'state' | 'author' | 'label'].push(v)
@@ -152,8 +166,15 @@ export class SearchIndex {
   private built = false
   /** Bumps on every change. */
   version = 0
-  private readonly changes: Array<{ v: number; before: SearchDoc | null; after: SearchDoc | null }> = []
-  private readonly cache = new Map<string, { version: number; hits: Array<SearchHit>; q: ParsedQuery }>()
+  private readonly changes: Array<{
+    v: number
+    before: SearchDoc | null
+    after: SearchDoc | null
+  }> = []
+  private readonly cache = new Map<
+    string,
+    { version: number; hits: Array<SearchHit>; q: ParsedQuery }
+  >()
   private cachedHits = 0
   private off: (() => void) | null = null
 
@@ -259,7 +280,8 @@ export class SearchIndex {
   private record(before: SearchDoc | null, after: SearchDoc | null) {
     this.version++
     this.changes.push({ v: this.version, before, after })
-    if (this.changes.length > CHANGE_LOG * 2) this.changes.splice(0, this.changes.length - CHANGE_LOG)
+    if (this.changes.length > CHANGE_LOG * 2)
+      this.changes.splice(0, this.changes.length - CHANGE_LOG)
   }
 
   /** The numbers of the documents with a word that starts with `p`, ascending. */
@@ -283,7 +305,11 @@ export class SearchIndex {
       if (this.vocab[mid] < p) lo = mid + 1
       else hi = mid
     }
-    for (let i = lo; i < this.vocab.length && this.vocab[i].startsWith(p); i++) {
+    for (
+      let i = lo;
+      i < this.vocab.length && this.vocab[i].startsWith(p);
+      i++
+    ) {
       const l = this.terms.get(this.vocab[i])
       if (l) lists.push(l)
     }
@@ -320,18 +346,24 @@ export class SearchIndex {
   }
 
   /** The filters that do not depend on the word index, and the score. Null when the document is out. */
-  private score(q: ParsedQuery, d: SearchDoc, wantTypes: Array<string> | null): number | null {
+  private score(
+    q: ParsedQuery,
+    d: SearchDoc,
+    wantTypes: Array<string> | null,
+  ): number | null {
     if (wantTypes && !wantTypes.includes(d.type)) return null
     if (q.repo.length && !q.repo.includes(d.repo)) return null
     if (q.state.length && !q.state.includes(d.state)) return null
     if (q.author.length && !q.author.includes(d.author)) return null
-    if (q.label.length && !q.label.every((l) => d.labels.includes(l))) return null
+    if (q.label.length && !q.label.every((l) => d.labels.includes(l)))
+      return null
     if (q.terms.length === 0 && q.phrases.length === 0) return 1
     // The title is short; the body is only read when a phrase asks for it.
     const title = d.title.toLowerCase()
     if (q.phrases.length) {
       const body = d.text.toLowerCase()
-      if (q.phrases.some((p) => !title.includes(p) && !body.includes(p))) return null
+      if (q.phrases.some((p) => !title.includes(p) && !body.includes(p)))
+        return null
     }
     if (q.terms.length === 0) return 1
     let inTitle = 0
@@ -344,11 +376,18 @@ export class SearchIndex {
     if (!firstTerm) return ''
     const at = d.text.toLowerCase().indexOf(firstTerm)
     if (at < 0 || d.title.toLowerCase().includes(firstTerm)) return ''
-    return d.text.slice(Math.max(0, at - 40), at + 100).replace(/\s+/g, ' ').trim()
+    return d.text
+      .slice(Math.max(0, at - 40), at + 100)
+      .replace(/\s+/g, ' ')
+      .trim()
   }
 
   /** All matches, best first. Cached per query until a change could alter them. */
-  search(q: ParsedQuery, canSee: (repo: string) => boolean, viewer: string): Array<SearchHit> {
+  search(
+    q: ParsedQuery,
+    canSee: (repo: string) => boolean,
+    viewer: string,
+  ): Array<SearchHit> {
     this.ensure()
     const cacheKey = `${viewer}|${JSON.stringify(q)}`
     const cached = this.cache.get(cacheKey)
@@ -364,7 +403,10 @@ export class SearchIndex {
         let touched = false
         for (const ch of this.changes) {
           if (ch.v <= cached.version) continue
-          if ((ch.before && this.matches(q, ch.before)) || (ch.after && this.matches(q, ch.after))) {
+          if (
+            (ch.before && this.matches(q, ch.before)) ||
+            (ch.after && this.matches(q, ch.after))
+          ) {
             touched = true
             break
           }
@@ -378,10 +420,14 @@ export class SearchIndex {
 
     let candidates: Iterable<number>
     if (q.terms.length) {
-      const lists = q.terms.map((t, i) => (i === q.terms.length - 1 ? this.prefix(t) : (this.terms.get(t) ?? [])))
+      const lists = q.terms.map((t, i) =>
+        i === q.terms.length - 1 ? this.prefix(t) : (this.terms.get(t) ?? []),
+      )
       lists.sort((a, b) => a.length - b.length)
       const [first, ...rest] = lists
-      candidates = rest.length ? first.filter((n) => rest.every((l) => has(l, n))) : first
+      candidates = rest.length
+        ? first.filter((n) => rest.every((l) => has(l, n)))
+        : first
     } else if (q.repo.length) {
       candidates = [...new Set(q.repo.flatMap((r) => this.byRepo.get(r) ?? []))]
     } else candidates = this.slots.keys()
@@ -394,12 +440,20 @@ export class SearchIndex {
       const score = this.score(q, d, wanted)
       if (score !== null) hits.push({ doc: d, score, snippet: '' })
     }
-    hits.sort((a, b) => b.score - a.score || b.doc.updated - a.doc.updated || (a.doc.key < b.doc.key ? 1 : -1))
+    hits.sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.doc.updated - a.doc.updated ||
+        (a.doc.key < b.doc.key ? 1 : -1),
+    )
     if (cached) this.cachedHits -= cached.hits.length
     this.cache.delete(cacheKey)
     this.cache.set(cacheKey, { version: this.version, hits, q })
     this.cachedHits += hits.length
-    while ((this.cache.size > 64 || this.cachedHits > CACHE_HITS) && this.cache.size > 1) {
+    while (
+      (this.cache.size > 64 || this.cachedHits > CACHE_HITS) &&
+      this.cache.size > 1
+    ) {
       const oldest = this.cache.keys().next().value as string
       this.cachedHits -= this.cache.get(oldest)!.hits.length
       this.cache.delete(oldest)
@@ -407,18 +461,34 @@ export class SearchIndex {
     return hits
   }
 
-  page(hits: Array<SearchHit>, limit: number, after: CursorPosition | null, q?: ParsedQuery) {
+  page(
+    hits: Array<SearchHit>,
+    limit: number,
+    after: CursorPosition | null,
+    q?: ParsedQuery,
+  ) {
     const page = this.pageOf(hits, limit, after)
     // Snippets are made here, for the page only, and kept on the hit for the next reader.
-    if (q) for (const h of page.items) if (!h.shown) {
-      h.snippet = this.snippetOf(q, h.doc)
-      h.shown = true
-    }
+    if (q)
+      for (const h of page.items)
+        if (!h.shown) {
+          h.snippet = this.snippetOf(q, h.doc)
+          h.shown = true
+        }
     return page
   }
 
-  private pageOf(hits: Array<SearchHit>, limit: number, after: CursorPosition | null) {
-    return pageSorted(hits, (h) => h.score * 1e13 + h.doc.updated, (h) => h.doc.key, { limit, after, desc: true, stored: 'desc' })
+  private pageOf(
+    hits: Array<SearchHit>,
+    limit: number,
+    after: CursorPosition | null,
+  ) {
+    return pageSorted(
+      hits,
+      (h) => h.score * 1e13 + h.doc.updated,
+      (h) => h.doc.key,
+      { limit, after, desc: true, stored: 'desc' },
+    )
   }
 }
 

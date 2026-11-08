@@ -3,7 +3,12 @@
    not turn on noUncheckedIndexedAccess, so the rule cannot tell they may be missing. */
 import { createHash } from 'node:crypto'
 import { Duration, Effect, Layer, ManagedRuntime } from 'effect'
-import { Concurrency, Limiter, MemoryLimitStore, pools as defaultPools } from './limiter'
+import {
+  Concurrency,
+  Limiter,
+  MemoryLimitStore,
+  pools as defaultPools,
+} from './limiter'
 import { MemoryIdempotencyStore, requestFingerprint } from './idempotency'
 import { hashToken, internCapability, principalOf, tokenShape } from './auth'
 import { Moved } from './domain'
@@ -11,9 +16,9 @@ import { ApiError, apiError, errorCatalog, toProblem } from './problem'
 import { newId } from './ids'
 import { Domain, Pre, Raw, Reply, Router, cyrb53 } from './registry'
 import type { OAuthServer } from './oauth'
-import type { Audience, Principal, TokenStore  } from './auth'
+import type { Audience, Principal, TokenStore } from './auth'
 import type { z } from 'zod'
-import type { LimitStore, Policy  } from './limiter'
+import type { LimitStore, Policy } from './limiter'
 import type { MemoryDomain } from './domain'
 import type { EventLog } from './events'
 import type { Ctx, Op } from './registry'
@@ -78,7 +83,10 @@ const hash = (text: string) =>
   createHash('sha1').update(text).digest('base64url').slice(0, 16)
 
 /** Read a request body while enforcing a byte limit, so a chunked body is stopped as it arrives. */
-async function readLimited(req: Request, max: number): Promise<Uint8Array | null> {
+async function readLimited(
+  req: Request,
+  max: number,
+): Promise<Uint8Array | null> {
   const body = req.body
   if (!body) return new Uint8Array()
   const reader = body.getReader()
@@ -130,7 +138,10 @@ class BodyCache {
     this.map.delete(key)
     this.map.set(key, value)
     this.held += value.length
-    while ((this.map.size > this.max || this.held > this.maxChars) && this.map.size > 1) {
+    while (
+      (this.map.size > this.max || this.held > this.maxChars) &&
+      this.map.size > 1
+    ) {
       const oldest = this.map.keys().next().value as string
       const gone = this.map.get(oldest)!
       this.held -= gone.length
@@ -191,7 +202,8 @@ function project(value: unknown, paths: ReadonlyArray<string>): unknown {
   // Identity always stays, so a projected object can still be recognised.
   for (const k of ['object', 'id']) if (k in src) out[k] = src[k]
   for (const [head, rest] of byHead)
-    if (head in src) out[head] = rest.length ? project(src[head], rest) : src[head]
+    if (head in src)
+      out[head] = rest.length ? project(src[head], rest) : src[head]
   return out
 }
 
@@ -247,7 +259,8 @@ export function createApi(options: ApiOptions) {
                 return apiError('moved', `${e.from} is now ${e.to}.`, {
                   extra: { from: e.from, to: e.to },
                 })
-              if (e instanceof Error && e.name === 'ApiError') return e as ApiError
+              if (e instanceof Error && e.name === 'ApiError')
+                return e as ApiError
               // An unexpected failure is a bug. Its message may name internals,
               // so it goes to the log, never into the client's problem body.
               console.error('[api] domain failure', e)
@@ -270,8 +283,12 @@ export function createApi(options: ApiOptions) {
       ...error.headers,
       ...extra,
     }
-    if (error.retryAfter !== undefined) headers['retry-after'] = String(error.retryAfter)
-    return new Response(JSON.stringify(problem), { status: problem.status, headers })
+    if (error.retryAfter !== undefined)
+      headers['retry-after'] = String(error.retryAfter)
+    return new Response(JSON.stringify(problem), {
+      status: problem.status,
+      headers,
+    })
   }
 
   const authChallenge = (extra = '') =>
@@ -279,10 +296,13 @@ export function createApi(options: ApiOptions) {
 
   /** Checks a bearer token for an audience. Used by the API itself and by the MCP endpoint. */
   async function verifyToken(token: string, audience: Audience) {
-    if (!tokenShape.test(token)) return { ok: false as const, reason: 'unknown' as const }
+    if (!tokenShape.test(token))
+      return { ok: false as const, reason: 'unknown' as const }
     const t = now()
     const store = options.tokens
-    const looked = store.findToken ? store.findToken(token, audience, t) : store.find(hashToken(token), audience, t)
+    const looked = store.findToken
+      ? store.findToken(token, audience, t)
+      : store.find(hashToken(token), audience, t)
     const found = looked instanceof Promise ? await looked : looked
     if (found.ok) options.tokens.touch?.(found.record, now())
     return found
@@ -295,14 +315,20 @@ export function createApi(options: ApiOptions) {
     const header = req.headers.get('authorization')
     if (!header) return { principal: null }
     const [scheme, token] = header.split(' ')
-    const refuse = (code: 'token_invalid' | 'token_expired' | 'token_revoked', detail: string) => ({
+    const refuse = (
+      code: 'token_invalid' | 'token_expired' | 'token_revoked',
+      detail: string,
+    ) => ({
       principal: null,
       error: problemResponse(apiError(code, detail), requestId, {
         'www-authenticate': authChallenge(', error="invalid_token"'),
       }),
     })
     if (scheme?.toLowerCase() !== 'bearer' || !token)
-      return refuse('token_invalid', 'The Authorization header is not a bearer token.')
+      return refuse(
+        'token_invalid',
+        'The Authorization header is not a bearer token.',
+      )
     const found = await verifyToken(token, 'api')
     if (!found.ok)
       return found.reason === 'expired'
@@ -316,9 +342,20 @@ export function createApi(options: ApiOptions) {
     const as = req.headers.get('sx-account')
     if (as && as !== principal.actingAs) {
       if (!(await domain.canActAs(principal.handle, as)))
-        return { principal, error: problemResponse(apiError('forbidden', `You cannot act as ${as}.`), requestId) }
+        return {
+          principal,
+          error: problemResponse(
+            apiError('forbidden', `You cannot act as ${as}.`),
+            requestId,
+          ),
+        }
       const key = `${principal.capabilityKey}@${as}`
-      principal = { ...principal, actingAs: as, capabilityKey: key, capId: internCapability(key) }
+      principal = {
+        ...principal,
+        actingAs: as,
+        capabilityKey: key,
+        capId: internCapability(key),
+      }
     }
     return { principal }
   }
@@ -331,10 +368,17 @@ export function createApi(options: ApiOptions) {
     const common: Record<string, string> = req.headers.has('origin')
       ? { 'sx-request-id': requestId, 'sx-version': API_VERSION, ...CORS }
       : { 'sx-request-id': requestId, 'sx-version': API_VERSION }
-    const finish = (res: Response, timing: Record<string, string | number> = {}) => {
+    const finish = (
+      res: Response,
+      timing: Record<string, string | number> = {},
+    ) => {
       const t = [`total;dur=${(performance.now() - started).toFixed(2)}`]
       for (const [k, v] of Object.entries(timing))
-        t.push(typeof v === 'number' ? `${k};dur=${v.toFixed(2)}` : `${k};desc="${v}"`)
+        t.push(
+          typeof v === 'number'
+            ? `${k};dur=${v.toFixed(2)}`
+            : `${k};desc="${v}"`,
+        )
       res.headers.set('server-timing', t.join(', '))
       return res
     }
@@ -344,51 +388,100 @@ export function createApi(options: ApiOptions) {
     }
 
     if (req.method === 'OPTIONS')
-      return new Response(null, { status: 204, headers: { ...CORS, 'sx-request-id': requestId } })
+      return new Response(null, {
+        status: 204,
+        headers: { ...CORS, 'sx-request-id': requestId },
+      })
 
     // The path under the mount. `/v1/repos/rep_x/changes` is the id form of a
     // repository address, read as owner `rep_x` and name `~`.
     // The mount is a path segment, not a prefix: /v1batch is outside /v1.
-    const prefix = mount === '/' ? '/' : mount.endsWith('/') ? mount : `${mount}/`
+    const prefix =
+      mount === '/' ? '/' : mount.endsWith('/') ? mount : `${mount}/`
     if (url.pathname !== mount && !url.pathname.startsWith(prefix))
       return fail(apiError('not_found', `This API lives under ${mount}.`))
     let path = url.pathname.slice(mount.length) || '/'
-    path = path.replace(/^\/repos\/(rep_[0-9a-z]{18})(?!\/~)(?=\/|$)/, '/repos/$1/~')
+    path = path.replace(
+      /^\/repos\/(rep_[0-9a-z]{18})(?!\/~)(?=\/|$)/,
+      '/repos/$1/~',
+    )
 
     const version = req.headers.get('sx-version')
     if (version && !SUPPORTED_VERSIONS.includes(version))
-      return fail(apiError('unsupported_version', `Version ${version} is not supported.`, { extra: { supported: SUPPORTED_VERSIONS } }))
+      return fail(
+        apiError(
+          'unsupported_version',
+          `Version ${version} is not supported.`,
+          { extra: { supported: SUPPORTED_VERSIONS } },
+        ),
+      )
 
     const match = router.match(req.method === 'HEAD' ? 'GET' : req.method, path)
     if (match.kind === 'miss')
-      return fail(apiError('not_found', `No endpoint at ${req.method} ${path}.`, { hint: `GET ${mount} lists the collections. GET ${mount}/openapi.json describes every operation.` }))
+      return fail(
+        apiError('not_found', `No endpoint at ${req.method} ${path}.`, {
+          hint: `GET ${mount} lists the collections. GET ${mount}/openapi.json describes every operation.`,
+        }),
+      )
     if (match.kind === 'method')
-      return fail(apiError('method_not_allowed', `${req.method} is not allowed on ${path}.`), { allow: match.allow.join(', ') })
+      return fail(
+        apiError(
+          'method_not_allowed',
+          `${req.method} is not allowed on ${path}.`,
+        ),
+        { allow: match.allow.join(', ') },
+      )
     const { op, params } = match
-    if (depth > 0 && (op.streaming || op.rawBody || (op.responseContentType && !op.responseContentType.includes('json'))))
-      return fail(apiError('invalid_request', 'This operation cannot run inside a batch.'))
+    if (
+      depth > 0 &&
+      (op.streaming ||
+        op.rawBody ||
+        (op.responseContentType && !op.responseContentType.includes('json')))
+    )
+      return fail(
+        apiError(
+          'invalid_request',
+          'This operation cannot run inside a batch.',
+        ),
+      )
 
     const auth = await authenticate(req, requestId)
     if (auth.error) {
-      for (const [k, v] of Object.entries(common)) if (!auth.error.headers.has(k)) auth.error.headers.set(k, v)
+      for (const [k, v] of Object.entries(common))
+        if (!auth.error.headers.has(k)) auth.error.headers.set(k, v)
       return finish(auth.error)
     }
     const principal = auth.principal
     if (op.auth === 'required' && !principal)
-      return fail(apiError('unauthenticated', 'This needs a token.'), { 'www-authenticate': authChallenge() })
+      return fail(apiError('unauthenticated', 'This needs a token.'), {
+        'www-authenticate': authChallenge(),
+      })
     // Anonymous callers may read public things; what they can see is decided by the data.
     if (principal || op.auth === 'required')
       for (const scope of op.scopes ?? [])
         if (!principal?.scopes.has(scope))
-        return fail(
-          apiError('insufficient_scope', `This needs the ${scope} scope.`, {
-            extra: { required_scopes: op.scopes, token_scopes: principal ? [...principal.scopes] : [] },
-          }),
-          { 'www-authenticate': authChallenge(`, error="insufficient_scope", scope="${(op.scopes ?? []).join(' ')}"`) },
-        )
+          return fail(
+            apiError('insufficient_scope', `This needs the ${scope} scope.`, {
+              extra: {
+                required_scopes: op.scopes,
+                token_scopes: principal ? [...principal.scopes] : [],
+              },
+            }),
+            {
+              'www-authenticate': authChallenge(
+                `, error="insufficient_scope", scope="${(op.scopes ?? []).join(' ')}"`,
+              ),
+            },
+          )
 
     // Rate limit. The key is the token, or the client address when anonymous.
-    const poolName = principal ? (op.pool === 'none' ? 'none' : op.pool) : op.pool === 'none' ? 'none' : 'anonymous'
+    const poolName = principal
+      ? op.pool === 'none'
+        ? 'none'
+        : op.pool
+      : op.pool === 'none'
+        ? 'none'
+        : 'anonymous'
     const limitKey = principal ? principal.limitKey : `ip:${clientAddress(req)}`
     const cost = op.cost ?? 1
     let rate: { header: string; policy: string } | null = null
@@ -397,34 +490,64 @@ export function createApi(options: ApiOptions) {
       const policy = pools[poolName] ?? defaultPools[poolName]
       const lk = `${poolName}:${limitKey}`
       // Almost always the node already holds units for this token: no promise, no store.
-      const d = limiter.tryLocal(lk, policy, cost) ?? (await limiter.check(lk, policy, cost))
+      const d =
+        limiter.tryLocal(lk, policy, cost) ??
+        (await limiter.check(lk, policy, cost))
       rate = {
-        policy: (policyHeaders[poolName] ??= `"${poolName}";q=${policy.limit};w=${policy.windowMs / 1000}`),
+        policy: (policyHeaders[poolName] ??=
+          `"${poolName}";q=${policy.limit};w=${policy.windowMs / 1000}`),
         header: `"${poolName}";r=${d.remaining};t=${d.resetSeconds}`,
       }
       if (!d.allowed)
         return fail(
           apiError('rate_limited', `The ${poolName} pool is used up.`, {
             retryAfter: d.resetSeconds,
-            extra: { pool: poolName, limit: policy.limit, window_seconds: policy.windowMs / 1000, retry_after_seconds: d.resetSeconds },
+            extra: {
+              pool: poolName,
+              limit: policy.limit,
+              window_seconds: policy.windowMs / 1000,
+              retry_after_seconds: d.resetSeconds,
+            },
           }),
           { ratelimit: rate.header, 'ratelimit-policy': rate.policy },
         )
       refund = () => limiter.refund(`${poolName}:${limitKey}`, policy, cost)
     }
     if (!concurrency.enter(limitKey))
-      return fail(apiError('concurrency_limited', 'Too many requests are running for this token.', { retryAfter: 1 }), rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
+      return fail(
+        apiError(
+          'concurrency_limited',
+          'Too many requests are running for this token.',
+          { retryAfter: 1 },
+        ),
+        rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {},
+      )
 
     let held = false
     try {
-      let res = await run(req, url, path, op, params, principal, requestId, depth, refund, started)
-      for (const [k, v] of Object.entries(common)) if (!res.headers.has(k)) res.headers.set(k, v)
+      let res = await run(
+        req,
+        url,
+        path,
+        op,
+        params,
+        principal,
+        requestId,
+        depth,
+        refund,
+        started,
+      )
+      for (const [k, v] of Object.entries(common))
+        if (!res.headers.has(k)) res.headers.set(k, v)
       if (rate) {
         res.headers.set('ratelimit-policy', rate.policy)
         res.headers.set('ratelimit', rate.header)
       }
       if (!res.headers.has('server-timing'))
-        res.headers.set('server-timing', `total;dur=${(performance.now() - started).toFixed(2)}`)
+        res.headers.set(
+          'server-timing',
+          `total;dur=${(performance.now() - started).toFixed(2)}`,
+        )
       // A streaming response keeps its concurrency slot until the body closes.
       if (op.streaming && res.body && req.method !== 'HEAD') {
         const reader = res.body.getReader()
@@ -457,9 +580,13 @@ export function createApi(options: ApiOptions) {
       }
       return res
     } catch (e) {
-      const error = e instanceof ApiError ? e : apiError('internal', 'Unexpected failure.')
+      const error =
+        e instanceof ApiError ? e : apiError('internal', 'Unexpected failure.')
       if (!(e instanceof ApiError)) console.error(`[api] ${requestId}`, e)
-      return fail(error, rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {})
+      return fail(
+        error,
+        rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {},
+      )
     } finally {
       if (!held) concurrency.leave(limitKey)
     }
@@ -490,24 +617,64 @@ export function createApi(options: ApiOptions) {
     delete raw.fields
     delete raw.wait
     delete raw.dry_run
-    const queryErrors: Array<{ pointer: string; code: string; message: string }> = []
+    const queryErrors: Array<{
+      pointer: string
+      code: string
+      message: string
+    }> = []
     if (fields !== undefined && !op.shapeable)
-      queryErrors.push({ pointer: '/query/fields', code: 'unsupported', message: 'This operation does not support fields.' })
+      queryErrors.push({
+        pointer: '/query/fields',
+        code: 'unsupported',
+        message: 'This operation does not support fields.',
+      })
     if (dryRunRaw !== undefined && !op.dryRun)
-      queryErrors.push({ pointer: '/query/dry_run', code: 'unsupported', message: 'This operation has no dry run.' })
+      queryErrors.push({
+        pointer: '/query/dry_run',
+        code: 'unsupported',
+        message: 'This operation has no dry run.',
+      })
     if (wait !== undefined && !op.waitOn)
-      queryErrors.push({ pointer: '/query/wait', code: 'unsupported', message: 'This operation cannot wait.' })
-    if (wait !== undefined && op.waitOn && req.headers.get('if-none-match') === null)
+      queryErrors.push({
+        pointer: '/query/wait',
+        code: 'unsupported',
+        message: 'This operation cannot wait.',
+      })
+    if (
+      wait !== undefined &&
+      op.waitOn &&
+      req.headers.get('if-none-match') === null
+    )
       queryErrors.push({
         pointer: '/query/wait',
         code: 'needs_if_none_match',
-        message: 'wait holds the request until the ETag changes. Send If-None-Match with the ETag you have.',
+        message:
+          'wait holds the request until the ETag changes. Send If-None-Match with the ETag you have.',
       })
     const waitSeconds = wait === undefined ? 0 : Number(wait)
-    if (wait !== undefined && !(Number.isInteger(waitSeconds) && waitSeconds >= 0 && waitSeconds <= WAIT_MAX))
-      queryErrors.push({ pointer: '/query/wait', code: 'out_of_range', message: `A whole number of seconds, 0 to ${WAIT_MAX}.` })
-    if (dryRunRaw !== undefined && dryRunRaw !== 'true' && dryRunRaw !== 'false')
-      queryErrors.push({ pointer: '/query/dry_run', code: 'invalid_value', message: 'true or false.' })
+    if (
+      wait !== undefined &&
+      !(
+        Number.isInteger(waitSeconds) &&
+        waitSeconds >= 0 &&
+        waitSeconds <= WAIT_MAX
+      )
+    )
+      queryErrors.push({
+        pointer: '/query/wait',
+        code: 'out_of_range',
+        message: `A whole number of seconds, 0 to ${WAIT_MAX}.`,
+      })
+    if (
+      dryRunRaw !== undefined &&
+      dryRunRaw !== 'true' &&
+      dryRunRaw !== 'false'
+    )
+      queryErrors.push({
+        pointer: '/query/dry_run',
+        code: 'invalid_value',
+        message: 'true or false.',
+      })
     const dryRun = dryRunRaw === 'true'
 
     const extraHeaders: Record<string, string> = {}
@@ -518,11 +685,16 @@ export function createApi(options: ApiOptions) {
     let query: unknown = {}
     if (op.query) {
       const parsed = op.query.safeParse(raw)
-      if (!parsed.success) queryErrors.push(...pointerIssues('query', parsed.error))
+      if (!parsed.success)
+        queryErrors.push(...pointerIssues('query', parsed.error))
       else query = parsed.data
     } else if (Object.keys(raw).length)
       for (const k of Object.keys(raw))
-        queryErrors.push({ pointer: `/query/${k}`, code: 'unrecognized_keys', message: `Unknown query parameter ${k}.` })
+        queryErrors.push({
+          pointer: `/query/${k}`,
+          code: 'unrecognized_keys',
+          message: `Unknown query parameter ${k}.`,
+        })
 
     let parsedParams: unknown = params
     if (op.params) {
@@ -537,45 +709,99 @@ export function createApi(options: ApiOptions) {
     if (op.body) {
       const type = req.headers.get('content-type') ?? ''
       if (!type.includes('application/json'))
-        return fail(apiError('unsupported_media_type', 'Send Content-Type: application/json.'))
+        return fail(
+          apiError(
+            'unsupported_media_type',
+            'Send Content-Type: application/json.',
+          ),
+        )
       const declared = Number(req.headers.get('content-length') ?? '0')
       if (Number.isFinite(declared) && declared > BODY_LIMIT)
         return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
       const read = await readLimited(req, BODY_LIMIT)
-      if (read === null) return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
+      if (read === null)
+        return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
       bodyText = new TextDecoder().decode(read)
       let json: unknown = {}
       if (bodyText.trim() !== '')
         try {
           json = JSON.parse(bodyText)
         } catch {
-          return fail(apiError('invalid_request', 'The body is not valid JSON.', { errors: [{ pointer: '/body', code: 'invalid_json', message: 'Not valid JSON.' }] }))
+          return fail(
+            apiError('invalid_request', 'The body is not valid JSON.', {
+              errors: [
+                {
+                  pointer: '/body',
+                  code: 'invalid_json',
+                  message: 'Not valid JSON.',
+                },
+              ],
+            }),
+          )
         }
       const parsed = op.body.safeParse(json)
-      if (!parsed.success) queryErrors.push(...pointerIssues('body', parsed.error))
+      if (!parsed.success)
+        queryErrors.push(...pointerIssues('body', parsed.error))
       else body = parsed.data
     }
     let bytes: Uint8Array | null = null
     if (op.rawBody) {
       const declared = Number(req.headers.get('content-length') ?? '0')
       if (declared > op.rawBody.maxBytes)
-        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`, { hint: 'The file is larger than this upload accepts. Start an upload with the size you need.' }))
+        return fail(
+          apiError(
+            'payload_too_large',
+            `The body is over ${op.rawBody.maxBytes} bytes.`,
+            {
+              hint: 'The file is larger than this upload accepts. Start an upload with the size you need.',
+            },
+          ),
+        )
       const buf = await readLimited(req, op.rawBody.maxBytes)
       if (buf === null)
-        return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`, { hint: 'The file is larger than this upload accepts. Start an upload with the size you need.' }))
+        return fail(
+          apiError(
+            'payload_too_large',
+            `The body is over ${op.rawBody.maxBytes} bytes.`,
+            {
+              hint: 'The file is larger than this upload accepts. Start an upload with the size you need.',
+            },
+          ),
+        )
       bytes = buf
     }
 
     if (queryErrors.length)
-      return fail(apiError('invalid_request', `${queryErrors.length} problem${queryErrors.length === 1 ? '' : 's'} with the request.`, { errors: queryErrors }))
+      return fail(
+        apiError(
+          'invalid_request',
+          `${queryErrors.length} problem${queryErrors.length === 1 ? '' : 's'} with the request.`,
+          { errors: queryErrors },
+        ),
+      )
 
     // Unknown `fields` names are an error, not a silently empty answer.
-    const fieldPaths = fields ? fields.split(',').map((s) => s.trim()).filter(Boolean) : null
+    const fieldPaths = fields
+      ? fields
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null
     if (fieldPaths) {
-      const root = (op.response as { shape?: { data?: { element?: z.ZodType } } }).shape?.data?.element ?? op.response
+      const root =
+        (op.response as { shape?: { data?: { element?: z.ZodType } } }).shape
+          ?.data?.element ?? op.response
       const bad = fieldPaths.filter((f) => !hasSchemaPath(root, f))
       if (bad.length)
-        return fail(apiError('invalid_request', `Unknown field ${bad.join(', ')}.`, { errors: bad.map((f) => ({ pointer: '/query/fields', code: 'unknown_field', message: `${f} is not a field.` })), }))
+        return fail(
+          apiError('invalid_request', `Unknown field ${bad.join(', ')}.`, {
+            errors: bad.map((f) => ({
+              pointer: '/query/fields',
+              code: 'unknown_field',
+              message: `${f} is not a field.`,
+            })),
+          }),
+        )
     }
 
     const ifMatch = req.headers.get('if-match')
@@ -597,7 +823,10 @@ export function createApi(options: ApiOptions) {
       htmlBase,
       now,
       dispatch: (method, p, b) => {
-        if (depth > 0) return Promise.reject(apiError('invalid_request', 'Batches cannot nest.'))
+        if (depth > 0)
+          return Promise.reject(
+            apiError('invalid_request', 'Batches cannot nest.'),
+          )
         // A sub-request runs with the same identity, including the account the
         // caller acts as. Dropping Sx-Account would silently change its view.
         const inherited: Record<string, string> = {}
@@ -610,7 +839,9 @@ export function createApi(options: ApiOptions) {
             method,
             headers: {
               ...inherited,
-              ...(b !== undefined ? { 'content-type': 'application/json' } : {}),
+              ...(b !== undefined
+                ? { 'content-type': 'application/json' }
+                : {}),
             },
             body: b === undefined ? undefined : JSON.stringify(b),
           }),
@@ -627,7 +858,11 @@ export function createApi(options: ApiOptions) {
         program.pipe(
           Effect.timeout(BUDGET),
           Effect.catchTag('TimeoutError', () =>
-            Effect.fail(apiError('backend_unavailable', 'The request took too long.', { retryAfter: 1 })),
+            Effect.fail(
+              apiError('backend_unavailable', 'The request took too long.', {
+                retryAfter: 1,
+              }),
+            ),
           ),
           Effect.match({
             onSuccess: (value) => ({ ok: true as const, value }),
@@ -635,19 +870,28 @@ export function createApi(options: ApiOptions) {
           }),
         ),
       )
-      timing.handler = (timing.handler as number | undefined ?? 0) + (performance.now() - t0)
+      timing.handler =
+        ((timing.handler as number | undefined) ?? 0) + (performance.now() - t0)
       if (!settled.ok) throw settled.error
       return settled.value
     }
 
     const isRead = op.method === 'GET'
     // What the body depends on. `wait` and `dry_run` do not change it.
-    const canonical = [...Object.entries(raw), ...(fields ? [['fields', fields]] : [])]
+    const canonical = [
+      ...Object.entries(raw),
+      ...(fields ? [['fields', fields]] : []),
+    ]
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([k, v]) => `${k}=${v}`)
       .join('&')
-    const wantsMarkdown = isRead && !!op.markdown && (req.headers.get('accept') ?? '').includes('text/markdown')
-    const wantsNdjson = isRead && (req.headers.get('accept') ?? '').includes('application/x-ndjson')
+    const wantsMarkdown =
+      isRead &&
+      !!op.markdown &&
+      (req.headers.get('accept') ?? '').includes('text/markdown')
+    const wantsNdjson =
+      isRead &&
+      (req.headers.get('accept') ?? '').includes('application/x-ndjson')
     const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}|${domain.accessRevision}${wantsMarkdown ? '|md' : ''}${wantsNdjson ? '|ndjson' : ''}`
     let variant = variants.get(variantKey)
     if (variant === undefined) {
@@ -663,16 +907,34 @@ export function createApi(options: ApiOptions) {
     let wasReplay = false
     // `If-Match: *` accepts any version, so it is not a concrete precondition:
     // a retry must replay rather than run again and overwrite a newer edit.
-    const wildcardIfMatch = ifMatch !== null && ifMatch.split(',').some((t) => t.trim().replace(/^W\//, '').replace(/"/g, '') === '*')
-    const checkIfMatch = op.ifMatch === true && ifMatch !== null && !wildcardIfMatch
+    const wildcardIfMatch =
+      ifMatch !== null &&
+      ifMatch
+        .split(',')
+        .some((t) => t.trim().replace(/^W\//, '').replace(/"/g, '') === '*')
+    const checkIfMatch =
+      op.ifMatch === true && ifMatch !== null && !wildcardIfMatch
     if (!isRead && key && op.secretResponse)
-      return fail(apiError('invalid_request', 'This operation cannot use Idempotency-Key because its response contains a secret.'))
+      return fail(
+        apiError(
+          'invalid_request',
+          'This operation cannot use Idempotency-Key because its response contains a secret.',
+        ),
+      )
     if (!isRead && key) {
       if (key.length > 64)
-        return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
-      scope = principal ? `${principal.handle}@${principal.actingAs}:${principal.limitKey}` : `ip:${clientAddress(req)}`
-      const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
-      const replayKey = principal ? domain.replayKey(op.id, params, principal) : { id: '', stamp: '' }
+        return fail(
+          apiError('invalid_request', 'Idempotency-Key is over 64 characters.'),
+        )
+      scope = principal
+        ? `${principal.handle}@${principal.actingAs}:${principal.limitKey}`
+        : `ip:${clientAddress(req)}`
+      const fingerprintBody = bytes
+        ? createHash('sha256').update(bytes).digest('base64url')
+        : bodyText
+      const replayKey = principal
+        ? domain.replayKey(op.id, params, principal)
+        : { id: '', stamp: '' }
       const stable = { ...params }
       if (replayKey.id) {
         delete stable.owner
@@ -680,16 +942,44 @@ export function createApi(options: ApiOptions) {
         stable.repo_id = replayKey.id
       }
       const identity = `${op.method} ${op.id} ${JSON.stringify(stable, Object.keys(stable).sort())}`
-      const begun = await idem.begin(scope, key, requestFingerprint(op.method, identity, url.search, fingerprintBody, checkIfMatch ? ifMatch ?? '' : '', op.rawBody ? (req.headers.get('content-type') ?? '') : '', replayKey.stamp))
+      const begun = await idem.begin(
+        scope,
+        key,
+        requestFingerprint(
+          op.method,
+          identity,
+          url.search,
+          fingerprintBody,
+          checkIfMatch ? (ifMatch ?? '') : '',
+          op.rawBody ? (req.headers.get('content-type') ?? '') : '',
+          replayKey.stamp,
+        ),
+      )
       wasReplay = begun.state === 'replay'
       if (begun.state === 'conflict')
-        return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
+        return fail(
+          apiError(
+            'idempotency_key_reused',
+            'This key was used for a different request.',
+          ),
+        )
       if (begun.state === 'in_progress')
-        return fail(apiError('request_in_progress', 'A request with this key is still running.', { retryAfter: 1 }))
+        return fail(
+          apiError(
+            'request_in_progress',
+            'A request with this key is still running.',
+            { retryAfter: 1 },
+          ),
+        )
       // A concrete If-Match must be checked against the current version, not
       // answered from the version it saw the first time.
       if (begun.state === 'replay' && !checkIfMatch) {
-        const replayBody = begun.response.status === 204 || begun.response.status === 304 || begun.response.body === '' ? null : begun.response.body
+        const replayBody =
+          begun.response.status === 204 ||
+          begun.response.status === 304 ||
+          begun.response.body === ''
+            ? null
+            : begun.response.body
         return new Response(replayBody, {
           status: begun.response.status,
           headers: { ...begun.response.headers, 'sx-replayed': 'true' },
@@ -702,7 +992,11 @@ export function createApi(options: ApiOptions) {
       // Conditional reads and the body cache, before any body is built.
       let versionKey: string | null = null
       const etagOf = (v: string) => `W/"${v}-${variant}"`
-      const wantsWait = waitSeconds > 0 && op.waitOn && ifNoneMatch !== null && op.conditional !== false
+      const wantsWait =
+        waitSeconds > 0 &&
+        op.waitOn &&
+        ifNoneMatch !== null &&
+        op.conditional !== false
 
       type Step =
         | { kind: 'not_modified'; etag: string }
@@ -715,16 +1009,23 @@ export function createApi(options: ApiOptions) {
             versionKey = await op.probe(ctx, domain)
           } catch (e) {
             // A renamed repository answers at its old address with a redirect, on reads too.
-            if (e instanceof Moved) throw apiError('moved', `${e.from} is now ${e.to}.`, { extra: { from: e.from, to: e.to } })
+            if (e instanceof Moved)
+              throw apiError('moved', `${e.from} is now ${e.to}.`, {
+                extra: { from: e.from, to: e.to },
+              })
             throw e
           }
-          timing.handler = (timing.handler as number | undefined ?? 0) + (performance.now() - t0)
+          timing.handler =
+            ((timing.handler as number | undefined) ?? 0) +
+            (performance.now() - t0)
         }
         if (versionKey !== null && op.conditional !== false) {
           const etag = etagOf(versionKey)
-          if (ifNoneMatch && matches(ifNoneMatch, etag)) return { kind: 'not_modified', etag }
+          if (ifNoneMatch && matches(ifNoneMatch, etag))
+            return { kind: 'not_modified', etag }
           const hit = cache.get(cacheKey(versionKey))
-          if (hit !== undefined) return { kind: 'hit', json: hit, etag, status: op.status ?? 200 }
+          if (hit !== undefined)
+            return { kind: 'hit', json: hit, etag, status: op.status ?? 200 }
         }
         const out = await exec(op.handler(ctx as never))
         return { kind: 'built', out, versionKey }
@@ -736,19 +1037,30 @@ export function createApi(options: ApiOptions) {
         const deadline = performance.now() + waitSeconds * 1000
         const topic = op.waitOn!(parsedParams, query, domain)
         while (step.kind === 'not_modified' && performance.now() < deadline) {
-          await options.events.wait(topic, deadline - performance.now(), req.signal)
+          await options.events.wait(
+            topic,
+            deadline - performance.now(),
+            req.signal,
+          )
           if (req.signal.aborted) break
           step = await compute()
         }
       }
-    const notModified = (etag: string, source: Record<string, string> = {}) => {
-      const headers: Record<string, string> = { etag, ...extraHeaders }
-      if (isRead) {
-        headers.vary = 'accept, authorization'
-        headers['cache-control'] = source['cache-control'] ?? (principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate')
+      const notModified = (
+        etag: string,
+        source: Record<string, string> = {},
+      ) => {
+        const headers: Record<string, string> = { etag, ...extraHeaders }
+        if (isRead) {
+          headers.vary = 'accept, authorization'
+          headers['cache-control'] =
+            source['cache-control'] ??
+            (principal
+              ? 'private, no-cache'
+              : 'public, max-age=0, must-revalidate')
+        }
+        return new Response(null, { status: 304, headers })
       }
-      return new Response(null, { status: 304, headers })
-    }
       if (step.kind === 'not_modified') {
         refund?.()
         return notModified(step.etag)
@@ -769,7 +1081,10 @@ export function createApi(options: ApiOptions) {
           if (out.response.status === 304) refund?.()
           if (req.method === 'HEAD') {
             await out.response.body?.cancel().catch(() => {})
-            return new Response(null, { status: out.response.status, headers: out.response.headers })
+            return new Response(null, {
+              status: out.response.status,
+              headers: out.response.headers,
+            })
           }
           return out.response
         }
@@ -778,7 +1093,8 @@ export function createApi(options: ApiOptions) {
           Object.assign(headers, out.init.headers)
           out = out.body
         }
-        const wantsNdjsonList = wantsNdjson && (out as { object?: string })?.object === 'list'
+        const wantsNdjsonList =
+          wantsNdjson && (out as { object?: string })?.object === 'list'
         // Objects that arrive already serialized are sent as they are, unless the
         // caller wants a shape that needs the object. `seed` stands in for the
         // body when an ETag is made, so a long body is not hashed.
@@ -792,19 +1108,33 @@ export function createApi(options: ApiOptions) {
           }
           out = out.obj
         } else {
-          const list = out as { object?: string; data?: Array<unknown>; has_more?: boolean; next_cursor?: string | null }
-          if (list?.object === 'list' && Array.isArray(list.data) && list.data[0] instanceof Pre) {
+          const list = out as {
+            object?: string
+            data?: Array<unknown>
+            has_more?: boolean
+            next_cursor?: string | null
+          }
+          if (
+            list?.object === 'list' &&
+            Array.isArray(list.data) &&
+            list.data[0] instanceof Pre
+          ) {
             if (!fieldPaths && !wantsNdjsonList) {
               const items = list.data as Array<Pre>
               ready = `{"object":"list","data":[${items.map((i) => i.json).join(',')}],"has_more":${list.has_more === true},"next_cursor":${JSON.stringify(list.next_cursor ?? null)}}`
               seed = `${items.map((i) => i.tag).join('')}|${list.has_more === true}|${list.next_cursor ?? ''}`
-            } else out = { ...list, data: list.data.map((d) => (d instanceof Pre ? d.obj : d)) }
+            } else
+              out = {
+                ...list,
+                data: list.data.map((d) => (d instanceof Pre ? d.obj : d)),
+              }
           }
         }
         if (fieldPaths) {
           // Build the readable form from the full object before projecting it:
           // a markdown builder reads members that `fields` may have removed.
-          if (wantsMarkdown && status < 300) markdown = op.markdown!(out as Record<string, unknown>)
+          if (wantsMarkdown && status < 300)
+            markdown = op.markdown!(out as Record<string, unknown>)
           const list = out as { object?: string; data?: Array<unknown> }
           out =
             list?.object === 'list' && Array.isArray(list.data)
@@ -812,17 +1142,32 @@ export function createApi(options: ApiOptions) {
               : project(out, fieldPaths)
         }
         if (wantsNdjsonList) {
-          const list = out as { data: Array<unknown>; has_more: boolean; next_cursor: string | null }
+          const list = out as {
+            data: Array<unknown>
+            has_more: boolean
+            next_cursor: string | null
+          }
           const lines = list.data.map((d) => JSON.stringify(d))
-          lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
+          lines.push(
+            JSON.stringify({
+              object: 'page',
+              has_more: list.has_more,
+              next_cursor: list.next_cursor,
+            }),
+          )
           const text = `${lines.join('\n')}\n`
-          const ndEtag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${hash(text)}"`
+          const ndEtag =
+            step.versionKey !== null && step.versionKey !== undefined
+              ? etagOf(step.versionKey)
+              : `W/"${hash(text)}"`
           const ndHeaders: Record<string, string> = {
             'content-type': 'application/x-ndjson; charset=utf-8',
             ...headers,
             etag: ndEtag,
             vary: 'accept, authorization',
-            'cache-control': principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate',
+            'cache-control': principal
+              ? 'private, no-cache'
+              : 'public, max-age=0, must-revalidate',
           }
           if (ifNoneMatch && matches(ifNoneMatch, ndEtag)) {
             refund?.()
@@ -836,9 +1181,13 @@ export function createApi(options: ApiOptions) {
         json = ready ?? JSON.stringify(out)
         // The readable form is made from the JSON, so the two cannot disagree.
         if (markdown !== null) json = markdown
-        else if (wantsMarkdown && status < 300) json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
+        else if (wantsMarkdown && status < 300)
+          json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
         if (isRead && op.conditional !== false) {
-          etag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
+          etag =
+            step.versionKey !== null && step.versionKey !== undefined
+              ? etagOf(step.versionKey)
+              : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
           if (step.versionKey !== null && step.versionKey !== undefined)
             cache.set(cacheKey(step.versionKey), json)
           if (ifNoneMatch && matches(ifNoneMatch, etag)) {
@@ -847,8 +1196,12 @@ export function createApi(options: ApiOptions) {
           }
         }
       }
-      headers['content-type'] = wantsMarkdown && status < 300 ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8'
-      if (op.secretResponse && !headers['cache-control']) headers['cache-control'] = 'no-store'
+      headers['content-type'] =
+        wantsMarkdown && status < 300
+          ? 'text/markdown; charset=utf-8'
+          : 'application/json; charset=utf-8'
+      if (op.secretResponse && !headers['cache-control'])
+        headers['cache-control'] = 'no-store'
       if (isRead) headers.vary = 'accept, authorization'
       if (dryRun) {
         headers['sx-dry-run'] = 'true'
@@ -860,18 +1213,27 @@ export function createApi(options: ApiOptions) {
       }
       if (etag !== '') headers.etag = etag
       if (isRead && !headers['cache-control'])
-        headers['cache-control'] = principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate'
+        headers['cache-control'] = principal
+          ? 'private, no-cache'
+          : 'public, max-age=0, must-revalidate'
       if (status === 202 && headers.location === undefined) {
         const loc = (JSON.parse(json) as { url?: string }).url
         if (loc) headers.location = loc
       }
-      const res = new Response(req.method === 'HEAD' || status === 204 ? null : json, { status, headers })
+      const res = new Response(
+        req.method === 'HEAD' || status === 204 ? null : json,
+        { status, headers },
+      )
       if (!isRead && key) {
         if (dryRun) await idem.abort(scope, key)
         else {
           applied = true
           try {
-            await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
+            await idem.complete(scope, key, {
+              status,
+              headers,
+              body: status === 204 ? '' : json,
+            })
           } catch (e) {
             // The write already happened. Do not turn success into a 500; the key
             // stays in progress, so a retry waits instead of writing again.
@@ -879,7 +1241,9 @@ export function createApi(options: ApiOptions) {
           }
         }
       }
-      const t = [`handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`]
+      const t = [
+        `handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`,
+      ]
       if (timing.cache) t.push(`cache;desc="hit"`)
       t.push(`total;dur=${(performance.now() - started).toFixed(2)}`)
       res.headers.set('server-timing', t.join(', '))
@@ -894,28 +1258,64 @@ export function createApi(options: ApiOptions) {
         // segments in the request cannot make the redirect point at itself.
         const parts = path.split('/').filter(Boolean)
         const at = op.path.split('/').filter(Boolean).indexOf('repos')
-        if (at >= 0 && parts.length > at + 2) parts.splice(at + 1, 2, ...to.split('/'))
-        const target = at >= 0 ? `/${parts.join('/')}` : path.replace(new RegExp(`/repos/${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), `/repos/${to}`)
-        const configured = options.base && !/placeholder/i.test(options.base) ? options.base : `${url.origin}${mount}`
+        if (at >= 0 && parts.length > at + 2)
+          parts.splice(at + 1, 2, ...to.split('/'))
+        const target =
+          at >= 0
+            ? `/${parts.join('/')}`
+            : path.replace(
+                new RegExp(
+                  `/repos/${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+                  'i',
+                ),
+                `/repos/${to}`,
+              )
+        const configured =
+          options.base && !/placeholder/i.test(options.base)
+            ? options.base
+            : `${url.origin}${mount}`
         const search = new URLSearchParams(url.search)
         const confirm = search.get('confirm')
-        if (confirm && confirm.toLowerCase() === from.toLowerCase()) search.set('confirm', to)
+        if (confirm && confirm.toLowerCase() === from.toLowerCase())
+          search.set('confirm', to)
         const queryString = search.size ? `?${search}` : ''
         const location = `${configured}${target}${queryString}`
-        return problemResponse(e, requestId, { location, 'sx-renamed-from': from })
+        return problemResponse(e, requestId, {
+          location,
+          'sx-renamed-from': from,
+        })
       }
       throw e
     }
   }
 
   const oauth = options.oauth
-  const guardOf = async (req: Request, bucket: string, limit: number, windowMs: number) => {
-    const d = await limiter.check(`${bucket}:${clientAddress(req)}`, { limit, windowMs }, 1)
+  const guardOf = async (
+    req: Request,
+    bucket: string,
+    limit: number,
+    windowMs: number,
+  ) => {
+    const d = await limiter.check(
+      `${bucket}:${clientAddress(req)}`,
+      { limit, windowMs },
+      1,
+    )
     return d.allowed
       ? null
       : new Response(
-          JSON.stringify({ error: 'rate_limited', error_description: `Try again in ${d.resetSeconds} seconds.` }),
-          { status: 429, headers: { 'content-type': 'application/json', 'retry-after': String(d.resetSeconds), 'cache-control': 'no-store' } },
+          JSON.stringify({
+            error: 'rate_limited',
+            error_description: `Try again in ${d.resetSeconds} seconds.`,
+          }),
+          {
+            status: 429,
+            headers: {
+              'content-type': 'application/json',
+              'retry-after': String(d.resetSeconds),
+              'cache-control': 'no-store',
+            },
+          },
         )
   }
 
@@ -925,7 +1325,8 @@ export function createApi(options: ApiOptions) {
     if (oauth) {
       const path = new URL(req.url).pathname
       if (path.startsWith(`${mount}/oauth/`)) {
-        if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
+        if (req.method === 'OPTIONS')
+          return new Response(null, { status: 204, headers: CORS })
         const res = await oauth.handle(req, path.slice(`${mount}/oauth`.length))
         if (res) {
           res.headers.set('access-control-allow-origin', '*')

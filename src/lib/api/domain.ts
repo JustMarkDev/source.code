@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { newId, seededId } from './ids'
 import { pageSorted } from './cursor'
 import { apiError, errorCatalog } from './problem'
-import { EventLog, parseEvent  } from './events'
+import { EventLog, parseEvent } from './events'
 import { Pre } from './registry'
 import type { CursorPosition, Page } from './cursor'
 import type { EventRecord, StoredEvent } from './events'
@@ -369,7 +369,16 @@ export class MemoryDomain {
     owner: string,
     name: string,
     init: Partial<
-      Pick<RepoRec, 'id' | 'storeId' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>
+      Pick<
+        RepoRec,
+        | 'id'
+        | 'storeId'
+        | 'description'
+        | 'visibility'
+        | 'stars'
+        | 'created'
+        | 'env'
+      >
     > & {
       collaborators?: Array<string>
       installs?: Array<string>
@@ -386,13 +395,25 @@ export class MemoryDomain {
 
   /** Point the git reads at every repository's immutable store id. */
   registerGitStores() {
-    for (const rec of this.repos.values()) this.svc.git?.setRepo?.(`${rec.owner}/${rec.name}`, rec.storeId)
+    for (const rec of this.repos.values())
+      this.svc.git?.setRepo?.(`${rec.owner}/${rec.name}`, rec.storeId)
   }
 
   private makeRepo(
     owner: string,
     name: string,
-    init: Partial<Pick<RepoRec, 'id' | 'storeId' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>> & {
+    init: Partial<
+      Pick<
+        RepoRec,
+        | 'id'
+        | 'storeId'
+        | 'description'
+        | 'visibility'
+        | 'stars'
+        | 'created'
+        | 'env'
+      >
+    > & {
       collaborators?: Array<string>
       installs?: Array<string>
       maintainers?: Array<string>
@@ -444,7 +465,10 @@ export class MemoryDomain {
     repo.byUpdated.add(c)
     repo.byNumber.add(c)
     repo.nextNumber = Math.max(repo.nextNumber, c.number + 1)
-    if ((c.state === 'open' || c.state === 'draft') && !repo.openChangeByBranch.has(c.branch))
+    if (
+      (c.state === 'open' || c.state === 'draft') &&
+      !repo.openChangeByBranch.has(c.branch)
+    )
       repo.openChangeByBranch.set(c.branch, c)
     if (c.stackId) {
       const members = repo.stacks.get(c.stackId) ?? []
@@ -458,7 +482,8 @@ export class MemoryDomain {
     repo.issues.set(i.number, i)
     repo.issuesByNumber.add(i)
     repo.nextNumber = Math.max(repo.nextNumber, i.number + 1)
-    if (i.state === 'open' && !repo.openIssueByTitle.has(i.title)) repo.openIssueByTitle.set(i.title, i)
+    if (i.state === 'open' && !repo.openIssueByTitle.has(i.title))
+      repo.openIssueByTitle.set(i.title, i)
   }
 
   // ----- access -----------------------------------------------------------
@@ -472,7 +497,10 @@ export class MemoryDomain {
     const full = `${repo.owner}/${repo.name}`.toLowerCase()
     if (p?.repos && !p.repos.includes(full)) return repo.visibility === 'public'
     if (repo.visibility === 'public') return true
-    return !!p && (this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) !== null)
+    return (
+      !!p &&
+      (this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) !== null)
+    )
   }
 
   /** What the teams someone is in give them on a repository. Looked at only when nothing else does. */
@@ -499,7 +527,11 @@ export class MemoryDomain {
 
   private canWrite(repo: RepoRec, p: Viewer): p is Principal {
     if (!p) return false
-    if (p.repos && !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase())) return false
+    if (
+      p.repos &&
+      !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase())
+    )
+      return false
     return this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) === 'write'
   }
 
@@ -510,7 +542,8 @@ export class MemoryDomain {
     need: 'read' | 'write' = 'read',
   ): RepoRec {
     let repo: RepoRec | undefined
-    if (name === '~' && owner.startsWith('rep_')) repo = this.reposById.get(owner)
+    if (name === '~' && owner.startsWith('rep_'))
+      repo = this.reposById.get(owner)
     else {
       const key = `${owner}/${name}`.toLowerCase()
       repo = this.repos.get(key) ?? this.byLower(key)
@@ -524,7 +557,8 @@ export class MemoryDomain {
           target = next
         }
         if (target !== key) {
-          const moved = this.repos.get(target) ?? this.byLower(target.toLowerCase())
+          const moved =
+            this.repos.get(target) ?? this.byLower(target.toLowerCase())
           if (moved && this.canRead(moved, p)) throw new Moved(key, target)
         }
       }
@@ -532,7 +566,10 @@ export class MemoryDomain {
     if (!repo || !this.canRead(repo, p))
       throw apiError('not_found', `No repository ${owner}/${name}.`)
     if (need === 'write' && !this.canWrite(repo, p))
-      throw apiError('forbidden', 'You can read this repository but not change it.')
+      throw apiError(
+        'forbidden',
+        'You can read this repository but not change it.',
+      )
     return repo
   }
 
@@ -565,7 +602,8 @@ export class MemoryDomain {
     const key = `${r.rev}:${r.changes.size}:${r.issues.size}`
     if (r.counts.key !== key) {
       let openChanges = 0
-      for (const c of r.changes.values()) if (c.state === 'open' || c.state === 'draft') openChanges++
+      for (const c of r.changes.values())
+        if (c.state === 'open' || c.state === 'draft') openChanges++
       let openIssues = 0
       for (const i of r.issues.values()) if (i.state === 'open') openIssues++
       r.counts = { key, openChanges, openIssues }
@@ -603,7 +641,14 @@ export class MemoryDomain {
     const failed = own.filter((k) => k.state === 'fail').length
     const pending = own.filter((k) => k.state === 'pending').length
     return {
-      state: own.length === 0 ? 'none' : failed ? 'fail' : pending ? 'pending' : 'pass',
+      state:
+        own.length === 0
+          ? 'none'
+          : failed
+            ? 'fail'
+            : pending
+              ? 'pending'
+              : 'pass',
       passed,
       failed,
       pending,
@@ -627,7 +672,11 @@ export class MemoryDomain {
    * maintainers, so it is worked out once per version. Asking "what if" with
    * `assume` always works it out fresh.
    */
-  private evaluate(repo: RepoRec, c: ChangeRec, assume?: Assume): Array<Requirement> {
+  private evaluate(
+    repo: RepoRec,
+    c: ChangeRec,
+    assume?: Assume,
+  ): Array<Requirement> {
     if (assume) return this.evaluateFresh(repo, c, assume)
     const memo = c.policyMemo
     if (memo && memo.version === c.version) return memo.reqs
@@ -753,7 +802,8 @@ export class MemoryDomain {
   }
 
   private unmet(reqs: ReadonlyArray<Requirement>) {
-    return reqs.filter((r) => r.state === 'fail' || r.state === 'pending').length
+    return reqs.filter((r) => r.state === 'fail' || r.state === 'pending')
+      .length
   }
 
   private actionsFor(repo: RepoRec, c: ChangeRec, p: Viewer) {
@@ -771,24 +821,29 @@ export class MemoryDomain {
     if (!canMerge) reasons.push('scope:pulls:merge')
     for (const r of reqs)
       if (r.state === 'fail' || r.state === 'pending')
-        reasons.push(`policy:${r.id} ${r.state === 'fail' ? 'fail' : 'pending'}`)
+        reasons.push(
+          `policy:${r.id} ${r.state === 'fail' ? 'fail' : 'pending'}`,
+        )
     const parent = this.parentOf(repo, c)
     if (parent && parent.state !== 'landed')
       reasons.push(`parent:#${parent.number} not landed`)
     const branchOwner = repo.openChangeByBranch.get(c.branch)
     return {
       land: { allowed: reasons.length === 0, reasons },
-      abandon: canPull && (c.state === 'open' || c.state === 'draft')
-        ? { allowed: true, reasons: [] }
-        : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
-      restore: canPull && c.state === 'abandoned'
-        ? branchOwner
-          ? { allowed: false, reasons: [`branch:#${branchOwner.number}`] }
-          : { allowed: true, reasons: [] }
-        : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
-      mark_ready: canPull && c.state === 'draft'
-        ? { allowed: true, reasons: [] }
-        : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
+      abandon:
+        canPull && (c.state === 'open' || c.state === 'draft')
+          ? { allowed: true, reasons: [] }
+          : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
+      restore:
+        canPull && c.state === 'abandoned'
+          ? branchOwner
+            ? { allowed: false, reasons: [`branch:#${branchOwner.number}`] }
+            : { allowed: true, reasons: [] }
+          : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
+      mark_ready:
+        canPull && c.state === 'draft'
+          ? { allowed: true, reasons: [] }
+          : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
     }
   }
 
@@ -846,8 +901,14 @@ export class MemoryDomain {
   static readonly SHOWN_MAX = 8000
   static readonly SHOWN_CHARS_MAX = 24_000_000
 
-  shownChange(repo: RepoRec, c: ChangeRec, viewer: Viewer | 'event', expand: ReadonlyArray<string> = []): Pre {
-    const who = viewer === 'event' ? 'event' : viewer ? viewer.capId : 'anonymous'
+  shownChange(
+    repo: RepoRec,
+    c: ChangeRec,
+    viewer: Viewer | 'event',
+    expand: ReadonlyArray<string> = [],
+  ): Pre {
+    const who =
+      viewer === 'event' ? 'event' : viewer ? viewer.capId : 'anonymous'
     const ex = expand.length ? expand.join(',') : ''
     const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${repo.openChangeByBranch.get(c.branch)?.id ?? ''}|${ex}|${who}|${repo.version}|${this.accessRevision}${expand.includes('repo') ? `|${repo.rev}` : ''}`
     const hit = this.shown.get(key)
@@ -858,7 +919,11 @@ export class MemoryDomain {
     this.shownChars += pre.json.length
     // First in, first out. Dropping an entry that is still wanted costs one rebuild;
     // reordering on every hit costs more than that across a busy list.
-    while ((this.shown.size > MemoryDomain.SHOWN_MAX || this.shownChars > MemoryDomain.SHOWN_CHARS_MAX) && this.shown.size > 1) {
+    while (
+      (this.shown.size > MemoryDomain.SHOWN_MAX ||
+        this.shownChars > MemoryDomain.SHOWN_CHARS_MAX) &&
+      this.shown.size > 1
+    ) {
       const gone = this.shown.keys().next().value as string
       this.shownChars -= this.shown.get(gone)!.json.length
       this.shown.delete(gone)
@@ -899,7 +964,9 @@ export class MemoryDomain {
       number: c.number,
       url: `${this.repoUrl(repo)}/changes/${c.number}`,
       html_url: `${this.urls.html}/${repo.owner}/${repo.name}/changes/${c.number}`,
-      repo: expand.includes('repo') ? this.presentRepo(repo) : this.repoRef(repo),
+      repo: expand.includes('repo')
+        ? this.presentRepo(repo)
+        : this.repoRef(repo),
       title: c.title,
       description: c.description,
       state: c.state,
@@ -955,7 +1022,11 @@ export class MemoryDomain {
     const pre = new Pre(json, () => JSON.parse(json), key)
     this.shownIssues.set(key, pre)
     this.shownIssueChars += json.length
-    while ((this.shownIssues.size > MemoryDomain.SHOWN_ISSUES_MAX || this.shownIssueChars > MemoryDomain.SHOWN_ISSUES_CHARS_MAX) && this.shownIssues.size > 1) {
+    while (
+      (this.shownIssues.size > MemoryDomain.SHOWN_ISSUES_MAX ||
+        this.shownIssueChars > MemoryDomain.SHOWN_ISSUES_CHARS_MAX) &&
+      this.shownIssues.size > 1
+    ) {
       const gone = this.shownIssues.keys().next().value as string
       this.shownIssueChars -= this.shownIssues.get(gone)!.json.length
       this.shownIssues.delete(gone)
@@ -1036,7 +1107,15 @@ export class MemoryDomain {
     if (!found) return this.seedActor(handle, cls, this.now())
     const key = `${handle}~${cls}`
     let rec = this.actors.get(key)
-    if (!rec) this.actors.set(key, (rec = { id: seededId('account', this.now(), key), handle, class: cls }))
+    if (!rec)
+      this.actors.set(
+        key,
+        (rec = {
+          id: seededId('account', this.now(), key),
+          handle,
+          class: cls,
+        }),
+      )
     return rec
   }
 
@@ -1047,8 +1126,10 @@ export class MemoryDomain {
     c.version++
     repo.byUpdated.add(c)
     if (c.state === 'open' || c.state === 'draft') {
-      if (!repo.openChangeByBranch.has(c.branch)) repo.openChangeByBranch.set(c.branch, c)
-    } else if (repo.openChangeByBranch.get(c.branch) === c) repo.openChangeByBranch.delete(c.branch)
+      if (!repo.openChangeByBranch.has(c.branch))
+        repo.openChangeByBranch.set(c.branch, c)
+    } else if (repo.openChangeByBranch.get(c.branch) === c)
+      repo.openChangeByBranch.delete(c.branch)
   }
 
   private changeEvent(
@@ -1099,7 +1180,13 @@ export class MemoryDomain {
     return this.presentEvidence(c, rec, input.upload)
   }
 
-  async listEvidence(owner: string, name: string, ref: string, p: Viewer, find: (id: string) => UploadRec | null) {
+  async listEvidence(
+    owner: string,
+    name: string,
+    ref: string,
+    p: Viewer,
+    find: (id: string) => UploadRec | null,
+  ) {
     const repo = this.resolve(owner, name, p)
     const c = this.getChangeRec(repo, ref)
     return (c.evidence ?? []).flatMap((e) => {
@@ -1108,14 +1195,24 @@ export class MemoryDomain {
     })
   }
 
-  private presentEvidence(c: ChangeRec, e: EvidenceRec, u: UploadRec): z.infer<typeof S.Evidence> {
+  private presentEvidence(
+    c: ChangeRec,
+    e: EvidenceRec,
+    u: UploadRec,
+  ): z.infer<typeof S.Evidence> {
     return {
       object: 'evidence',
       id: e.id,
       change: c.number,
       kind: e.kind,
       caption: e.caption,
-      upload: { id: u.id, content_type: u.contentType, size: u.size, sha256: u.sha256 ?? '', content_url: `${this.urls.api}/uploads/${u.id}/content` },
+      upload: {
+        id: u.id,
+        content_type: u.contentType,
+        size: u.size,
+        sha256: u.sha256 ?? '',
+        content_url: `${this.urls.api}/uploads/${u.id}/content`,
+      },
       created_by: this.actor(e.by),
       created_at: iso(e.created),
     }
@@ -1131,17 +1228,62 @@ export class MemoryDomain {
   *searchDocs(): Iterable<SearchDoc> {
     for (const r of this.repos.values()) {
       const full = `${r.owner}/${r.name}`
-      yield { key: `repo:${r.id}`, type: 'repo', id: r.id, repo: full, number: null, title: full, text: r.description, state: r.visibility, author: r.owner, labels: [], updated: r.updated, url: this.repoUrl(r) }
+      yield {
+        key: `repo:${r.id}`,
+        type: 'repo',
+        id: r.id,
+        repo: full,
+        number: null,
+        title: full,
+        text: r.description,
+        state: r.visibility,
+        author: r.owner,
+        labels: [],
+        updated: r.updated,
+        url: this.repoUrl(r),
+      }
       for (const c of r.changes.values())
-        yield { key: `change:${c.id}`, type: 'change', id: c.id, repo: full, number: c.number, title: c.title, text: c.description, state: c.state, author: c.author.handle, labels: c.labels, updated: c.updated, url: `${this.repoUrl(r)}/changes/${c.number}` }
+        yield {
+          key: `change:${c.id}`,
+          type: 'change',
+          id: c.id,
+          repo: full,
+          number: c.number,
+          title: c.title,
+          text: c.description,
+          state: c.state,
+          author: c.author.handle,
+          labels: c.labels,
+          updated: c.updated,
+          url: `${this.repoUrl(r)}/changes/${c.number}`,
+        }
       for (const i of r.issues.values())
-        yield { key: `issue:${i.id}`, type: 'issue', id: i.id, repo: full, number: i.number, title: i.title, text: i.body, state: i.state, author: i.author.handle, labels: i.labels, updated: i.updated, url: `${this.repoUrl(r)}/issues/${i.number}` }
+        yield {
+          key: `issue:${i.id}`,
+          type: 'issue',
+          id: i.id,
+          repo: full,
+          number: i.number,
+          title: i.title,
+          text: i.body,
+          state: i.state,
+          author: i.author.handle,
+          labels: i.labels,
+          updated: i.updated,
+          url: `${this.repoUrl(r)}/issues/${i.number}`,
+        }
     }
   }
 
   async createRepo(
     p: Principal,
-    input: { owner?: string; name: string; description?: string; visibility: 'public' | 'private'; maintainers?: Array<string> },
+    input: {
+      owner?: string
+      name: string
+      description?: string
+      visibility: 'public' | 'private'
+      maintainers?: Array<string>
+    },
     dry: boolean,
   ) {
     const owner = input.owner ?? p.actingAs
@@ -1150,45 +1292,116 @@ export class MemoryDomain {
     const role = owner === p.handle ? 'owner' : acct.members.get(p.handle)
     if (!role) throw apiError('not_found', `No account ${owner}.`)
     if (role === 'member')
-      throw apiError('forbidden', `Members of ${owner} cannot create repositories there.`, {
-        hint: 'Ask an owner or admin, or create it in an account you manage. GET /v1/accounts shows your role in each.',
-      })
-    if (p.repos) throw apiError('forbidden', 'A token limited to repositories cannot create new ones.')
+      throw apiError(
+        'forbidden',
+        `Members of ${owner} cannot create repositories there.`,
+        {
+          hint: 'Ask an owner or admin, or create it in an account you manage. GET /v1/accounts shows your role in each.',
+        },
+      )
+    if (p.repos)
+      throw apiError(
+        'forbidden',
+        'A token limited to repositories cannot create new ones.',
+      )
     const maintainers = new Set(input.maintainers ?? [])
     if (input.maintainers) {
       if (input.maintainers.length === 0)
-        throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
-          errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
-        })
+        throw apiError(
+          'invalid_request',
+          'A repository needs at least one maintainer.',
+          {
+            errors: [
+              {
+                pointer: '/body/maintainers',
+                code: 'empty',
+                message: 'Name at least one person.',
+              },
+            ],
+          },
+        )
       for (const h of input.maintainers)
-        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
-          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
-        })
+        if (this.accounts.get(h)?.kind !== 'person')
+          throw apiError('invalid_request', `${h} is not a person.`, {
+            errors: [
+              {
+                pointer: '/body/maintainers',
+                code: 'not_a_person',
+                message: `${h} is not a person.`,
+              },
+            ],
+          })
     } else {
       if (acct.kind === 'person') maintainers.add(acct.handle)
       for (const [h, r] of acct.members)
-        if ((r === 'owner' || r === 'admin') && this.accounts.get(h)?.kind === 'person') maintainers.add(h)
-      if (this.accounts.get(p.handle)?.kind === 'person') maintainers.add(p.handle)
+        if (
+          (r === 'owner' || r === 'admin') &&
+          this.accounts.get(h)?.kind === 'person'
+        )
+          maintainers.add(h)
+      if (this.accounts.get(p.handle)?.kind === 'person')
+        maintainers.add(p.handle)
     }
     if (maintainers.size === 0)
-      throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
-        errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
-      })
-    const existing = this.repos.get(`${owner}/${input.name}`) ?? this.byLower(`${owner}/${input.name}`.toLowerCase())
+      throw apiError(
+        'invalid_request',
+        'A repository needs at least one maintainer.',
+        {
+          errors: [
+            {
+              pointer: '/body/maintainers',
+              code: 'empty',
+              message: 'Name at least one person.',
+            },
+          ],
+        },
+      )
+    const existing =
+      this.repos.get(`${owner}/${input.name}`) ??
+      this.byLower(`${owner}/${input.name}`.toLowerCase())
     if (existing) return { repo: this.presentRepo(existing), created: false }
     if (dry)
       return {
-        repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })),
+        repo: this.presentRepo(
+          this.makeRepo(owner, input.name, {
+            description: input.description ?? '',
+            visibility: input.visibility,
+            created: this.now(),
+            maintainers: [...maintainers],
+            collaborators: [...maintainers],
+          }),
+        ),
         created: true,
       }
-    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })
+    const rec = this.seedRepo(owner, input.name, {
+      id: newId('repo', this.now()),
+      description: input.description ?? '',
+      visibility: input.visibility,
+      created: this.now(),
+      maintainers: [...maintainers],
+      collaborators: [...maintainers],
+    })
     rec.maintainerGrants = new Set(maintainers)
     this.accessRevision++
     const lower = `${owner}/${input.name}`.toLowerCase()
     this.aliases.delete(lower)
-    for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
+    for (const [key, value] of this.aliases)
+      if (value.toLowerCase() === lower) this.aliases.delete(key)
     this.svc.git?.setRepo?.(`${owner}/${input.name}`, rec.storeId)
-    this.svc.search?.upsertIfBuilt?.({ key: `repo:${rec.id}`, type: 'repo', id: rec.id, repo: `${owner}/${input.name}`, number: null, title: `${owner}/${input.name}`, text: rec.description, state: rec.visibility, author: owner, labels: [], updated: rec.updated, url: this.repoUrl(rec) })
+    this.svc.search?.upsertIfBuilt?.({
+      key: `repo:${rec.id}`,
+      type: 'repo',
+      id: rec.id,
+      repo: `${owner}/${input.name}`,
+      number: null,
+      title: `${owner}/${input.name}`,
+      text: rec.description,
+      state: rec.visibility,
+      author: owner,
+      labels: [],
+      updated: rec.updated,
+      url: this.repoUrl(rec),
+    })
     return { repo: this.presentRepo(rec), created: true }
   }
 
@@ -1196,11 +1409,20 @@ export class MemoryDomain {
 
   static readonly RUN_NOTES = 50
   static readonly RUNS_RUNNING = 20
-  static readonly RUN_SCOPES = ['repo:read', 'issues:read', 'issues:comment', 'pulls:read', 'pulls:comment', 'secrets:schema'] as const
+  static readonly RUN_SCOPES = [
+    'repo:read',
+    'issues:read',
+    'issues:comment',
+    'pulls:read',
+    'pulls:comment',
+    'secrets:schema',
+  ] as const
 
   /** A run that outlived its token is over, whether or not anyone said so. */
   private runState(r: RunRec): z.infer<typeof S.Run>['state'] {
-    return r.state === 'running' && r.expires <= this.now() ? 'expired' : r.state
+    return r.state === 'running' && r.expires <= this.now()
+      ? 'expired'
+      : r.state
   }
 
   presentRun(r: RunRec, secret: string | null = null): z.infer<typeof S.Run> {
@@ -1208,7 +1430,14 @@ export class MemoryDomain {
     return {
       object: 'run',
       id: r.id,
-      repo: repo ? this.repoRef(repo) : { object: 'repo', id: 'rep_deleted', full_name: r.repo, url: `${this.urls.api}/repos/${r.repo}` },
+      repo: repo
+        ? this.repoRef(repo)
+        : {
+            object: 'repo',
+            id: 'rep_deleted',
+            full_name: r.repo,
+            url: `${this.urls.api}/repos/${r.repo}`,
+          },
       task: r.task,
       state: this.runState(r),
       actor: this.actor(this.actorFor(r.handle, 'agent')),
@@ -1228,7 +1457,8 @@ export class MemoryDomain {
 
   private runRec(repo: RepoRec, id: string): RunRec {
     const r = this.runs.get(id)
-    if (!r || r.repo !== `${repo.owner}/${repo.name}`) throw apiError('not_found', `No run ${id} in ${repo.owner}/${repo.name}.`)
+    if (!r || r.repo !== `${repo.owner}/${repo.name}`)
+      throw apiError('not_found', `No run ${id} in ${repo.owner}/${repo.name}.`)
     return r
   }
 
@@ -1236,30 +1466,63 @@ export class MemoryDomain {
     owner: string,
     name: string,
     p: Principal,
-    input: { task: string; change?: number; scopes?: Array<string>; ttl_minutes: number },
+    input: {
+      task: string
+      change?: number
+      scopes?: Array<string>
+      ttl_minutes: number
+    },
     dry: boolean,
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const full = `${repo.owner}/${repo.name}`
-    if (input.change !== undefined && !repo.changes.has(input.change)) throw apiError('not_found', `No change #${input.change} in ${full}.`)
+    if (input.change !== undefined && !repo.changes.has(input.change))
+      throw apiError('not_found', `No change #${input.change} in ${full}.`)
     // A run token can never do more than the one that started it.
     if (!p.scopes.has('repo:read'))
-      throw apiError('insufficient_scope', 'A run token needs repo:read to report on itself.', {
-        extra: { required_scopes: ['repo:read'], token_scopes: [...p.scopes] },
-      })
-    const wanted = [...new Set([...(input.scopes ?? MemoryDomain.RUN_SCOPES.filter((s) => p.scopes.has(s))), 'repo:read'])]
+      throw apiError(
+        'insufficient_scope',
+        'A run token needs repo:read to report on itself.',
+        {
+          extra: {
+            required_scopes: ['repo:read'],
+            token_scopes: [...p.scopes],
+          },
+        },
+      )
+    const wanted = [
+      ...new Set([
+        ...(input.scopes ??
+          MemoryDomain.RUN_SCOPES.filter((s) => p.scopes.has(s))),
+        'repo:read',
+      ]),
+    ]
     const missing = wanted.filter((s) => !p.scopes.has(s as never))
     if (missing.length)
-      throw apiError('insufficient_scope', `A run cannot have scopes you do not have: ${missing.join(', ')}.`, {
-        extra: { required_scopes: missing, token_scopes: [...p.scopes] },
-      })
+      throw apiError(
+        'insufficient_scope',
+        `A run cannot have scopes you do not have: ${missing.join(', ')}.`,
+        {
+          extra: { required_scopes: missing, token_scopes: [...p.scopes] },
+        },
+      )
     if (wanted.includes('tokens:manage'))
-      throw apiError('forbidden', 'A run cannot be given tokens:manage.', { hint: 'A run token that could mint tokens would outlive its run.' })
+      throw apiError('forbidden', 'A run cannot be given tokens:manage.', {
+        hint: 'A run token that could mint tokens would outlive its run.',
+      })
     if (wanted.includes('secrets:write'))
-      throw apiError('forbidden', 'A run cannot be given secrets:write.', { hint: 'Setting secrets is a person-only action.' })
+      throw apiError('forbidden', 'A run cannot be given secrets:write.', {
+        hint: 'Setting secrets is a person-only action.',
+      })
     let running = 0
-    for (const r of this.runs.values()) if (r.handle === p.handle && this.runState(r) === 'running') running++
-    if (running >= MemoryDomain.RUNS_RUNNING) throw apiError('limit_reached', `You can have ${MemoryDomain.RUNS_RUNNING} runs going at once.`, { hint: 'Finish or cancel one first.' })
+    for (const r of this.runs.values())
+      if (r.handle === p.handle && this.runState(r) === 'running') running++
+    if (running >= MemoryDomain.RUNS_RUNNING)
+      throw apiError(
+        'limit_reached',
+        `You can have ${MemoryDomain.RUNS_RUNNING} runs going at once.`,
+        { hint: 'Finish or cancel one first.' },
+      )
     const at = this.now()
     const id = newId('run', at)
     const rec: RunRec = {
@@ -1293,20 +1556,39 @@ export class MemoryDomain {
     let list = this.runsByRepo.get(full)
     if (!list) this.runsByRepo.set(full, (list = []))
     list.push(rec)
-    this.emit(repo, 'run.started', this.asActor(p), { object: 'run', id, number: null }, ['state'], this.presentRun(rec))
+    this.emit(
+      repo,
+      'run.started',
+      this.asActor(p),
+      { object: 'run', id, number: null },
+      ['state'],
+      this.presentRun(rec),
+    )
     return { run: this.presentRun(rec, secret) }
   }
 
-  async listRuns(owner: string, name: string, p: Viewer, q: { state?: string; after: CursorPosition | null; limit: number }) {
+  async listRuns(
+    owner: string,
+    name: string,
+    p: Viewer,
+    q: { state?: string; after: CursorPosition | null; limit: number },
+  ) {
     const repo = this.resolve(owner, name, p)
-    const all = [...(this.runsByRepo.get(`${repo.owner}/${repo.name}`) ?? [])].sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1))
-    const page = pageSorted(all, (r) => r.started, (r) => r.id, {
-      limit: q.limit,
-      after: q.after,
-      desc: true,
-      stored: 'asc',
-      match: (r) => !q.state || this.runState(r) === q.state,
-    })
+    const all = [
+      ...(this.runsByRepo.get(`${repo.owner}/${repo.name}`) ?? []),
+    ].sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1))
+    const page = pageSorted(
+      all,
+      (r) => r.started,
+      (r) => r.id,
+      {
+        limit: q.limit,
+        after: q.after,
+        desc: true,
+        stored: 'asc',
+        match: (r) => !q.state || this.runState(r) === q.state,
+      },
+    )
     return { items: page.items.map((r) => this.presentRun(r)), next: page.next }
   }
 
@@ -1317,44 +1599,87 @@ export class MemoryDomain {
 
   /** The run's own token, the person who started it, or an admin of the account may act on it. */
   private assertRunOwner(repo: RepoRec, r: RunRec, p: Principal) {
-    if (p.repos && !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase()))
-      throw apiError('forbidden', 'This token is not granted for this repository.')
+    if (
+      p.repos &&
+      !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase())
+    )
+      throw apiError(
+        'forbidden',
+        'This token is not granted for this repository.',
+      )
     if (p.tokenId === r.tokenId) return
     if (p.class === 'human' && r.handle === p.handle) return
     if (p.class === 'human') return this.assertAdmin(repo, p)
     throw apiError('forbidden', 'A run token can only control its own run.')
   }
 
-  async noteRun(owner: string, name: string, id: string, p: Principal, text: string, dry: boolean) {
+  async noteRun(
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    text: string,
+    dry: boolean,
+  ) {
     const repo = this.resolve(owner, name, p, 'read')
     const r = this.runRec(repo, id)
     this.assertRunOwner(repo, r, p)
-    if (this.runState(r) !== 'running') throw apiError('invalid_state', `Run ${id} is ${this.runState(r)}.`, { hint: 'Start another run.' })
-    if (dry) return this.presentRun({ ...r, notes: [...r.notes, { at: this.now(), text }] })
+    if (this.runState(r) !== 'running')
+      throw apiError('invalid_state', `Run ${id} is ${this.runState(r)}.`, {
+        hint: 'Start another run.',
+      })
+    if (dry)
+      return this.presentRun({
+        ...r,
+        notes: [...r.notes, { at: this.now(), text }],
+      })
     {
       r.notes.push({ at: this.now(), text })
-      if (r.notes.length > MemoryDomain.RUN_NOTES) r.notes.splice(0, r.notes.length - MemoryDomain.RUN_NOTES)
+      if (r.notes.length > MemoryDomain.RUN_NOTES)
+        r.notes.splice(0, r.notes.length - MemoryDomain.RUN_NOTES)
       r.version++
     }
     return this.presentRun(r)
   }
 
-  async endRun(owner: string, name: string, id: string, p: Principal, state: 'succeeded' | 'failed' | 'cancelled', summary: string | undefined, dry: boolean) {
+  async endRun(
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    state: 'succeeded' | 'failed' | 'cancelled',
+    summary: string | undefined,
+    dry: boolean,
+  ) {
     const repo = this.resolve(owner, name, p, 'read')
     const r = this.runRec(repo, id)
     this.assertRunOwner(repo, r, p)
     const now = this.runState(r)
     // Finishing twice with the same outcome is a no-op, so a retry is safe.
     if (now === state) return this.presentRun(r)
-    if (now !== 'running') throw apiError('invalid_state', `Run ${id} is already ${now}.`)
-    if (dry) return this.presentRun({ ...r, state, finished: this.now(), summary: summary ?? r.summary })
+    if (now !== 'running')
+      throw apiError('invalid_state', `Run ${id} is already ${now}.`)
+    if (dry)
+      return this.presentRun({
+        ...r,
+        state,
+        finished: this.now(),
+        summary: summary ?? r.summary,
+      })
     {
       r.state = state
       r.finished = this.now()
       if (summary !== undefined) r.summary = summary
       r.version++
       this.svc.auth.revoke(r.tokenId)
-      this.emit(repo, 'run.finished', this.asActor(p), { object: 'run', id, number: null }, ['state'], this.presentRun(r))
+      this.emit(
+        repo,
+        'run.finished',
+        this.asActor(p),
+        { object: 'run', id, number: null },
+        ['state'],
+        this.presentRun(r),
+      )
     }
     return this.presentRun(r)
   }
@@ -1374,24 +1699,38 @@ export class MemoryDomain {
       }
     }
     for (const [id, op] of this.operations)
-      if (op.finished !== null && op.finished < cutoff) this.operations.delete(id)
+      if (op.finished !== null && op.finished < cutoff)
+        this.operations.delete(id)
   }
 
   // ----- teams ------------------------------------------------------------
 
-  private orgFor(handle: string, p: Principal, need: 'member' | 'admin'): AccountRec {
+  private orgFor(
+    handle: string,
+    p: Principal,
+    need: 'member' | 'admin',
+  ): AccountRec {
     const acct = this.accounts.get(handle)
-    if (!acct || acct.kind !== 'organization') throw apiError('not_found', `No organization ${handle}.`)
+    if (!acct || acct.kind !== 'organization')
+      throw apiError('not_found', `No organization ${handle}.`)
     const role = acct.members.get(p.handle)
     if (!role) throw apiError('not_found', `No organization ${handle}.`)
     if (need === 'admin' && role !== 'owner' && role !== 'admin')
-      throw apiError('forbidden', `Only an owner or admin of ${handle} can change its teams.`, {
-        hint: 'GET /v1/accounts shows your role in each account.',
-      })
+      throw apiError(
+        'forbidden',
+        `Only an owner or admin of ${handle} can change its teams.`,
+        {
+          hint: 'GET /v1/accounts shows your role in each account.',
+        },
+      )
     if (p.repos)
-      throw apiError('forbidden', 'A token limited to repositories cannot read or change teams.', {
-        hint: 'Use a token that is not limited to repositories.',
-      })
+      throw apiError(
+        'forbidden',
+        'A token limited to repositories cannot read or change teams.',
+        {
+          hint: 'Use a token that is not limited to repositories.',
+        },
+      )
     return acct
   }
 
@@ -1410,7 +1749,9 @@ export class MemoryDomain {
       name: t.name,
       description: t.description,
       members: [...t.members].sort(),
-      repos: [...t.repos].map(([full_name, permission]) => ({ full_name, permission })).sort((a, b) => (a.full_name < b.full_name ? -1 : 1)),
+      repos: [...t.repos]
+        .map(([full_name, permission]) => ({ full_name, permission }))
+        .sort((a, b) => (a.full_name < b.full_name ? -1 : 1)),
       url: `${this.urls.api}/accounts/${t.org}/teams/${t.slug}`,
       created_at: iso(t.created),
       updated_at: iso(t.updated),
@@ -1420,7 +1761,10 @@ export class MemoryDomain {
 
   async listTeams(org: string, p: Principal) {
     this.orgFor(org, p, 'member')
-    return [...this.teams.values()].filter((t) => t.org === org).sort((a, b) => (a.slug < b.slug ? -1 : 1)).map((t) => this.presentTeam(t))
+    return [...this.teams.values()]
+      .filter((t) => t.org === org)
+      .sort((a, b) => (a.slug < b.slug ? -1 : 1))
+      .map((t) => this.presentTeam(t))
   }
 
   async getTeam(org: string, slug: string, p: Principal) {
@@ -1434,7 +1778,12 @@ export class MemoryDomain {
     return `${t.id}.${t.version}`
   }
 
-  async createTeam(org: string, p: Principal, input: { slug: string; name?: string; description?: string }, dry: boolean) {
+  async createTeam(
+    org: string,
+    p: Principal,
+    input: { slug: string; name?: string; description?: string },
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const key = `${org}/${input.slug}`
     const existing = this.teams.get(key)
@@ -1455,11 +1804,19 @@ export class MemoryDomain {
     return { team: this.presentTeam(t), created: true }
   }
 
-  async updateTeam(org: string, slug: string, p: Principal, body: { name?: string; description?: string }, ifMatch: string | null, dry: boolean) {
+  async updateTeam(
+    org: string,
+    slug: string,
+    p: Principal,
+    body: { name?: string; description?: string },
+    ifMatch: string | null,
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
     this.assertMatch(ifMatch, `${t.id}.${t.version}`, () => this.presentTeam(t))
-    const same = (body.name === undefined || body.name === t.name) &&
+    const same =
+      (body.name === undefined || body.name === t.name) &&
       (body.description === undefined || body.description === t.description)
     if (same) return this.presentTeam(t)
     if (!dry) {
@@ -1468,7 +1825,13 @@ export class MemoryDomain {
       t.updated = this.now()
       t.version++
     }
-    const shown = dry ? { ...t, name: body.name ?? t.name, description: body.description ?? t.description } : t
+    const shown = dry
+      ? {
+          ...t,
+          name: body.name ?? t.name,
+          description: body.description ?? t.description,
+        }
+      : t
     return this.presentTeam(shown)
   }
 
@@ -1488,13 +1851,22 @@ export class MemoryDomain {
     if (set?.size === 0) this.teamsOf.delete(handle)
   }
 
-  async setTeamMember(org: string, slug: string, login: string, p: Principal, dry: boolean) {
+  async setTeamMember(
+    org: string,
+    slug: string,
+    login: string,
+    p: Principal,
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
     const person = this.accounts.get(login)
-    if (!person || person.kind !== 'person') throw apiError('not_found', `No person ${login}.`)
-    if (t.members.size >= 500 && !t.members.has(login)) throw apiError('limit_reached', 'A team can have 500 members.')
-    if (dry) return this.presentTeam({ ...t, members: new Set([...t.members, login]) })
+    if (!person || person.kind !== 'person')
+      throw apiError('not_found', `No person ${login}.`)
+    if (t.members.size >= 500 && !t.members.has(login))
+      throw apiError('limit_reached', 'A team can have 500 members.')
+    if (dry)
+      return this.presentTeam({ ...t, members: new Set([...t.members, login]) })
     if (!t.members.has(login)) {
       t.members.add(login)
       let set = this.teamsOf.get(login)
@@ -1508,10 +1880,17 @@ export class MemoryDomain {
     return this.presentTeam(t)
   }
 
-  async removeTeamMember(org: string, slug: string, login: string, p: Principal, dry: boolean) {
+  async removeTeamMember(
+    org: string,
+    slug: string,
+    login: string,
+    p: Principal,
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
-    if (!t.members.has(login)) throw apiError('not_found', `${login} is not in ${slug}.`)
+    if (!t.members.has(login))
+      throw apiError('not_found', `${login} is not in ${slug}.`)
     if (dry) return
     t.members.delete(login)
     this.unindexMember(login, `${org}/${slug}`)
@@ -1521,13 +1900,29 @@ export class MemoryDomain {
     this.svc.search?.reset()
   }
 
-  async setTeamRepo(org: string, slug: string, owner: string, name: string, permission: 'read' | 'write', p: Principal, dry: boolean) {
+  async setTeamRepo(
+    org: string,
+    slug: string,
+    owner: string,
+    name: string,
+    permission: 'read' | 'write',
+    p: Principal,
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
     const repo = this.resolve(owner, name, p, 'read')
     // A team belongs to an organization and reaches only that organization's repositories.
-    if (repo.owner !== org) throw apiError('invalid_request', `${repo.owner}/${repo.name} is not in ${org}.`, { hint: 'A team can only be given repositories of its own organization.' })
-    if (t.repos.get(`${repo.owner}/${repo.name}`) === permission) return this.presentTeam(t)
+    if (repo.owner !== org)
+      throw apiError(
+        'invalid_request',
+        `${repo.owner}/${repo.name} is not in ${org}.`,
+        {
+          hint: 'A team can only be given repositories of its own organization.',
+        },
+      )
+    if (t.repos.get(`${repo.owner}/${repo.name}`) === permission)
+      return this.presentTeam(t)
     if (!dry) {
       t.repos.set(`${repo.owner}/${repo.name}`, permission)
       t.updated = this.now()
@@ -1536,16 +1931,28 @@ export class MemoryDomain {
       // Visibility changed, so cached search results may be stale.
       this.svc.search?.reset()
     }
-    if (dry) return this.presentTeam({ ...t, repos: new Map(t.repos).set(`${repo.owner}/${repo.name}`, permission) })
+    if (dry)
+      return this.presentTeam({
+        ...t,
+        repos: new Map(t.repos).set(`${repo.owner}/${repo.name}`, permission),
+      })
     return this.presentTeam(t)
   }
 
-  async removeTeamRepo(org: string, slug: string, owner: string, name: string, p: Principal, dry: boolean) {
+  async removeTeamRepo(
+    org: string,
+    slug: string,
+    owner: string,
+    name: string,
+    p: Principal,
+    dry: boolean,
+  ) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
     const repo = this.resolve(owner, name, p, 'read')
     const full = `${repo.owner}/${repo.name}`
-    if (!t.repos.has(full)) throw apiError('not_found', `${slug} has no access to ${full}.`)
+    if (!t.repos.has(full))
+      throw apiError('not_found', `${slug} has no access to ${full}.`)
     if (dry) return
     t.repos.delete(full)
     t.updated = this.now()
@@ -1559,27 +1966,43 @@ export class MemoryDomain {
     const acct = this.accounts.get(repo.owner)
     const role = repo.owner === p.handle ? 'owner' : acct?.members.get(p.handle)
     if (role !== 'owner' && role !== 'admin')
-      throw apiError('forbidden', `Only an owner or admin of ${repo.owner} can do this.`, {
-        hint: 'GET /v1/accounts shows your role in each account.',
-      })
+      throw apiError(
+        'forbidden',
+        `Only an owner or admin of ${repo.owner} can do this.`,
+        {
+          hint: 'GET /v1/accounts shows your role in each account.',
+        },
+      )
   }
 
   async updateRepo(
     owner: string,
     name: string,
     p: Principal,
-    body: { name?: string; description?: string; visibility?: 'public' | 'private'; default_branch?: string; maintainers?: Array<string> },
+    body: {
+      name?: string
+      description?: string
+      visibility?: 'public' | 'private'
+      default_branch?: string
+      maintainers?: Array<string>
+    },
     ifMatch: string | null,
     dry: boolean,
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     this.assertAdmin(repo, p)
-    this.assertMatch(ifMatch, `${repo.id}.${repo.version}`, () => this.presentRepo(repo))
+    this.assertMatch(ifMatch, `${repo.id}.${repo.version}`, () =>
+      this.presentRepo(repo),
+    )
     const renaming = body.name !== undefined && body.name !== repo.name
     if (renaming && p.repos)
-      throw apiError('forbidden', 'A token limited to repositories cannot rename one.', {
-        hint: 'Use a token that is not limited to repositories.',
-      })
+      throw apiError(
+        'forbidden',
+        'A token limited to repositories cannot rename one.',
+        {
+          hint: 'Use a token that is not limited to repositories.',
+        },
+      )
     if (renaming) {
       const target = `${repo.owner}/${body.name}`
       const taken = this.repos.get(target) ?? this.byLower(target.toLowerCase())
@@ -1589,23 +2012,47 @@ export class MemoryDomain {
         })
     }
     const nextMaintainers =
-      body.maintainers !== undefined ? [...new Set(body.maintainers)].sort() : undefined
+      body.maintainers !== undefined
+        ? [...new Set(body.maintainers)].sort()
+        : undefined
     const maintainersChanged =
       nextMaintainers !== undefined &&
-      JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify(nextMaintainers)
+      JSON.stringify([...repo.maintainers].sort()) !==
+        JSON.stringify(nextMaintainers)
     if (maintainersChanged && p.repos)
-      throw apiError('forbidden', 'A token limited to repositories cannot change maintainers.', {
-        hint: 'Use a token that is not limited to repositories.',
-      })
+      throw apiError(
+        'forbidden',
+        'A token limited to repositories cannot change maintainers.',
+        {
+          hint: 'Use a token that is not limited to repositories.',
+        },
+      )
     if (body.maintainers !== undefined) {
       if (body.maintainers.length === 0)
-        throw apiError('invalid_request', 'A repository needs at least one maintainer.', {
-          errors: [{ pointer: '/body/maintainers', code: 'empty', message: 'Name at least one person.' }],
-        })
+        throw apiError(
+          'invalid_request',
+          'A repository needs at least one maintainer.',
+          {
+            errors: [
+              {
+                pointer: '/body/maintainers',
+                code: 'empty',
+                message: 'Name at least one person.',
+              },
+            ],
+          },
+        )
       for (const h of body.maintainers)
-        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
-          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
-        })
+        if (this.accounts.get(h)?.kind !== 'person')
+          throw apiError('invalid_request', `${h} is not a person.`, {
+            errors: [
+              {
+                pointer: '/body/maintainers',
+                code: 'not_a_person',
+                message: `${h} is not a person.`,
+              },
+            ],
+          })
     }
     if (dry)
       return this.presentRepo({
@@ -1614,11 +2061,16 @@ export class MemoryDomain {
         description: body.description ?? repo.description,
         visibility: body.visibility ?? repo.visibility,
         defaultBranch: body.default_branch ?? repo.defaultBranch,
-        maintainers: nextMaintainers ? new Set(nextMaintainers) : repo.maintainers,
+        maintainers: nextMaintainers
+          ? new Set(nextMaintainers)
+          : repo.maintainers,
       })
     const from = `${repo.owner}/${repo.name}`
     const changed: Array<string> = []
-    if (body.description !== undefined && body.description !== repo.description) {
+    if (
+      body.description !== undefined &&
+      body.description !== repo.description
+    ) {
       repo.description = body.description
       changed.push('description')
     }
@@ -1626,12 +2078,17 @@ export class MemoryDomain {
       repo.visibility = body.visibility
       changed.push('visibility')
     }
-    if (body.default_branch !== undefined && body.default_branch !== repo.defaultBranch) {
+    if (
+      body.default_branch !== undefined &&
+      body.default_branch !== repo.defaultBranch
+    ) {
       repo.defaultBranch = body.default_branch
       changed.push('default_branch')
     }
     if (maintainersChanged && nextMaintainers) {
-      const removed = [...repo.maintainers].filter((h) => !nextMaintainers.includes(h))
+      const removed = [...repo.maintainers].filter(
+        (h) => !nextMaintainers.includes(h),
+      )
       for (const h of removed)
         if (repo.maintainerGrants.delete(h)) repo.collaborators.delete(h)
       for (const h of nextMaintainers)
@@ -1652,11 +2109,13 @@ export class MemoryDomain {
       this.repos.set(to, repo)
       this.svc.auth.renameRepo(from, to)
       this.svc.git?.setRepo?.(to, repo.storeId)
-      if (from.toLowerCase() !== to.toLowerCase()) this.svc.git?.dropRepo?.(from)
+      if (from.toLowerCase() !== to.toLowerCase())
+        this.svc.git?.dropRepo?.(from)
       // The old address keeps working: it answers 308 with the new one. Any
       // alias that pointed at the old name follows the chain.
       for (const [key, value] of this.aliases)
-        if (value === from || value.toLowerCase() === from.toLowerCase()) this.aliases.set(key, to)
+        if (value === from || value.toLowerCase() === from.toLowerCase())
+          this.aliases.set(key, to)
       this.aliases.set(from.toLowerCase(), to)
       this.aliases.delete(to.toLowerCase())
       this.svc.hooks?.rename(from, to)
@@ -1678,30 +2137,71 @@ export class MemoryDomain {
     }
     if (changed.length) {
       repo.version++
-      if (changed.includes('visibility') || changed.includes('name')) this.accessRevision++
+      if (changed.includes('visibility') || changed.includes('name'))
+        this.accessRevision++
       // Search keeps the repository's name, description and visibility in every document.
-      if (renaming || changed.includes('visibility') || changed.includes('description')) this.svc.search?.reset()
-      this.emit(repo, 'repo.updated', this.asActor(p), { object: 'repo', id: repo.id, number: null }, changed, this.presentRepo(repo))
+      if (
+        renaming ||
+        changed.includes('visibility') ||
+        changed.includes('description')
+      )
+        this.svc.search?.reset()
+      this.emit(
+        repo,
+        'repo.updated',
+        this.asActor(p),
+        { object: 'repo', id: repo.id, number: null },
+        changed,
+        this.presentRepo(repo),
+      )
     }
     return this.presentRepo(repo)
   }
 
-  async deleteRepo(owner: string, name: string, p: Principal, confirm: string | undefined, dry: boolean) {
+  async deleteRepo(
+    owner: string,
+    name: string,
+    p: Principal,
+    confirm: string | undefined,
+    dry: boolean,
+  ) {
     const repo = this.resolve(owner, name, p, 'write')
     this.assertAdmin(repo, p)
     const full = `${repo.owner}/${repo.name}`
-    if (p.repos) throw apiError('forbidden', 'A token limited to repositories cannot delete one.')
+    if (p.repos)
+      throw apiError(
+        'forbidden',
+        'A token limited to repositories cannot delete one.',
+      )
     if (confirm !== full)
-      throw apiError('invalid_request', `Deleting ${full} cannot be undone. Pass confirm=${full} to do it.`, {
-        errors: [{ pointer: '/query/confirm', code: 'confirmation_required', message: `Send confirm=${full}.` }],
-        hint: 'Check you are deleting the right repository, then repeat the request with ?confirm=owner/name.',
-      })
+      throw apiError(
+        'invalid_request',
+        `Deleting ${full} cannot be undone. Pass confirm=${full} to do it.`,
+        {
+          errors: [
+            {
+              pointer: '/query/confirm',
+              code: 'confirmation_required',
+              message: `Send confirm=${full}.`,
+            },
+          ],
+          hint: 'Check you are deleting the right repository, then repeat the request with ?confirm=owner/name.',
+        },
+      )
     if (dry) return { deleted: false, full }
     // The event is written first, while the repository still exists to be named.
-    this.emit(repo, 'repo.deleted', this.asActor(p), { object: 'repo', id: repo.id, number: null }, ['deleted'], null)
+    this.emit(
+      repo,
+      'repo.deleted',
+      this.asActor(p),
+      { object: 'repo', id: repo.id, number: null },
+      ['deleted'],
+      null,
+    )
     this.repos.delete(full)
     this.aliases.delete(full.toLowerCase())
-    for (const [key, value] of this.aliases) if (value.toLowerCase() === full.toLowerCase()) this.aliases.delete(key)
+    for (const [key, value] of this.aliases)
+      if (value.toLowerCase() === full.toLowerCase()) this.aliases.delete(key)
     this.svc.auth.dropRepo(full)
     this.svc.uploads.dropRepo(repo.id)
     this.svc.git?.dropRepo?.(full)
@@ -1735,16 +2235,27 @@ export class MemoryDomain {
   }
 
   /** Read access that requires a real relationship, not public visibility. */
-  async repoAccessStrict(owner: string, name: string, p: Viewer, need: 'read' | 'write' = 'read') {
+  async repoAccessStrict(
+    owner: string,
+    name: string,
+    p: Viewer,
+    need: 'read' | 'write' = 'read',
+  ) {
     const r = this.resolve(owner, name, p, need)
-    if (!this.hasRepoGrant(r, p)) throw apiError('not_found', `No repository ${owner}/${name}.`, {
-      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
-    })
+    if (!this.hasRepoGrant(r, p))
+      throw apiError('not_found', `No repository ${owner}/${name}.`, {
+        hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+      })
     return `${r.owner}/${r.name}`
   }
 
   /** Checks the caller may read or write a repository, and names it `owner/name`. */
-  async repoAccess(owner: string, name: string, p: Viewer, need: 'read' | 'write') {
+  async repoAccess(
+    owner: string,
+    name: string,
+    p: Viewer,
+    need: 'read' | 'write',
+  ) {
     const r = this.resolve(owner, name, p, need)
     return `${r.owner}/${r.name}`
   }
@@ -1770,7 +2281,11 @@ export class MemoryDomain {
       handle: a.handle,
       name: a.name,
       kind: a.kind,
-      role: !p ? null : a.handle === p.handle ? 'owner' : (a.members.get(p.handle) ?? null),
+      role: !p
+        ? null
+        : a.handle === p.handle
+          ? 'owner'
+          : (a.members.get(p.handle) ?? null),
       url: `${this.urls.api}/accounts/${a.handle}`,
       html_url: `${this.urls.html}/${a.handle}`,
       created_at: iso(a.created),
@@ -1793,8 +2308,16 @@ export class MemoryDomain {
     const all = [...this.repos.values()]
       .filter((r) => this.canRead(r, p) && (!q.owner || r.owner === q.owner))
       .sort((a, b) => b.created - a.created || (a.id < b.id ? 1 : -1))
-    const page = pageSorted(all, (r) => r.created, recId, { limit: q.limit, after: q.after, desc: true, stored: 'desc' })
-    return { items: page.items.map((r) => this.presentRepo(r)), next: page.next }
+    const page = pageSorted(all, (r) => r.created, recId, {
+      limit: q.limit,
+      after: q.after,
+      desc: true,
+      stored: 'desc',
+    })
+    return {
+      items: page.items.map((r) => this.presentRepo(r)),
+      next: page.next,
+    }
   }
 
   async getRepo(owner: string, name: string, p: Viewer) {
@@ -1833,9 +2356,10 @@ export class MemoryDomain {
   private repoForSync(full: string, p: Viewer) {
     const id = this.repoIdForHistory(full)
     const r = id ? this.reposById.get(id) : null
-    if (!r || !this.canRead(r, p)) throw apiError('not_found', `No repository ${full}.`, {
-      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
-    })
+    if (!r || !this.canRead(r, p))
+      throw apiError('not_found', `No repository ${full}.`, {
+        hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+      })
     return r
   }
 
@@ -1860,8 +2384,13 @@ export class MemoryDomain {
 
   async numberRef(owner: string, name: string, n: number, p: Viewer) {
     const r = this.resolve(owner, name, p)
-    const type: 'change' | 'issue' | null = r.changes.has(n) ? 'change' : r.issues.has(n) ? 'issue' : null
-    if (!type) throw apiError('not_found', `Nothing numbered #${n} in ${owner}/${name}.`)
+    const type: 'change' | 'issue' | null = r.changes.has(n)
+      ? 'change'
+      : r.issues.has(n)
+        ? 'issue'
+        : null
+    if (!type)
+      throw apiError('not_found', `Nothing numbered #${n} in ${owner}/${name}.`)
     return {
       object: 'number_ref' as const,
       number: n,
@@ -1870,19 +2399,31 @@ export class MemoryDomain {
     }
   }
 
-  async context(owner: string, name: string, p: Viewer): Promise<z.infer<typeof S.Context>> {
+  async context(
+    owner: string,
+    name: string,
+    p: Viewer,
+  ): Promise<z.infer<typeof S.Context>> {
     const r = this.resolve(owner, name, p)
     const canPull = !p || p.scopes.has('pulls:read')
     const canIssue = !p || p.scopes.has('issues:read')
     const open: Array<ChangeRec> = []
     if (canPull)
-      for (let k = r.byUpdated.items.length - 1; k >= 0 && open.length < 50; k--) {
+      for (
+        let k = r.byUpdated.items.length - 1;
+        k >= 0 && open.length < 50;
+        k--
+      ) {
         const c = r.byUpdated.items[k]
         if (c.state === 'open' || c.state === 'draft') open.push(c)
       }
     const issues: Array<IssueRec> = []
     if (canIssue)
-      for (let k = r.issuesByNumber.items.length - 1; k >= 0 && issues.length < 50; k--) {
+      for (
+        let k = r.issuesByNumber.items.length - 1;
+        k >= 0 && issues.length < 50;
+        k--
+      ) {
         const i = r.issuesByNumber.items[k]
         if (i.state === 'open') issues.push(i)
       }
@@ -1909,11 +2450,16 @@ export class MemoryDomain {
         labels: i.labels,
       })),
       policy: { rules: 4, mode: 'enforce' },
-      env: p?.scopes.has('secrets:schema') && this.hasRepoGrant(r, p)
-        ? this.svc.extras
-          ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({ name: v.name, kind: v.kind, set: [...v.set] }))
-          : r.env
-        : [],
+      env:
+        p?.scopes.has('secrets:schema') && this.hasRepoGrant(r, p)
+          ? this.svc.extras
+            ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({
+                name: v.name,
+                kind: v.kind,
+                set: [...v.set],
+              }))
+            : r.env
+          : [],
       cursor: `e_${r.id}_${this.events.head}`,
     }
   }
@@ -1926,7 +2472,11 @@ export class MemoryDomain {
     if (n !== undefined) c = repo.changes.get(n)
     else if (ref.startsWith('chg_'))
       for (const x of repo.changes.values()) if (x.id === ref) c = x
-    if (!c) throw apiError('not_found', `No change ${ref} in ${repo.owner}/${repo.name}.`)
+    if (!c)
+      throw apiError(
+        'not_found',
+        `No change ${ref} in ${repo.owner}/${repo.name}.`,
+      )
     return c
   }
 
@@ -1958,7 +2508,9 @@ export class MemoryDomain {
       desc: q.desc,
       match: (c) =>
         (everything ||
-          (states ? states.includes(c.state) : c.state === 'open' || c.state === 'draft')) &&
+          (states
+            ? states.includes(c.state)
+            : c.state === 'open' || c.state === 'draft')) &&
         (!q.author || c.author.handle === q.author) &&
         (!q.branch || c.branch === q.branch) &&
         (!q.label || c.labels.includes(q.label)),
@@ -1995,7 +2547,11 @@ export class MemoryDomain {
     return this.changeKey(repo, c, expand)
   }
 
-  private changeKey(repo: RepoRec, c: ChangeRec, expand: ReadonlyArray<string> = []) {
+  private changeKey(
+    repo: RepoRec,
+    c: ChangeRec,
+    expand: ReadonlyArray<string> = [],
+  ) {
     return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}.${repo.openChangeByBranch.get(c.branch)?.id ?? ''}.${repo.version}.${this.accessRevision}${expand.includes('repo') ? `.${repo.rev}` : ''}`
   }
 
@@ -2026,32 +2582,53 @@ export class MemoryDomain {
     const existing = repo.openChangeByBranch.get(body.branch)
     if (existing) {
       if (this.head(existing).sha === sha)
-        return { change: this.presentChange(repo, existing, p), outcome: 'unchanged' as const }
+        return {
+          change: this.presentChange(repo, existing, p),
+          outcome: 'unchanged' as const,
+        }
       if (body.dry_run) {
         const prev = this.head(existing)
         const preview = {
           ...existing,
-          patchSets: [...existing.patchSets, {
-            ...prev,
-            n: prev.n + 1,
-            sha,
-            tree: sha.slice(0, 7),
-            kind: 'update' as const,
-            note: 'Updated from branch',
-            author: by,
-            created: this.now(),
-            files: Object.fromEntries(Object.entries(prev.files).map(([path, f]) => [path, { ...f, hash: `${f.hash.slice(0, 4)}${prev.n + 1}` }])),
-          }],
+          patchSets: [
+            ...existing.patchSets,
+            {
+              ...prev,
+              n: prev.n + 1,
+              sha,
+              tree: sha.slice(0, 7),
+              kind: 'update' as const,
+              note: 'Updated from branch',
+              author: by,
+              created: this.now(),
+              files: Object.fromEntries(
+                Object.entries(prev.files).map(([path, f]) => [
+                  path,
+                  { ...f, hash: `${f.hash.slice(0, 4)}${prev.n + 1}` },
+                ]),
+              ),
+            },
+          ],
           reviews: existing.reviews.map((r) => ({ ...r, carries: false })),
           latest: undefined,
           policyMemo: undefined,
           updated: Math.max(this.now(), existing.updated + 1),
           version: existing.version + 1,
         }
-        return { change: this.presentChange(repo, preview, p), outcome: 'patch_set_added' as const }
+        return {
+          change: this.presentChange(repo, preview, p),
+          outcome: 'patch_set_added' as const,
+        }
       }
-      this.pushPatchSet(repo, existing, by, { sha, kind: 'update', note: 'Updated from branch' })
-      return { change: this.presentChange(repo, existing, p), outcome: 'patch_set_added' as const }
+      this.pushPatchSet(repo, existing, by, {
+        sha,
+        kind: 'update',
+        note: 'Updated from branch',
+      })
+      return {
+        change: this.presentChange(repo, existing, p),
+        outcome: 'patch_set_added' as const,
+      }
     }
     const at = this.now()
     const number = repo.nextNumber
@@ -2083,14 +2660,27 @@ export class MemoryDomain {
       note: 'Initial version',
       author: by,
       created: at,
-      files: { [`src/${body.branch.replace(/\W+/g, '_')}.rs`]: { hash: sha.slice(0, 6), add: 10, del: 1 } },
+      files: {
+        [`src/${body.branch.replace(/\W+/g, '_')}.rs`]: {
+          hash: sha.slice(0, 6),
+          add: 10,
+          del: 1,
+        },
+      },
       kind: 'initial',
     })
-    if (body.dry_run) return { change: this.presentChange(repo, c, p), outcome: 'created' as const }
+    if (body.dry_run)
+      return {
+        change: this.presentChange(repo, c, p),
+        outcome: 'created' as const,
+      }
     repo.nextNumber++
     this.seedChange(repo, c)
     this.changeEvent(repo, c, 'change.opened', by, ['state'])
-    return { change: this.presentChange(repo, c, p), outcome: 'created' as const }
+    return {
+      change: this.presentChange(repo, c, p),
+      outcome: 'created' as const,
+    }
   }
 
   private shaCounter = 0
@@ -2109,7 +2699,8 @@ export class MemoryDomain {
     ps: { sha: string; kind: 'update' | 'rebase'; note: string; tree?: string },
   ) {
     const prev = this.head(c)
-    const tree = ps.tree ?? (ps.kind === 'rebase' ? prev.tree : ps.sha.slice(0, 7))
+    const tree =
+      ps.tree ?? (ps.kind === 'rebase' ? prev.tree : ps.sha.slice(0, 7))
     this.touchChange(repo, c, () => {
       c.patchSets.push({
         n: prev.n + 1,
@@ -2132,7 +2723,11 @@ export class MemoryDomain {
       // An approval follows a rewrite only when the code did not change.
       if (ps.kind === 'update') for (const r of c.reviews) r.carries = false
     })
-    this.changeEvent(repo, c, 'change.updated', by, ['head.patch_set', 'policy.state', 'checks.state'])
+    this.changeEvent(repo, c, 'change.updated', by, [
+      'head.patch_set',
+      'policy.state',
+      'checks.state',
+    ])
   }
 
   async updateChange(
@@ -2146,10 +2741,14 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
-    this.assertMatch(ifMatch, `${c.id}.${c.version}`, () => this.presentChange(repo, c, p))
-    const same = (body.title === undefined || body.title === c.title) &&
+    this.assertMatch(ifMatch, `${c.id}.${c.version}`, () =>
+      this.presentChange(repo, c, p),
+    )
+    const same =
+      (body.title === undefined || body.title === c.title) &&
       (body.description === undefined || body.description === c.description) &&
-      (body.labels === undefined || JSON.stringify(body.labels) === JSON.stringify(c.labels))
+      (body.labels === undefined ||
+        JSON.stringify(body.labels) === JSON.stringify(c.labels))
     if (same) return this.presentChange(repo, c, p)
     if (!dry) {
       const by = this.asActor(p!)
@@ -2162,13 +2761,22 @@ export class MemoryDomain {
       this.changeEvent(repo, c, 'change.updated', by, changed)
     }
     const shown = dry
-      ? { ...c, title: body.title ?? c.title, description: body.description ?? c.description, labels: body.labels ?? c.labels }
+      ? {
+          ...c,
+          title: body.title ?? c.title,
+          description: body.description ?? c.description,
+          labels: body.labels ?? c.labels,
+        }
       : c
     return this.presentChange(repo, shown, p)
   }
 
   /** Public entry for operations that keep their own versioned records. */
-  assertVersion(ifMatch: string | null, version: string, current: () => unknown) {
+  assertVersion(
+    ifMatch: string | null,
+    version: string,
+    current: () => unknown,
+  ) {
     this.assertMatch(ifMatch, version, current)
   }
 
@@ -2179,12 +2787,26 @@ export class MemoryDomain {
     current: () => unknown,
   ) {
     if (ifMatch === null) return
-    const tags = ifMatch.split(',').map((t) => t.trim().replace(/^W\//, '').replace(/"/g, ''))
-    if (tags.includes('*') || tags.some((t) => t === version || t.startsWith(`${version}-`) || t.startsWith(`${version}.`)))
+    const tags = ifMatch
+      .split(',')
+      .map((t) => t.trim().replace(/^W\//, '').replace(/"/g, ''))
+    if (
+      tags.includes('*') ||
+      tags.some(
+        (t) =>
+          t === version ||
+          t.startsWith(`${version}-`) ||
+          t.startsWith(`${version}.`),
+      )
+    )
       return
-    throw apiError('version_mismatch', 'The object changed since you read it.', {
-      extra: { current: current() },
-    })
+    throw apiError(
+      'version_mismatch',
+      'The object changed since you read it.',
+      {
+        extra: { current: current() },
+      },
+    )
   }
 
   async listPatchSets(owner: string, name: string, ref: string, p: Viewer) {
@@ -2212,11 +2834,18 @@ export class MemoryDomain {
     }
   }
 
-  async getPatchSet(owner: string, name: string, ref: string, n: number, p: Viewer) {
+  async getPatchSet(
+    owner: string,
+    name: string,
+    ref: string,
+    n: number,
+    p: Viewer,
+  ) {
     const repo = this.resolve(owner, name, p)
     const c = this.getChangeRec(repo, ref)
     const ps = c.patchSets[n - 1]
-    if (!ps) throw apiError('not_found', `Change #${c.number} has no patch set ${n}.`)
+    if (!ps)
+      throw apiError('not_found', `Change #${c.number} has no patch set ${n}.`)
     return this.presentPatchSet(repo, c, ps)
   }
 
@@ -2247,10 +2876,10 @@ export class MemoryDomain {
       return this.presentPatchSet(repo, c, preview)
     }
     this.pushPatchSet(repo, c, this.asActor(p!), {
-        sha: body.sha,
-        kind: body.kind,
-        note: body.note ?? (body.kind === 'rebase' ? 'Rebased' : 'Updated'),
-      })
+      sha: body.sha,
+      kind: body.kind,
+      note: body.note ?? (body.kind === 'rebase' ? 'Rebased' : 'Updated'),
+    })
     return this.presentPatchSet(repo, c, this.head(c))
   }
 
@@ -2267,10 +2896,16 @@ export class MemoryDomain {
     const a = c.patchSets[from - 1]
     const b = c.patchSets[to - 1]
     if (!a || !b)
-      throw apiError('not_found', `Change #${c.number} has ${c.patchSets.length} patch sets.`)
+      throw apiError(
+        'not_found',
+        `Change #${c.number} has ${c.patchSets.length} patch sets.`,
+      )
     const files: z.infer<typeof S.PatchSetComparison>['files'] = []
     let unchanged = 0
-    for (const path of new Set([...Object.keys(a.files), ...Object.keys(b.files)])) {
+    for (const path of new Set([
+      ...Object.keys(a.files),
+      ...Object.keys(b.files),
+    ])) {
       const x = a.files[path]
       const y = b.files[path]
       if (x && y && x.hash === y.hash) unchanged++
@@ -2278,8 +2913,10 @@ export class MemoryDomain {
         files.push({
           path,
           status: !x ? 'added' : !y ? 'removed' : 'modified',
-          additions: Math.max(0, (y?.add ?? 0) - (x?.add ?? 0)) || (y && !x ? y.add : 0),
-          deletions: Math.max(0, (y?.del ?? 0) - (x?.del ?? 0)) || (x && !y ? x.del : 0),
+          additions:
+            Math.max(0, (y?.add ?? 0) - (x?.add ?? 0)) || (y && !x ? y.add : 0),
+          deletions:
+            Math.max(0, (y?.del ?? 0) - (x?.del ?? 0)) || (x && !y ? x.del : 0),
         })
     }
     return {
@@ -2313,9 +2950,19 @@ export class MemoryDomain {
       )
     const patchSet = body.patch_set ?? this.head(c).n
     if (patchSet < 1 || patchSet > c.patchSets.length)
-      throw apiError('invalid_request', `Change #${c.number} has no patch set ${patchSet}.`, {
-        errors: [{ pointer: '/body/patch_set', code: 'out_of_range', message: `1 to ${c.patchSets.length}` }],
-      })
+      throw apiError(
+        'invalid_request',
+        `Change #${c.number} has no patch set ${patchSet}.`,
+        {
+          errors: [
+            {
+              pointer: '/body/patch_set',
+              code: 'out_of_range',
+              message: `1 to ${c.patchSets.length}`,
+            },
+          ],
+        },
+      )
     const review: ReviewRec = {
       id: newId('review', this.now()),
       actor: by,
@@ -2327,7 +2974,10 @@ export class MemoryDomain {
     }
     if (!dry) {
       this.touchChange(repo, c, () => c.reviews.push(review))
-      this.changeEvent(repo, c, 'change.reviewed', by, ['reviewers', 'policy.state'])
+      this.changeEvent(repo, c, 'change.reviewed', by, [
+        'reviewers',
+        'policy.state',
+      ])
     }
     return {
       object: 'review' as const,
@@ -2367,20 +3017,33 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
-    const f = c.findings.find((x) => x.id === findingId || x.label === findingId)
-    if (!f) throw apiError('not_found', `No finding ${findingId} on #${c.number}.`)
+    const f = c.findings.find(
+      (x) => x.id === findingId || x.label === findingId,
+    )
+    if (!f)
+      throw apiError('not_found', `No finding ${findingId} on #${c.number}.`)
     if (to === 'dismissed' && !reason)
       throw apiError('invalid_request', 'Dismissing needs a reason.', {
-        errors: [{ pointer: '/body/reason', code: 'required', message: 'Say why it is dismissed.' }],
+        errors: [
+          {
+            pointer: '/body/reason',
+            code: 'required',
+            message: 'Say why it is dismissed.',
+          },
+        ],
       })
     if (!dry && f.state !== to) {
       this.touchChange(repo, c, () => {
         f.state = to
         f.reason = reason
       })
-      this.changeEvent(repo, c, 'finding.resolved', this.asActor(p!), ['findings', 'policy.state'])
+      this.changeEvent(repo, c, 'finding.resolved', this.asActor(p!), [
+        'findings',
+        'policy.state',
+      ])
     }
-    if (dry && f.state !== to) return this.presentFinding(repo, c, { ...f, state: to, reason })
+    if (dry && f.state !== to)
+      return this.presentFinding(repo, c, { ...f, state: to, reason })
     return this.presentFinding(repo, c, f)
   }
 
@@ -2400,7 +3063,9 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
-    const found = c.checks.find((k) => k.key === body.key && k.tree === body.tree)
+    const found = c.checks.find(
+      (k) => k.key === body.key && k.tree === body.tree,
+    )
     let outcome: 'created' | 'updated' | 'unchanged' = 'created'
     let rec = found
     if (found) {
@@ -2438,18 +3103,24 @@ export class MemoryDomain {
         ['checks', 'policy.state'],
       )
     }
-    const out = dry && found
-      ? { ...found, state: body.state, detailsUrl: body.details_url ?? found.detailsUrl, updated: this.now() }
-      : rec ?? {
-          id: newId('check', this.now()),
-          key: body.key,
-          name: body.name ?? body.key,
-          state: body.state,
-          tree: body.tree,
-          detailsUrl: body.details_url ?? null,
-          created: this.now(),
-          updated: this.now(),
-        }
+    const out =
+      dry && found
+        ? {
+            ...found,
+            state: body.state,
+            detailsUrl: body.details_url ?? found.detailsUrl,
+            updated: this.now(),
+          }
+        : (rec ?? {
+            id: newId('check', this.now()),
+            key: body.key,
+            name: body.name ?? body.key,
+            state: body.state,
+            tree: body.tree,
+            detailsUrl: body.details_url ?? null,
+            created: this.now(),
+            updated: this.now(),
+          })
     return { check: this.presentCheck(out), outcome }
   }
 
@@ -2471,7 +3142,8 @@ export class MemoryDomain {
     const reqs = this.evaluate(repo, c, assume)
     const assumed: Array<string> = []
     for (const h of assume?.approve ?? []) assumed.push(`approve:${h}`)
-    for (const [k, v] of Object.entries(assume?.checks ?? {})) assumed.push(`check:${k}=${v}`)
+    for (const [k, v] of Object.entries(assume?.checks ?? {}))
+      assumed.push(`check:${k}=${v}`)
     for (const l of assume?.resolve ?? []) assumed.push(`resolve:${l}`)
     return {
       object: 'policy_evaluation',
@@ -2496,7 +3168,10 @@ export class MemoryDomain {
     const c = this.getChangeRec(repo, ref)
     if (!p!.scopes.has('pulls:write'))
       throw apiError('insufficient_scope', 'This needs pulls:write.', {
-        extra: { required_scopes: ['pulls:write'], token_scopes: [...p!.scopes] },
+        extra: {
+          required_scopes: ['pulls:write'],
+          token_scopes: [...p!.scopes],
+        },
       })
     const from: Record<typeof action, Array<ChangeRec['state']>> = {
       ready: ['draft'],
@@ -2504,19 +3179,26 @@ export class MemoryDomain {
       restore: ['abandoned'],
     }
     if (!from[action].includes(c.state))
-      throw apiError('invalid_state', `Change #${c.number} is ${c.state}; it cannot be ${action === 'ready' ? 'marked ready' : action === 'abandon' ? 'abandoned' : 'restored'}.`)
+      throw apiError(
+        'invalid_state',
+        `Change #${c.number} is ${c.state}; it cannot be ${action === 'ready' ? 'marked ready' : action === 'abandon' ? 'abandoned' : 'restored'}.`,
+      )
     const next = action === 'abandon' ? 'abandoned' : 'open'
     if (action === 'restore') {
       const branchOwner = repo.openChangeByBranch.get(c.branch)
       if (branchOwner && branchOwner !== c)
-        throw apiError('invalid_state', `#${branchOwner.number} already owns branch ${c.branch}.`, {
-          hint: 'Land or abandon that change before restoring this one.',
-        })
+        throw apiError(
+          'invalid_state',
+          `#${branchOwner.number} already owns branch ${c.branch}.`,
+          {
+            hint: 'Land or abandon that change before restoring this one.',
+          },
+        )
     }
     if (dry) return this.presentChange(repo, { ...c, state: next }, p)
     this.touchChange(repo, c, () => {
-        c.state = next
-      })
+      c.state = next
+    })
     this.changeEvent(
       repo,
       c,
@@ -2540,14 +3222,27 @@ export class MemoryDomain {
     const c = this.getChangeRec(repo, ref)
     this.checkLandable(repo, c, p!, body.expected_tree)
     if (!dry) this.doLand(repo, c, this.asActor(p!))
-    else return this.presentChange(repo, { ...c, state: 'landed', landed: this.now() }, p)
+    else
+      return this.presentChange(
+        repo,
+        { ...c, state: 'landed', landed: this.now() },
+        p,
+      )
     return this.presentChange(repo, c, p)
   }
 
-  private checkLandable(repo: RepoRec, c: ChangeRec, p: Principal, expectedTree: string) {
+  private checkLandable(
+    repo: RepoRec,
+    c: ChangeRec,
+    p: Principal,
+    expectedTree: string,
+  ) {
     if (!p.scopes.has('pulls:merge'))
       throw apiError('insufficient_scope', 'Landing needs pulls:merge.', {
-        extra: { required_scopes: ['pulls:merge'], token_scopes: [...p.scopes] },
+        extra: {
+          required_scopes: ['pulls:merge'],
+          token_scopes: [...p.scopes],
+        },
       })
     if (c.state !== 'open')
       throw apiError(
@@ -2558,14 +3253,24 @@ export class MemoryDomain {
       )
     const head = this.head(c)
     if (head.tree !== expectedTree)
-      throw apiError('stale_head', `#${c.number} is now at ${head.tree}, not ${expectedTree}.`, {
-        extra: { current: { patch_set: head.n, tree: head.tree, sha: head.sha } },
-      })
+      throw apiError(
+        'stale_head',
+        `#${c.number} is now at ${head.tree}, not ${expectedTree}.`,
+        {
+          extra: {
+            current: { patch_set: head.n, tree: head.tree, sha: head.sha },
+          },
+        },
+      )
     const parent = this.parentOf(repo, c)
     if (parent && parent.state !== 'landed')
-      throw apiError('parent_not_landed', `#${parent.number} below #${c.number} has not landed.`, {
-        extra: { parent: parent.number },
-      })
+      throw apiError(
+        'parent_not_landed',
+        `#${parent.number} below #${c.number} has not landed.`,
+        {
+          extra: { parent: parent.number },
+        },
+      )
     const reqs = this.evaluate(repo, c)
     const bad = reqs.filter((r) => r.state === 'fail' || r.state === 'pending')
     if (bad.length)
@@ -2615,8 +3320,11 @@ export class MemoryDomain {
     const members = repo.stacks.get(stackId)
     if (!members) throw apiError('not_found', `No stack ${stackId}.`)
     const by = this.asActor(p!)
-    const open = members.map((n) => repo.changes.get(n)!).filter((c) => c.state === 'open')
-    if (open.length === 0) throw apiError('invalid_state', 'Nothing in this stack is open.')
+    const open = members
+      .map((n) => repo.changes.get(n)!)
+      .filter((c) => c.state === 'open')
+    if (open.length === 0)
+      throw apiError('invalid_state', 'Nothing in this stack is open.')
     // A draft or abandoned member between two open members would make the
     // operation fail after the ones below it already landed.
     const firstAt = members.indexOf(open[0].number)
@@ -2624,27 +3332,43 @@ export class MemoryDomain {
     for (const n of members.slice(firstAt, lastAt + 1)) {
       const c = repo.changes.get(n)!
       if (c.state !== 'open' && c.state !== 'landed')
-        throw apiError('invalid_state', `#${c.number} in this stack is ${c.state}.`, {
-          hint: 'Every change between the open ones must be open or already landed.',
-        })
+        throw apiError(
+          'invalid_state',
+          `#${c.number} in this stack is ${c.state}.`,
+          {
+            hint: 'Every change between the open ones must be open or already landed.',
+          },
+        )
     }
     // Check the first now so an obvious refusal is a plain error, not an operation.
     const first = open[0]
     const trees = body.expected_trees
-    const missing = open.filter((c) => !trees[String(c.number)]).map((c) => c.number)
+    const missing = open
+      .filter((c) => !trees[String(c.number)])
+      .map((c) => c.number)
     if (missing.length)
-      throw apiError('invalid_request', `expected_trees is missing ${missing.map((n) => `#${n}`).join(', ')}.`, {
-        hint: 'Send the tree you checked for every open change in the stack.',
-      })
+      throw apiError(
+        'invalid_request',
+        `expected_trees is missing ${missing.map((n) => `#${n}`).join(', ')}.`,
+        {
+          hint: 'Send the tree you checked for every open change in the stack.',
+        },
+      )
     // Every open member must be preflighted against the tree the caller checked,
     // so a later stale member cannot fail after earlier ones have already landed.
     for (const c of open) {
       const head = this.head(c)
       const expected = trees[String(c.number)]
       if (head.tree !== expected)
-        throw apiError('stale_head', `#${c.number} is now at ${head.tree}, not ${expected}.`, {
-          extra: { current: { patch_set: head.n, tree: head.tree, sha: head.sha } },
-        })
+        throw apiError(
+          'stale_head',
+          `#${c.number} is now at ${head.tree}, not ${expected}.`,
+          {
+            extra: {
+              current: { patch_set: head.n, tree: head.tree, sha: head.sha },
+            },
+          },
+        )
     }
     this.checkLandable(repo, first, p!, trees[String(first.number)])
     const op: OperationRec = {
@@ -2666,8 +3390,19 @@ export class MemoryDomain {
       if (i >= open.length) {
         op.state = 'succeeded'
         op.finished = this.now()
-        op.result = { object: 'stack', id: stackId, url: `${this.repoUrl(repo)}/stacks/${stackId}` }
-        this.emit(repo, 'operation.finished', by, { object: 'operation', id: op.id, number: null }, ['state'], null)
+        op.result = {
+          object: 'stack',
+          id: stackId,
+          url: `${this.repoUrl(repo)}/stacks/${stackId}`,
+        }
+        this.emit(
+          repo,
+          'operation.finished',
+          by,
+          { object: 'operation', id: op.id, number: null },
+          ['state'],
+          null,
+        )
         return
       }
       const c = open[i]
@@ -2679,8 +3414,16 @@ export class MemoryDomain {
       } catch (e) {
         op.state = 'failed'
         op.finished = this.now()
-        const failure = e as { code?: keyof typeof errorCatalog; detail?: string; hint?: string; retryable?: boolean; errors?: unknown; extra?: Record<string, unknown> }
-        const code = failure.code && errorCatalog[failure.code] ? failure.code : 'internal'
+        const failure = e as {
+          code?: keyof typeof errorCatalog
+          detail?: string
+          hint?: string
+          retryable?: boolean
+          errors?: unknown
+          extra?: Record<string, unknown>
+        }
+        const code =
+          failure.code && errorCatalog[failure.code] ? failure.code : 'internal'
         const entry = errorCatalog[code]
         op.error = {
           type: `https://source.code/docs/api/errors#${code}`,
@@ -2694,7 +3437,14 @@ export class MemoryDomain {
           ...(failure.errors ? { errors: failure.errors } : {}),
           ...failure.extra,
         }
-        this.emit(repo, 'operation.finished', by, { object: 'operation', id: op.id, number: null }, ['state'], null)
+        this.emit(
+          repo,
+          'operation.finished',
+          by,
+          { object: 'operation', id: op.id, number: null },
+          ['state'],
+          null,
+        )
       }
     }
     setTimeout(() => step(0), this.stepDelayMs)
@@ -2703,7 +3453,8 @@ export class MemoryDomain {
 
   async getOperation(id: string, p: Viewer) {
     const op = this.operations.get(id)
-    if (!op || !p || !this.mayReadId(op.repoId, p)) throw apiError('not_found', `No operation ${id}.`)
+    if (!op || !p || !this.mayReadId(op.repoId, p))
+      throw apiError('not_found', `No operation ${id}.`)
     return this.presentOp(op)
   }
 
@@ -2711,7 +3462,8 @@ export class MemoryDomain {
     return this.operations.get(id)?.repoId ?? null
   }
 
-  async operationVersion(id: string, p: Viewer) {    const op = this.operations.get(id)
+  async operationVersion(id: string, p: Viewer) {
+    const op = this.operations.get(id)
     if (!op || !p || !this.mayReadId(op.repoId, p)) return null
     return `${id}.${op.state}.${op.done}`
   }
@@ -2722,7 +3474,13 @@ export class MemoryDomain {
     owner: string,
     name: string,
     p: Viewer,
-    q: { state: string; label?: string; author?: string; after: CursorPosition | null; limit: number },
+    q: {
+      state: string
+      label?: string
+      author?: string
+      after: CursorPosition | null
+      limit: number
+    },
   ) {
     const repo = this.resolve(owner, name, p)
     const page = pageSorted(repo.issuesByNumber.items, issueNumber, recId, {
@@ -2735,7 +3493,10 @@ export class MemoryDomain {
         (!q.label || i.labels.includes(q.label)) &&
         (!q.author || i.author.handle === q.author),
     })
-    return { items: page.items.map((i) => this.shownIssue(repo, i)), next: page.next }
+    return {
+      items: page.items.map((i) => this.shownIssue(repo, i)),
+      next: page.next,
+    }
   }
 
   async getIssue(owner: string, name: string, n: number, p: Viewer) {
@@ -2748,7 +3509,9 @@ export class MemoryDomain {
   async issueVersion(owner: string, name: string, n: number, p: Viewer) {
     const repo = this.resolve(owner, name, p)
     const i = repo.issues.get(n)
-    return i ? `${i.id}.${i.version}.${repo.version}.${this.accessRevision}` : null
+    return i
+      ? `${i.id}.${i.version}.${repo.version}.${this.accessRevision}`
+      : null
   }
 
   async createIssue(
@@ -2760,7 +3523,11 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const same = repo.openIssueByTitle.get(body.title)
-    if (same) return { issue: this.presentIssue(repo, same), outcome: 'unchanged' as const }
+    if (same)
+      return {
+        issue: this.presentIssue(repo, same),
+        outcome: 'unchanged' as const,
+      }
     const at = this.now()
     const by = this.asActor(p!)
     const issue: IssueRec = {
@@ -2782,7 +3549,14 @@ export class MemoryDomain {
       repo.nextNumber++
       repo.issueRev++
       this.seedIssue(repo, issue)
-      this.emit(repo, 'issue.created', by, { object: 'issue', id: issue.id, number: issue.number }, ['state'], shown)
+      this.emit(
+        repo,
+        'issue.created',
+        by,
+        { object: 'issue', id: issue.id, number: issue.number },
+        ['state'],
+        shown,
+      )
     }
     return { issue: shown, outcome: 'created' as const }
   }
@@ -2792,21 +3566,31 @@ export class MemoryDomain {
     name: string,
     n: number,
     p: Viewer,
-    body: { title?: string; body?: string; labels?: Array<string>; state?: 'open' | 'closed' },
+    body: {
+      title?: string
+      body?: string
+      labels?: Array<string>
+      state?: 'open' | 'closed'
+    },
     ifMatch: string | null,
     dry: boolean,
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const i = repo.issues.get(n)
     if (!i) throw apiError('not_found', `No issue #${n} in ${owner}/${name}.`)
-    this.assertMatch(ifMatch, `${i.id}.${i.version}`, () => this.presentIssue(repo, i))
-    const same = (body.title === undefined || body.title === i.title) &&
+    this.assertMatch(ifMatch, `${i.id}.${i.version}`, () =>
+      this.presentIssue(repo, i),
+    )
+    const same =
+      (body.title === undefined || body.title === i.title) &&
       (body.body === undefined || body.body === i.body) &&
-      (body.labels === undefined || JSON.stringify(body.labels) === JSON.stringify(i.labels)) &&
+      (body.labels === undefined ||
+        JSON.stringify(body.labels) === JSON.stringify(i.labels)) &&
       (body.state === undefined || body.state === i.state)
     if (same) return this.presentIssue(repo, i)
     if (!dry) {
-      if (repo.openIssueByTitle.get(i.title) === i) repo.openIssueByTitle.delete(i.title)
+      if (repo.openIssueByTitle.get(i.title) === i)
+        repo.openIssueByTitle.delete(i.title)
       if (body.title !== undefined) i.title = body.title
       if (body.body !== undefined) i.body = body.body
       if (body.labels !== undefined) i.labels = body.labels
@@ -2814,13 +3598,20 @@ export class MemoryDomain {
         i.state = body.state
         i.closed = body.state === 'closed' ? this.now() : null
       }
-      if (i.state === 'open' && !repo.openIssueByTitle.has(i.title)) repo.openIssueByTitle.set(i.title, i)
+      if (i.state === 'open' && !repo.openIssueByTitle.has(i.title))
+        repo.openIssueByTitle.set(i.title, i)
       i.updated = this.now()
       i.version++
       const shown = this.presentIssue(repo, i)
       repo.issueRev++
-      this.emit(repo, i.state === 'closed' ? 'issue.closed' : 'issue.updated', this.asActor(p!),
-        { object: 'issue', id: i.id, number: i.number }, Object.keys(body), shown)
+      this.emit(
+        repo,
+        i.state === 'closed' ? 'issue.closed' : 'issue.updated',
+        this.asActor(p!),
+        { object: 'issue', id: i.id, number: i.number },
+        Object.keys(body),
+        shown,
+      )
       return shown
     }
     if (dry) {
@@ -2830,7 +3621,12 @@ export class MemoryDomain {
         body: body.body ?? i.body,
         labels: body.labels ?? i.labels,
         state: body.state ?? i.state,
-        closed: body.state === 'closed' ? this.now() : body.state === 'open' ? null : i.closed,
+        closed:
+          body.state === 'closed'
+            ? this.now()
+            : body.state === 'open'
+              ? null
+              : i.closed,
       }
       return this.presentIssue(repo, preview)
     }
@@ -2846,7 +3642,10 @@ export class MemoryDomain {
 
   /** Names of deleted repositories, with the account that owned each. */
   private readonly deleted = new Map<string, string>()
-  private readonly deletedRepos = new Map<string, { full: string; owner: string }>()
+  private readonly deletedRepos = new Map<
+    string,
+    { full: string; owner: string }
+  >()
   private readonly deletedIds = new Map<string, string>()
 
   private administered(full: string, p: Viewer): boolean {
@@ -2854,7 +3653,10 @@ export class MemoryDomain {
     if (p.repos && !p.repos.includes(full.toLowerCase())) return false
     const owner = this.deleted.get(full)
     if (!owner) return false
-    const role = owner === p.handle ? 'owner' : this.accounts.get(owner)?.members.get(p.handle)
+    const role =
+      owner === p.handle
+        ? 'owner'
+        : this.accounts.get(owner)?.members.get(p.handle)
     return role === 'owner' || role === 'admin'
   }
 
@@ -2900,9 +3702,10 @@ export class MemoryDomain {
   async repoHistoryVersion(full: string, p: Viewer) {
     const id = this.repoIdForHistory(full)
     if (!id) throw apiError('not_found', `No repository ${full}.`)
-    if (!this.readableRepoIds(p)(id)) throw apiError('not_found', `No repository ${full}.`, {
-      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
-    })
+    if (!this.readableRepoIds(p)(id))
+      throw apiError('not_found', `No repository ${full}.`, {
+        hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+      })
     const list = this.events.repoEvents(id)
     return `${id}.${list.at(-1)?.sequence ?? 0}.${this.events.oldest}`
   }
@@ -2929,11 +3732,18 @@ export class MemoryDomain {
    * aliases cannot change it. A bare repository delete keeps only the id, so a
    * retry can still replay 204 once the repository is gone.
    */
-  replayKey(opId: string, params: Record<string, string>, p: Principal): { id: string; stamp: string } {
+  replayKey(
+    opId: string,
+    params: Record<string, string>,
+    p: Principal,
+  ): { id: string; stamp: string } {
     const owner = params.owner
     const name = params.repo
     if (!owner || !name) return { id: '', stamp: '' }
-    const id = name === '~' && owner.startsWith('rep_') ? this.repoIdForHistory(owner) : this.repoIdForHistory(`${owner}/${name}`)
+    const id =
+      name === '~' && owner.startsWith('rep_')
+        ? this.repoIdForHistory(owner)
+        : this.repoIdForHistory(`${owner}/${name}`)
     if (!id) return { id: '', stamp: 'none' }
     if (opId === 'repos.delete') return { id, stamp: id }
     const repo = this.reposById.get(id)
@@ -2943,7 +3753,9 @@ export class MemoryDomain {
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
     if (full.startsWith('rep_'))
-      return this.reposById.has(full) || this.deletedRepos.has(full) ? full : this.deletedIds.get(full) ?? null
+      return this.reposById.has(full) || this.deletedRepos.has(full)
+        ? full
+        : (this.deletedIds.get(full) ?? null)
     const direct = this.repos.get(full) ?? this.byLower(full.toLowerCase())
     if (direct) return direct.id
     let key = full.toLowerCase()
@@ -2957,27 +3769,46 @@ export class MemoryDomain {
     const repo = this.repos.get(key) ?? this.byLower(key)
     if (repo) return repo.id
     const to = this.aliases.get(key)
-    if (to) return this.repos.get(to)?.id ?? this.deletedIds.get(to.toLowerCase()) ?? null
+    if (to)
+      return (
+        this.repos.get(to)?.id ?? this.deletedIds.get(to.toLowerCase()) ?? null
+      )
     return this.deletedIds.get(key) ?? null
   }
 
   async listEvents(
     p: Viewer,
-    q: { repo?: string; type?: string; after: CursorPosition | null; limit: number },
+    q: {
+      repo?: string
+      type?: string
+      after: CursorPosition | null
+      limit: number
+    },
   ) {
     const can = this.readableRepoIds(p)
     const canPull = !p || p.scopes.has('pulls:read')
     const canIssue = !p || p.scopes.has('issues:read')
     const types = q.type ? q.type.split(',') : null
     const typeOk = (t: string) =>
-      !types || types.some((x) => (x.endsWith('.*') ? t.startsWith(x.slice(0, -1)) : x === t))
+      !types ||
+      types.some((x) =>
+        x.endsWith('.*') ? t.startsWith(x.slice(0, -1)) : x === t,
+      )
     const scopeOk = (t: string) =>
-      t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
+      t.startsWith('issue.')
+        ? canIssue
+        : /^(change|finding|check|ci|operation)\./.test(t)
+          ? canPull
+          : true
     // A repository's own list when one is asked for, so a quiet repository is not
     // found by reading everyone else's events. The key is the stable id, so a
     // rename does not split the history.
     const repoId = q.repo ? this.repoIdForHistory(q.repo) : null
-    const source = q.repo ? (repoId ? this.events.repoEvents(repoId) : []) : this.events.all()
+    const source = q.repo
+      ? repoId
+        ? this.events.repoEvents(repoId)
+        : []
+      : this.events.all()
     const page = pageSorted(source, (e) => e.sequence, seqId, {
       limit: q.limit,
       after: q.after,
@@ -2987,7 +3818,10 @@ export class MemoryDomain {
     })
     // An event never changes, so its text is its own version.
     return {
-      items: page.items.map((e: StoredEvent) => new Pre(e.json, () => parseEvent(e), `ev${e.sequence}`)),
+      items: page.items.map(
+        (e: StoredEvent) =>
+          new Pre(e.json, () => parseEvent(e), `ev${e.sequence}`),
+      ),
       next: page.next,
     }
   }
@@ -2997,22 +3831,47 @@ export class MemoryDomain {
     q: { repo: string; cursor?: string; limit: number },
   ): Promise<z.infer<typeof S.Sync>> {
     const [owner, name] = q.repo.split('/')
-    const repo = this.repoForSync(owner.startsWith('rep_') ? owner : `${owner}/${name ?? ''}`, p)
+    const repo = this.repoForSync(
+      owner.startsWith('rep_') ? owner : `${owner}/${name ?? ''}`,
+      p,
+    )
     const canPull = !p || p.scopes.has('pulls:read')
     const canIssue = !p || p.scopes.has('issues:read')
     const scopeOk = (t: string) =>
-      t.startsWith('issue.') ? canIssue : /^(change|finding|check|ci|operation)\./.test(t) ? canPull : true
+      t.startsWith('issue.')
+        ? canIssue
+        : /^(change|finding|check|ci|operation)\./.test(t)
+          ? canPull
+          : true
     const snapshot = (from: number, head: number, reset: boolean) => {
       const all: Array<Record<string, unknown>> = [
         this.presentRepo(repo),
-        ...(canPull ? [...repo.changes.values()].map((c) => this.presentChange(repo, c, 'event') as unknown as Record<string, unknown>) : []),
-        ...(canIssue ? [...repo.issues.values()].map((i) => this.presentIssue(repo, i) as unknown as Record<string, unknown>) : []),
+        ...(canPull
+          ? [...repo.changes.values()].map(
+              (c) =>
+                this.presentChange(repo, c, 'event') as unknown as Record<
+                  string,
+                  unknown
+                >,
+            )
+          : []),
+        ...(canIssue
+          ? [...repo.issues.values()].map(
+              (i) =>
+                this.presentIssue(repo, i) as unknown as Record<
+                  string,
+                  unknown
+                >,
+            )
+          : []),
       ]
       const slice = all.slice(from, from + q.limit)
       const more = from + q.limit < all.length
       return {
         object: 'sync' as const,
-        cursor: more ? `s_${repo.id}_${head}_${from + q.limit}` : `e_${repo.id}_${head}`,
+        cursor: more
+          ? `s_${repo.id}_${head}_${from + q.limit}`
+          : `e_${repo.id}_${head}`,
         objects: slice,
         deleted: [],
         has_more: more,
@@ -3023,23 +3882,69 @@ export class MemoryDomain {
     if (!c) return snapshot(0, this.events.head, true)
     const snap = /^s_(.+)_(\d+)_(\d+)$/.exec(c)
     if (snap) {
-      if (snap[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
-        errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
-      })
-      if (Number(snap[2]) > this.events.head) return snapshot(0, this.events.head, true)
-      return snapshot(Number(snap[3]), Math.min(Number(snap[2]), this.events.head), false)
+      if (snap[1] !== repo.id)
+        throw apiError(
+          'cursor_mismatch',
+          'This cursor belongs to another repository.',
+          {
+            errors: [
+              {
+                pointer: '/query/cursor',
+                code: 'cursor_mismatch',
+                message: 'Use a cursor returned for this repository.',
+              },
+            ],
+          },
+        )
+      if (Number(snap[2]) > this.events.head)
+        return snapshot(0, this.events.head, true)
+      return snapshot(
+        Number(snap[3]),
+        Math.min(Number(snap[2]), this.events.head),
+        false,
+      )
     }
     const ev = /^e_(.+)_(\d+)$/.exec(c)
-    if (!ev) throw apiError('invalid_request', 'The cursor is not valid.', {
-      errors: [{ pointer: '/query/cursor', code: 'invalid_cursor', message: 'Use cursor exactly as returned.' }],
-    })
-    if (ev[1] !== repo.id) throw apiError('cursor_mismatch', 'This cursor belongs to another repository.', {
-      errors: [{ pointer: '/query/cursor', code: 'cursor_mismatch', message: 'Use a cursor returned for this repository.' }],
-    })
+    if (!ev)
+      throw apiError('invalid_request', 'The cursor is not valid.', {
+        errors: [
+          {
+            pointer: '/query/cursor',
+            code: 'invalid_cursor',
+            message: 'Use cursor exactly as returned.',
+          },
+        ],
+      })
+    if (ev[1] !== repo.id)
+      throw apiError(
+        'cursor_mismatch',
+        'This cursor belongs to another repository.',
+        {
+          errors: [
+            {
+              pointer: '/query/cursor',
+              code: 'cursor_mismatch',
+              message: 'Use a cursor returned for this repository.',
+            },
+          ],
+        },
+      )
     const after = Number(ev[2])
     if (after > this.events.head) return snapshot(0, this.events.head, true)
-    if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
-    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id && scopeOk(e.type) && /^(repo|change|issue|finding|check|ci)\./.test(e.type))
+    if (after + 1 < this.events.oldest)
+      return snapshot(0, this.events.head, true)
+    const {
+      events: stored,
+      exhausted,
+      scannedTo,
+    } = this.events.since(
+      after,
+      q.limit,
+      (e) =>
+        e.repoId === repo.id &&
+        scopeOk(e.type) &&
+        /^(repo|change|issue|finding|check|ci)\./.test(e.type),
+    )
     // Keep only the newest state of each object, and remember what was deleted
     // after the cursor so a local copy can remove it.
     const latest = new Map<string, Record<string, unknown>>()
@@ -3051,7 +3956,10 @@ export class MemoryDomain {
         deleted.delete(e.subject.id)
       } else if (e.type.endsWith('.deleted')) {
         latest.delete(e.subject.id)
-        deleted.set(e.subject.id, { object: e.subject.object, id: e.subject.id })
+        deleted.set(e.subject.id, {
+          object: e.subject.object,
+          id: e.subject.id,
+        })
       }
     }
     return {

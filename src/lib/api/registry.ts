@@ -94,8 +94,12 @@ export function cyrb53(str: string, seed = 0): number {
     h1 = Math.imul(h1 ^ ch, 2654435761)
     h2 = Math.imul(h2 ^ ch, 1597334677)
   }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  h1 =
+    Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
+    Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 =
+    Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
+    Math.imul(h1 ^ (h1 >>> 13), 3266489909)
   return 4294967296 * (2097151 & h2) + (h1 >>> 0)
 }
 
@@ -170,7 +174,7 @@ export type OpSpec<
   secretResponse?: boolean
   /** Default true. False turns off ETags, conditional reads and the body cache. */
   conditional?: boolean
-  /** The response is not JSON: the media type it is served as. */  responseContentType?: string
+  /** The response is not JSON: the media type it is served as. */ responseContentType?: string
   /** The response stays open, so it cannot be run inside a batch. */
   streaming?: boolean
   /** Enforces `If-Match` on writes, so an idempotent retry must re-check the precondition. */
@@ -180,7 +184,11 @@ export type OpSpec<
   /** Honours `?fields=`. */
   shapeable?: boolean
   /** Honours `?wait=` with `If-None-Match`; names the topic to wait on. */
-  waitOn?: (params: Infer<TParams>, query?: unknown, domain?: DomainCore) => string
+  waitOn?: (
+    params: Infer<TParams>,
+    query?: unknown,
+    domain?: DomainCore,
+  ) => string
   /**
    * The version of what is being read, found without building it. With it a
    * conditional read can answer 304 and a repeat read can come from the body
@@ -199,7 +207,11 @@ export type OpSpec<
   mayBeAsync?: boolean
   handler: (
     ctx: Ctx<Infer<TParams>, Infer<TQuery>, Infer<TBody>>,
-  ) => Effect.Effect<z.output<TResponse> | Reply<z.output<TResponse>> | Raw | Pre, ApiError, Services>
+  ) => Effect.Effect<
+    z.output<TResponse> | Reply<z.output<TResponse>> | Raw | Pre,
+    ApiError,
+    Services
+  >
 }
 
 export type Op = OpSpec<
@@ -254,7 +266,8 @@ export class Router {
           at = next
         }
       }
-      if (at.ops.has(op.method)) throw new Error(`duplicate operation ${op.method} ${op.path}`)
+      if (at.ops.has(op.method))
+        throw new Error(`duplicate operation ${op.method} ${op.path}`)
       at.ops.set(op.method, { op, names })
     }
   }
@@ -280,7 +293,8 @@ export class Router {
     const hit = at.ops.get(method as Method)
     if (hit) {
       const params: Record<string, string> = {}
-      for (let i = 0; i < hit.names.length; i++) params[hit.names[i]] = values[i]
+      for (let i = 0; i < hit.names.length; i++)
+        params[hit.names[i]] = values[i]
       return { kind: 'hit', op: hit.op, params }
     }
     if (at.ops.size) return { kind: 'method', allow: [...at.ops.keys()] }
