@@ -30,8 +30,10 @@ const read = {
 
 const expandChange = ['repo', 'findings', 'check_runs']
 const states = ['draft', 'open', 'landed', 'abandoned', 'all']
-const topic = (p: { owner: string; repo: string }) =>
-  p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
+const topic = (p: { owner: string; repo: string }) => {
+  const owner = p.owner.toLowerCase()
+  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+}
 
 const list = <T extends z.ZodType>(item: T) => S.listOf(item)
 

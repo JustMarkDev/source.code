@@ -49,16 +49,38 @@ async function handle({ request }: { request: Request }) {
           ? 'The token was revoked.'
           : 'The token is not valid for this server.',
     )
-  const client = clientFor(`${origin}${API_MOUNT}`, token, (req) =>
-    api.fetch(req),
-  )
+  let client: ReturnType<typeof clientFor>
+  let revoke: (() => void) | undefined
+  if (found.record.audience.includes('api')) {
+    client = clientFor(`${origin}${API_MOUNT}`, token, (req) => api.fetch(req))
+  } else {
+    // The MCP bridge calls the API as the same actor. A token narrowed to the
+    // MCP audience is exchanged for a short API token, so tool calls work.
+    const created = api.domain.svc.auth.create({
+      name: 'mcp bridge',
+      kind: 'oauth',
+      handle: found.record.handle,
+      actingAs: found.record.actingAs,
+      class: found.record.class,
+      scopes: [...found.record.scopes],
+      repos: found.record.repos ? [...found.record.repos] : null,
+      audience: ['api'],
+      ttlMs: 60_000,
+    })
+    client = clientFor(`${origin}${API_MOUNT}`, created.secret, (req) => api.fetch(req))
+    revoke = () => api.domain.svc.auth.revoke(created.record.id)
+  }
   const server = createSxMcpServer({ client })
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-  })
-  await server.connect(transport)
-  return transport.handleRequest(request)
+  try {
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
+    await server.connect(transport)
+    return await transport.handleRequest(request)
+  } finally {
+    revoke?.()
+  }
 }
 
 export const Route = createFileRoute('/mcp')({

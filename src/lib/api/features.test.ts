@@ -390,6 +390,19 @@ describe('search', () => {
     expect(titles(await h.call('GET', '/search?q=xylophone', { token: h.tokens.limited }))).toEqual([])
   })
 
+  test('a cursor walks tied results without losing any', async () => {
+    const h = harness()
+    for (let i = 0; i < 8; i++) await h.call('POST', `${REPO}/issues`, { body: { title: `tiebreak ${i}` } })
+    const seen: Array<string> = []
+    let cursor: string | null = null
+    do {
+      const r = await h.call('GET', `/search?q=tiebreak&limit=2${cursor ? `&cursor=${cursor}` : ''}`)
+      for (const x of r.json.data) seen.push(x.id)
+      cursor = r.json.next_cursor
+    } while (cursor)
+    expect(new Set(seen).size).toBe(8)
+  })
+
   test('there is no cap: a cursor walks every match once', async () => {
     const h = harness({ seed: (d) => seedBulk(d, 'dana', 'big', 3000, 1000) })
     const seen: Array<string> = []
@@ -660,8 +673,12 @@ describe('environment variables and grants', () => {
     expect(unknown.json.errors[0].code).toBe('not_in_schema')
   })
 
-  test('a person reads values; the read is audited', async () => {
+  test('a token with secrets:decrypt still needs a repository relationship', async () => {
     const h = harness()
+    expect((await h.call('GET', `${REPO}/env/production/values`, { token: h.tokens.stranger })).status).toBe(404)
+  })
+
+  test('a person reads values; the read is audited', async () => {    const h = harness()
     const r = await h.call('GET', `${R}/development/values`)
     expect(r.json.values.DATABASE_URL).toContain('postgres://')
     expect(r.json.secrets).toEqual(['DATABASE_URL'])

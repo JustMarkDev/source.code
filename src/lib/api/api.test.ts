@@ -312,6 +312,14 @@ describe('who can see what', () => {
     expect((await h.call('GET', `${REPO}/context`, { token: h.tokens.triage })).json.env).toEqual([])
     expect((await h.call('GET', `${REPO}/context`)).json.env.length).toBeGreaterThan(0)
   })
+
+  test('the context cursor can continue with sync', async () => {
+    const h = harness()
+    const context = await h.call('GET', `${REPO}/context`)
+    const next = await h.call('GET', `/sync?repo=dana/gitfs&cursor=${context.json.cursor}`)
+    expect(next.status, next.text.slice(0, 200)).toBe(200)
+    expect(next.json.object).toBe('sync')
+  })
 })
 
 describe('generations and reuse', () => {
@@ -378,8 +386,20 @@ describe('generations and reuse', () => {
     expect(old.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Before the rename')).toBe(true)
   })
 
-  test('losing team access invalidates cached events and sync bodies', async () => {
+  test('a reused name resolves to the new repository, not an old alias', async () => {
     const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'rr' } })
+    await h.call('POST', '/repos/dana/rr/issues', { body: { title: 'OLD rr' } })
+    await h.call('PATCH', '/repos/dana/rr', { body: { name: 'rr2' } })
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'rr' } })
+    await h.call('POST', '/repos/dana/rr/issues', { body: { title: 'NEW rr' } })
+    const events = await h.call('GET', '/events?repo=dana/rr')
+    expect(events.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'NEW rr')).toBe(true)
+    expect(events.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'OLD rr')).toBe(false)
+    expect((await h.call('GET', '/repos/dana/rr')).status).toBe(200)
+  })
+
+  test('losing team access invalidates cached events and sync bodies', async () => {    const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'northwind', name: 'vault', visibility: 'private' } })
     await h.call('POST', '/repos/northwind/vault/issues', { body: { title: 'Private vault event' } })
     await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'readers' } })

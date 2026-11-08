@@ -6,6 +6,12 @@ import { Domain, Raw, defineOp } from '../registry'
 import * as S from '../schemas'
 import { afterOf, fp, listOf, pageShape } from './common'
 
+const repoWaitTopic = (repo: string | undefined) => {
+  if (!repo) return '*'
+  const lower = repo.toLowerCase()
+  return lower.startsWith('rep_') ? `repo-id:${lower}` : `repo:${lower}`
+}
+
 export const listEvents = defineOp({
   id: 'events.list',
   summary: 'The event log, oldest first',
@@ -30,10 +36,7 @@ export const listEvents = defineOp({
   response: S.listOf(S.Event),
   errors: ['cursor_mismatch'],
   shapeable: true,
-  waitOn: (_p, q) => {
-    const repo = (q as { repo?: string } | undefined)?.repo
-    return repo ? `repo:${repo.toLowerCase()}` : '*'
-  },
+  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
   probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -79,10 +82,7 @@ export const syncRepo = defineOp({
   }),
   response: S.Sync,
   errors: ['not_found', 'moved'],
-  waitOn: (_p, q) => {
-    const repo = (q as { repo?: string } | undefined)?.repo
-    return repo ? `repo:${repo.toLowerCase()}` : '*'
-  },
+  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
   probe: (ctx, d) => {
     const [owner, name] = ctx.query.repo.split('/')
     return d.syncVersion(owner, name ?? '', ctx.principal)
@@ -178,7 +178,7 @@ export const streamEvents = defineOp({
             if (batch.length === 0) after = Math.max(after, events.head)
             if (batch.length === 100) continue
             const before = events.head
-            await events.wait(repo ? `repo:${repo.toLowerCase()}` : '*', 15_000, ctx.signal)
+            await events.wait(repoWaitTopic(repo), 15_000, ctx.signal)
             if (events.head === before && open && !ctx.signal.aborted) send(': keepalive\n\n', controller)
           }
           try {
@@ -217,10 +217,7 @@ export const getOperation = defineOp({
   params: z.object({ id: z.string().describe('The operation `op_` id') }),
   response: S.Operation,
   errors: ['not_found'],
-  waitOn: (_p, q) => {
-    const repo = (q as { repo?: string } | undefined)?.repo
-    return repo ? `repo:${repo.toLowerCase()}` : '*'
-  },
+  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
   probe: (ctx, d) =>
       d.operationVersion(ctx.params.id, ctx.principal),
   handler: (ctx) =>

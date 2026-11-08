@@ -394,7 +394,7 @@ export class SearchIndex {
       const score = this.score(q, d, wanted)
       if (score !== null) hits.push({ doc: d, score, snippet: '' })
     }
-    hits.sort((a, b) => b.score - a.score || b.doc.updated - a.doc.updated || (a.doc.key < b.doc.key ? -1 : 1))
+    hits.sort((a, b) => b.score - a.score || b.doc.updated - a.doc.updated || (a.doc.key < b.doc.key ? 1 : -1))
     if (cached) this.cachedHits -= cached.hits.length
     this.cache.delete(cacheKey)
     this.cache.set(cacheKey, { version: this.version, hits, q })

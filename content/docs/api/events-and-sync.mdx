@@ -81,10 +81,10 @@ data: {"object":"event","id":"evt_01m6…","sequence":48212,"type":"issue.create
 ```bash
 # 1. A snapshot. reset is true; keep the cursor.
 curl "$SX/sync?repo=dana/gitfs" -H "Authorization: Bearer $SX_TOKEN"
-# { "object": "sync", "cursor": "e_4811", "objects": [ … every object … ], "has_more": false, "reset": true }
+# { "object": "sync", "cursor": "e_rep_01m3kkw4m0zvf3zfc9_4811", "objects": [ … every object … ], "has_more": false, "reset": true }
 
 # 2. From then on, only what changed, newest state of each object.
-curl "$SX/sync?repo=dana/gitfs&cursor=e_4811" -H "Authorization: Bearer $SX_TOKEN"
+curl "$SX/sync?repo=dana/gitfs&cursor=e_rep_01m3kkw4m0zvf3zfc9_4811" -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 - A large snapshot is paged: while `has_more` is true, call again with the new `cursor`.

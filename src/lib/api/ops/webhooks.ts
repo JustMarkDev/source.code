@@ -60,7 +60,9 @@ function presentDelivery(d: MemoryDomain, h: Hook, x: Delivery, full: boolean): 
 }
 
 async function hookOf(d: MemoryDomain, owner: string, repo: string, id: string, p: Parameters<MemoryDomain['repoAccess']>[2], need: 'read' | 'write' = 'write') {
-  const full = await d.repoAccess(owner, repo, p, need)
+  const full = need === 'read'
+    ? await d.repoAccessStrict(owner, repo, p, 'read')
+    : await d.repoAccess(owner, repo, p, 'write')
   const h = d.svc.hooks.get(id)
   if (!h || h.repo !== full) throw apiError('not_found', `No webhook ${id} on ${full}.`)
   return h
@@ -82,7 +84,7 @@ export const listWebhooks = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.hooks.list(full).map((h) => presentHook(d, h, null))
       })
       return { object: 'list' as const, data, has_more: false, next_cursor: null }

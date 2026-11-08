@@ -1153,6 +1153,9 @@ export class MemoryDomain {
         created: true,
       }
     const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now() })
+    const lower = `${owner}/${input.name}`.toLowerCase()
+    this.aliases.delete(lower)
+    for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
     this.svc.git?.setRepo?.(`${owner}/${input.name}`, rec.storeId)
     this.svc.search?.upsertIfBuilt?.({ key: `repo:${rec.id}`, type: 'repo', id: rec.id, repo: `${owner}/${input.name}`, number: null, title: `${owner}/${input.name}`, text: rec.description, state: rec.visibility, author: owner, labels: [], updated: rec.updated, url: this.repoUrl(rec) })
     return { repo: this.presentRepo(rec), created: true }
@@ -1217,6 +1220,8 @@ export class MemoryDomain {
       })
     if (wanted.includes('tokens:manage'))
       throw apiError('forbidden', 'A run cannot be given tokens:manage.', { hint: 'A run token that could mint tokens would outlive its run.' })
+    if (wanted.includes('secrets:write'))
+      throw apiError('forbidden', 'A run cannot be given secrets:write.', { hint: 'Setting secrets is a person-only action.' })
     let running = 0
     for (const r of this.runs.values()) if (r.handle === p.handle && this.runState(r) === 'running') running++
     if (running >= MemoryDomain.RUNS_RUNNING) throw apiError('limit_reached', `You can have ${MemoryDomain.RUNS_RUNNING} runs going at once.`, { hint: 'Finish or cancel one first.' })
@@ -1543,7 +1548,7 @@ export class MemoryDomain {
       this.repos.set(to, repo)
       this.svc.auth.renameRepo(from, to)
       this.svc.git?.setRepo?.(to, repo.storeId)
-      this.svc.git?.dropRepo?.(from)
+      if (from.toLowerCase() !== to.toLowerCase()) this.svc.git?.dropRepo?.(from)
       // The old address keeps working: it answers 308 with the new one. Any
       // alias that pointed at the old name follows the chain.
       for (const [key, value] of this.aliases)
@@ -1591,6 +1596,8 @@ export class MemoryDomain {
     // The event is written first, while the repository still exists to be named.
     this.emit(repo, 'repo.deleted', this.asActor(p), { object: 'repo', id: repo.id, number: null }, ['deleted'], null)
     this.repos.delete(full)
+    this.aliases.delete(full.toLowerCase())
+    for (const [key, value] of this.aliases) if (value.toLowerCase() === full.toLowerCase()) this.aliases.delete(key)
     this.svc.auth.dropRepo(full)
     this.svc.uploads.dropRepo(repo.id)
     this.svc.git?.dropRepo?.(full)
@@ -1614,6 +1621,22 @@ export class MemoryDomain {
     this.runsByRepo.delete(full)
     this.svc.search?.reset()
     return { deleted: true, full }
+  }
+
+  private hasRepoGrant(repo: RepoRec, p: Viewer) {
+    if (!p) return false
+    const full = `${repo.owner}/${repo.name}`.toLowerCase()
+    if (p.repos && !p.repos.includes(full)) return false
+    return this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) !== null
+  }
+
+  /** Read access that requires a real relationship, not public visibility. */
+  async repoAccessStrict(owner: string, name: string, p: Viewer, need: 'read' | 'write' = 'read') {
+    const r = this.resolve(owner, name, p, need)
+    if (!this.hasRepoGrant(r, p)) throw apiError('not_found', `No repository ${owner}/${name}.`, {
+      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+    })
+    return `${r.owner}/${r.name}`
   }
 
   /** Checks the caller may read or write a repository, and names it `owner/name`. */
@@ -1771,12 +1794,12 @@ export class MemoryDomain {
         labels: i.labels,
       })),
       policy: { rules: 4, mode: 'enforce' },
-      env: p?.scopes.has('secrets:schema')
+      env: p?.scopes.has('secrets:schema') && this.hasRepoGrant(r, p)
         ? this.svc.extras
           ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({ name: v.name, kind: v.kind, set: [...v.set] }))
           : r.env
         : [],
-      cursor: `e_${this.events.head}`,
+      cursor: `e_${r.id}_${this.events.head}`,
     }
   }
 
@@ -2656,6 +2679,8 @@ export class MemoryDomain {
 
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
+    const direct = this.repos.get(full) ?? this.byLower(full.toLowerCase())
+    if (direct) return direct.id
     let key = full.toLowerCase()
     const seen = new Set<string>([key])
     for (let i = 0; i < 10; i++) {
@@ -2747,7 +2772,7 @@ export class MemoryDomain {
     })
     const after = Number(ev[2])
     if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
-    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id && scopeOk(e.type))
+    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id && scopeOk(e.type) && /^(repo|change|issue|finding|check|ci)\./.test(e.type))
     // Keep only the newest state of each object, and remember what was deleted
     // after the cursor so a local copy can remove it.
     const latest = new Map<string, Record<string, unknown>>()

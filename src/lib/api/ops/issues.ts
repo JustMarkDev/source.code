@@ -5,8 +5,10 @@ import * as S from '../schemas'
 import { issueMarkdown } from '../markdown'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 
-const topic = (p: { owner: string; repo: string }) =>
-  p.owner.startsWith('rep_') ? `repo-id:${p.owner}` : `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
+const topic = (p: { owner: string; repo: string }) => {
+  const owner = p.owner.toLowerCase()
+  return owner.startsWith('rep_') ? `repo-id:${owner}` : `repo:${owner}/${p.repo.toLowerCase()}`
+}
 const issueParams = repoParams.extend({
   number: z.coerce.number().int().min(1).describe('The issue number'),
 })

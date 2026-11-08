@@ -86,7 +86,7 @@ export const listMirrors = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.extras.for(full).mirrors.map((m) => presentMirror(d, full, m))
       })
       return { object: 'list' as const, data, has_more: false, next_cursor: null }
@@ -232,7 +232,7 @@ export const listEnv = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.extras.for(full).env.map((v) => ({
           object: 'env_var' as const,
           name: v.name,
@@ -264,10 +264,12 @@ export const setEnv = defineOp({
   dryRun: true,
   body: z.strictObject({ ciphertext: z.string().min(1).max(65536) }),
   response: S.EnvVar,
-  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
+  errors: ['not_found', 'forbidden', 'invalid_request', 'human_required', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
+      if (ctx.principal!.class !== 'human')
+        throw apiError('human_required', 'Only a person can set an environment variable.')
       return yield* run(async (d) => {
         const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'write')
         const x = d.svc.extras.for(full)
@@ -300,7 +302,7 @@ export const listRecipients = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.extras.for(full).recipients.map((r) => ({ object: 'recipient' as const, id: r.id, kind: r.kind }))
       })
       return { object: 'list' as const, data, has_more: false, next_cursor: null }
@@ -329,7 +331,7 @@ export const envValues = defineOp({
       const { run } = yield* Domain
       const out = yield* run(async (d) => {
         const p = ctx.principal!
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, p, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, p, 'read')
         const x = d.svc.extras.for(full)
         const agent = p.class !== 'human'
         if (agent && ctx.params.environment === 'production')
@@ -358,7 +360,7 @@ export const listGrants = defineOp({
     Effect.gen(function* () {
       const { run } = yield* Domain
       const data = yield* run(async (d) => {
-        const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
+        const full = await d.repoAccessStrict(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return d.svc.extras.for(full).grants.map((g) => presentGrant(d, full, g, ctx.now()))
       })
       return { object: 'list' as const, data, has_more: false, next_cursor: null }
@@ -457,10 +459,12 @@ export const revokeGrant = defineOp({
   idempotent: true,
   dryRun: true,
   response: S.Grant,
-  errors: ['not_found', 'forbidden', 'moved'],
+  errors: ['not_found', 'forbidden', 'human_required', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
+      if (ctx.principal!.class !== 'human')
+        throw apiError('human_required', 'Only a person can revoke a grant.')
       return yield* run(async (d) => {
         const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'write')
         const x = d.svc.extras.for(full)

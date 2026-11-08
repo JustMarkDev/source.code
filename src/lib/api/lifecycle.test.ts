@@ -230,8 +230,13 @@ describe('git data', () => {
     expect((await h.call('GET', '/repos/dana/empty/git/tree')).status).toBe(404)
   })
 
-  test('two seeds with the same name get separate git stores', async () => {
-    const h = harness({
+  test('a case-only rename keeps git data', async () => {
+    const h = harness()
+    expect((await h.call('PATCH', '/repos/dana/gitfs', { body: { name: 'GitFS' } })).status).toBe(200)
+    expect((await h.call('GET', '/repos/dana/GitFS/git/tree')).status).toBe(200)
+  })
+
+  test('two seeds with the same name get separate git stores', async () => {    const h = harness({
       seed: (d) => {
         d.seedRepo('alice', 'same', { storeId: 'gitfs' })
         d.seedRepo('bob', 'same')
@@ -421,8 +426,13 @@ describe('runs', () => {
     expect(denied.status).toBe(403)
   })
 
-  test('a repository-limited token cannot note a run outside its grant', async () => {
+  test('a run cannot be given secrets:write', async () => {
     const h = harness()
+    const r = await h.call('POST', `${REPO}/runs`, { body: { task: 'secret', scopes: ['secrets:write'] } })
+    expect(r.status).toBe(403)
+  })
+
+  test('a repository-limited token cannot note a run outside its grant', async () => {    const h = harness()
     const a = await h.call('POST', `${REPO}/runs`, { body: { task: 'a' } })
     expect((await h.call('POST', `${REPO}/runs/${a.json.id}/notes`, { token: h.tokens.limited, body: { text: 'nope' } })).status).toBe(403)
   })

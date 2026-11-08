@@ -721,9 +721,17 @@ export function createApi(options: ApiOptions) {
           step = await compute()
         }
       }
+    const notModified = (etag: string) => {
+      const headers: Record<string, string> = { etag, ...extraHeaders }
+      if (isRead) {
+        headers.vary = 'accept, authorization'
+        headers['cache-control'] = principal ? 'private, no-cache' : 'public, max-age=0, must-revalidate'
+      }
+      return new Response(null, { status: 304, headers })
+    }
       if (step.kind === 'not_modified') {
         refund?.()
-        return new Response(null, { status: 304, headers: { etag: step.etag, ...extraHeaders } })
+        return notModified(step.etag)
       }
 
       let status = op.status ?? 200
@@ -786,7 +794,8 @@ export function createApi(options: ApiOptions) {
           const list = out as { data: Array<unknown>; has_more: boolean; next_cursor: string | null }
           const lines = list.data.map((d) => JSON.stringify(d))
           lines.push(JSON.stringify({ object: 'page', has_more: list.has_more, next_cursor: list.next_cursor }))
-          return new Response(`${lines.join('\n')}\n`, {
+          const text = `${lines.join('\n')}\n`
+          return new Response(req.method === 'HEAD' ? null : text, {
             status,
             headers: {
               'content-type': 'application/x-ndjson; charset=utf-8',
@@ -806,7 +815,7 @@ export function createApi(options: ApiOptions) {
             cache.set(cacheKey(step.versionKey), json)
           if (ifNoneMatch && matches(ifNoneMatch, etag)) {
             refund?.()
-            return new Response(null, { status: 304, headers: { etag, ...extraHeaders } })
+            return notModified(etag)
           }
         }
       }
