@@ -115,15 +115,9 @@ export function secretFor(kind: TokenKind | 'refresh'): string {
   return `${p}_${Buffer.from(randomSource.bytes(24)).toString('base64url')}`
 }
 
-const capIds = new Map<string, string>()
-/** A short name for a long capability key. The same key always gets the same name. */
+/** A short, stable name for a long capability key, with no unbounded map to grow. */
 export function internCapability(key: string): string {
-  let id = capIds.get(key)
-  if (id === undefined) {
-    id = capIds.size.toString(36)
-    capIds.set(key, id)
-  }
-  return id
+  return createHash('sha1').update(key).digest('base64url').slice(0, 16)
 }
 
 const principals = new WeakMap<TokenRecord, Principal>()

@@ -816,7 +816,13 @@ export function createApi(options: ApiOptions) {
       const res = new Response(req.method === 'HEAD' || status === 204 ? null : json, { status, headers })
       if (!isRead && key && !dryRun) {
         applied = true
-        await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
+        try {
+          await idem.complete(scope, key, { status, headers, body: status === 204 ? '' : json })
+        } catch (e) {
+          // The write already happened. Do not turn success into a 500; the key
+          // stays in progress, so a retry waits instead of writing again.
+          console.error(`[api] ${requestId} idempotency completion failed`, e)
+        }
       }
       const t = [`handler;dur=${((timing.handler as number | undefined) ?? 0).toFixed(2)}`]
       if (timing.cache) t.push(`cache;desc="hit"`)

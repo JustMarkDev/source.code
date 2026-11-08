@@ -6,6 +6,7 @@ import { buildOpenApi } from './openapi'
 import { findBreaking } from './openapi-diff'
 import { errorCatalog } from './problem'
 import { defineOp } from './registry'
+import { MemoryIdempotencyStore } from './idempotency'
 import { STACK_ID, seedBulk, seedStack } from './sample'
 import { EventLog } from './events'
 import { clock, harness } from './testing'
@@ -626,6 +627,23 @@ describe('writes', () => {
     expect(again.status).toBe(204)
     expect(again.text).toBe('')
     expect(again.headers.get('sx-replayed')).toBe('true')
+  })
+
+  test('a store failure after a write keeps the response and the key in progress', async () => {
+    const store = new MemoryIdempotencyStore()
+    store.complete = () => Promise.reject(new Error('store down'))
+    const h = harness({ idempotency: store })
+    const key = 'store-down'
+    const error = console.error
+    console.error = () => {}
+    try {
+      const first = await h.call('POST', '/tokens', { headers: { 'idempotency-key': key }, body: { name: 'x', scopes: ['repo:read'] } })
+      expect(first.status).toBe(201)
+      const retry = await h.call('POST', '/tokens', { headers: { 'idempotency-key': key }, body: { name: 'x', scopes: ['repo:read'] } })
+      expect(retry.json.code).toBe('request_in_progress')
+    } finally {
+      console.error = error
+    }
   })
 
   test('an Idempotency-Key makes a create happen once', async () => {
