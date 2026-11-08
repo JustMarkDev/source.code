@@ -92,7 +92,7 @@ export const account: Command = async (
     }
     print(ctx, data, () =>
       overriddenBy
-        ? `${savedAccount === target.handle ? 'already saved' : dry ? 'would save' : 'saved'} ${target.handle}, but SX_ACCOUNT is set in this shell and wins`
+        ? `${savedAccount === target.handle ? 'already saved' : !switched ? 'already acting' : dry ? 'would save' : 'saved'} ${target.handle}, but SX_ACCOUNT is set in this shell and wins`
         : switched
           ? `${dry ? 'would act' : 'now acting'} as ${target.handle}`
           : `already acting as ${target.handle}`,

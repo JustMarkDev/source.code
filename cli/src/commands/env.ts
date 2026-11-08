@@ -153,7 +153,7 @@ export const env: Command = async (
       [
         result.stdout.trimEnd(),
         result.stderr.trimEnd(),
-        `(${result.namesKnown === false ? 'variable names unavailable' : `${result.injected.length} variables injected`}, ${result.redacted.length} scrubbed from output)`,
+        `(${result.namesKnown === false ? 'variable names unavailable' : dry ? `would inject ${result.injected.length} variables` : `${result.injected.length} variables injected`}, ${dry ? 'would scrub' : 'scrubbed'} ${result.redacted.length} from output)`,
       ]
         .filter(Boolean)
         .join('\n'),
