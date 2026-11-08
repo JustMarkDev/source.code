@@ -1761,7 +1761,7 @@
       "get": {
         "operationId": "events.list",
         "summary": "The event log, oldest first",
-        "description": "Everything that happened in repositories you can see. Pass the last `next_cursor` to continue. Events are kept for 30 days. `type` takes a comma list; `change.*` matches every change event.",
+        "description": "Everything that happened in repositories you can see. Pass the last `next_cursor` to continue. The preview keeps a bounded count/size window; the hosted service keeps 30 days. `type` takes a comma list; `change.*` matches every change event.",
         "tags": [
           "events"
         ],
@@ -9710,7 +9710,7 @@
       "get": {
         "operationId": "webhooks.deliveries.list",
         "summary": "Deliveries, newest first",
-        "description": "Kept for 30 days, up to 1,000 per webhook.",
+        "description": "Kept up to 1,000 per webhook.",
         "tags": [
           "webhooks"
         ],
@@ -12262,7 +12262,9 @@
         "security": [
           {},
           {
-            "bearer": []
+            "bearer": [
+              "repo:read"
+            ]
           }
         ],
         "x-sx-safety": "read",
@@ -12270,10 +12272,13 @@
         "x-sx-dry-run": false,
         "x-sx-pool": "read",
         "x-sx-cost": 1,
-        "x-sx-scopes": [],
+        "x-sx-scopes": [
+          "repo:read"
+        ],
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "insufficient_scope",
           "internal",
           "invalid_request",
           "not_found",

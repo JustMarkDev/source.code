@@ -327,6 +327,25 @@ describe('who can see what', () => {
     expect(r.headers.get('cache-control')).toBe('no-store')
   })
 
+  test('maintainer changes are ACL changes: limited tokens cannot grant and removal revokes write', async () => {
+    const h = harness()
+    expect((await h.call('PATCH', '/repos/dana/tinyqueue', { token: h.tokens.limited, body: { maintainers: ['stranger'] } })).status).toBe(403)
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'aclrepo', maintainers: ['hollis'] } })
+    const change = await h.call('POST', '/repos/dana/aclrepo/changes', { body: { branch: 'a' } })
+    await h.call('PATCH', '/repos/dana/aclrepo', { body: { maintainers: ['dana'] } })
+    expect((await h.call('POST', `/repos/dana/aclrepo/changes/${change.json.number}/reviews`, { token: h.tokens.hollis, body: { state: 'approved' } })).status).toBe(403)
+  })
+
+  test('upload content needs a read scope too', async () => {
+    const h = harness()
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+    const up = (await h.call('POST', '/uploads', { body: { filename: 'a.png', content_type: 'image/png', size: png.length } })).json
+    await h.api.fetch(new Request(up.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))
+    await h.call('POST', `${REPO}/changes/216/evidence`, { body: { upload: up.id, kind: 'image' } })
+    const token = (await h.call('POST', '/tokens', { body: { name: 'hooks', scopes: ['webhooks:write'] } })).json.secret as string
+    expect((await h.call('GET', `/uploads/${up.id}/content`, { token })).status).toBe(403)
+  })
+
   test('removing an approving maintainer clears policy before landing', async () => {
     const h = harness({ seed: (d) => seedStack(d) })
     const policy = await h.call('GET', '/repos/dana/stacky/changes/1/policy')

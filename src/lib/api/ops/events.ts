@@ -17,7 +17,7 @@ export const listEvents = defineOp({
   id: 'events.list',
   summary: 'The event log, oldest first',
   description:
-    'Everything that happened in repositories you can see. Pass the last `next_cursor` to continue. Events are kept for 30 days. `type` takes a comma list; `change.*` matches every change event.',
+    'Everything that happened in repositories you can see. Pass the last `next_cursor` to continue. The preview keeps a bounded count/size window; the hosted service keeps 30 days. `type` takes a comma list; `change.*` matches every change event.',
   tags: ['events'],
   method: 'GET',
   path: '/events',

@@ -269,7 +269,7 @@ export const listDeliveries = defineOp({
   ...read,
   id: 'webhooks.deliveries.list',
   summary: 'Deliveries, newest first',
-  description: 'Kept for 30 days, up to 1,000 per webhook.',
+  description: 'Kept up to 1,000 per webhook.',
   method: 'GET',
   path: '/repos/{owner}/{repo}/webhooks/{webhook}/deliveries',
   params: hookParams,

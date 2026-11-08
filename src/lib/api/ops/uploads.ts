@@ -163,6 +163,7 @@ export const uploadContent = defineOp({
   path: '/uploads/{id}/content',
   params: z.object({ id: z.string().describe('The upload `upl_` id') }),
   auth: 'optional',
+  scopes: ['repo:read'],
   pool: 'read',
   safety: 'read',
   idempotent: true,

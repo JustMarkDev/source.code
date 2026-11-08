@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto'
 import { newId, seededId } from './ids'
 import { pageSorted } from './cursor'
-import { apiError } from './problem'
+import { apiError, errorCatalog } from './problem'
 import { EventLog, parseEvent  } from './events'
 import { Pre } from './registry'
 import type { CursorPosition, Page } from './cursor'
@@ -209,6 +209,8 @@ export type RepoRec = {
   collaborators: Set<string>
   installs: Set<string>
   maintainers: Set<string>
+  /** Collaborators granted only because they were maintainers, so removal revokes them. */
+  maintainerGrants: Set<string>
   changes: Map<number, ChangeRec>
   issues: Map<number, IssueRec>
   stacks: Map<string, Array<number>>
@@ -416,6 +418,7 @@ export class MemoryDomain {
       collaborators: new Set(init.collaborators ?? []),
       installs: new Set(init.installs ?? []),
       maintainers: new Set(init.maintainers ?? [owner]),
+      maintainerGrants: new Set(),
       changes: new Map(),
       issues: new Map(),
       stacks: new Map(),
@@ -1174,6 +1177,7 @@ export class MemoryDomain {
         created: true,
       }
     const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers], collaborators: [...maintainers] })
+    rec.maintainerGrants = new Set(maintainers)
     const lower = `${owner}/${input.name}`.toLowerCase()
     this.aliases.delete(lower)
     for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
@@ -1570,6 +1574,10 @@ export class MemoryDomain {
       throw apiError('forbidden', 'A token limited to repositories cannot rename one.', {
         hint: 'Use a token that is not limited to repositories.',
       })
+    if (body.maintainers !== undefined && p.repos)
+      throw apiError('forbidden', 'A token limited to repositories cannot change maintainers.', {
+        hint: 'Use a token that is not limited to repositories.',
+      })
     if (renaming) {
       const target = `${repo.owner}/${body.name}`
       const taken = this.repos.get(target) ?? this.byLower(target.toLowerCase())
@@ -1614,9 +1622,18 @@ export class MemoryDomain {
     if (body.maintainers !== undefined) {
       const next = [...new Set(body.maintainers)].sort()
       if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify(next)) {
+        const removed = [...repo.maintainers].filter((h) => !next.includes(h))
+        for (const h of removed)
+          if (repo.maintainerGrants.delete(h)) repo.collaborators.delete(h)
+        for (const h of next)
+          if (!repo.collaborators.has(h)) {
+            repo.collaborators.add(h)
+            repo.maintainerGrants.add(h)
+          }
         repo.maintainers = new Set(next)
-        for (const h of next) repo.collaborators.add(h)
         for (const c of repo.changes.values()) c.policyMemo = undefined
+        this.accessRevision++
+        this.svc.search?.reset()
         changed.push('maintainers')
       }
     }
@@ -2654,8 +2671,21 @@ export class MemoryDomain {
       } catch (e) {
         op.state = 'failed'
         op.finished = this.now()
-        const failure = e as { code?: string; detail?: string }
-        op.error = { code: failure.code ?? 'internal', detail: failure.detail ?? 'Unexpected failure.' }
+        const failure = e as { code?: keyof typeof errorCatalog; detail?: string; hint?: string; retryable?: boolean; errors?: unknown; extra?: Record<string, unknown> }
+        const code = failure.code && errorCatalog[failure.code] ? failure.code : 'internal'
+        const entry = errorCatalog[code]
+        op.error = {
+          type: `https://source.code/docs/api/errors#${code}`,
+          title: entry.title,
+          status: entry.status,
+          code,
+          detail: failure.detail ?? 'Unexpected failure.',
+          hint: failure.hint ?? entry.hint,
+          retryable: failure.retryable ?? entry.retryable,
+          exit_code: entry.exit,
+          ...(failure.errors ? { errors: failure.errors } : {}),
+          ...(failure.extra ?? {}),
+        }
         this.emit(repo, 'operation.finished', by, { object: 'operation', id: op.id, number: null }, ['state'], null)
       }
     }

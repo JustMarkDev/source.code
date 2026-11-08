@@ -40,6 +40,8 @@ type Hint = {
   readOnly?: boolean
   idempotent?: boolean
   destructive?: boolean
+  /** Exit codes that carry a successful answer, such as policy blocked (5). */
+  allowExit?: Array<number>
 }
 
 /**
@@ -86,8 +88,8 @@ export function createSxMcpServer(
           argv(a as z.infer<z.ZodObject<TShape>>),
           options.client,
         )
-        if (r.code === 0)
-          return { content: [{ type: 'text' as const, text: r.out }] }
+        if (r.code === 0 || hint.allowExit?.includes(r.code))
+          return { content: [{ type: 'text' as const, text: r.out || r.err }] }
         return {
           isError: true,
           content: [{ type: 'text' as const, text: r.err || r.out }],
@@ -168,7 +170,7 @@ export function createSxMcpServer(
     'Whether a change meets every policy, and which requirement asks for what.',
     { repo: repoArg, change: z.string() },
     (a) => ['policy', 'explain', a.change, ...repo(a)],
-    { readOnly: true },
+    { readOnly: true, allowExit: [5] },
   )
   tool(
     'list_issues',

@@ -97,7 +97,7 @@ curl "$SX/repos/dana/gitfs/webhooks/whk_…/deliveries?state=failed" -H "Authori
 curl "$SX/repos/dana/gitfs/webhooks/whk_…/deliveries/dlv_…"       # every attempt and the payload
 ```
 
-Deliveries are kept for 30 days, up to 1,000 per webhook. Each attempt records the time, the status or the error, and how long it took.
+Deliveries are kept up to 1,000 per webhook. Each attempt records the time, the status or the error, and how long it took.
 
 ## Send it again, or catch up
 

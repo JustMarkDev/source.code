@@ -44,7 +44,7 @@ export function parseTtl(s: string | undefined): number {
 export function scrub(text: string, secrets: Record<string, string>): string {
   let out = text
   for (const [name, value] of Object.entries(secrets)) {
-    if (value.length < 4) continue
+    if (value.length === 0) continue
     const forms = new Set([
       value,
       Buffer.from(value).toString('base64'),
