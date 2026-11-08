@@ -69,6 +69,7 @@ export const listRepos = defineOp({
     owner: z.string().optional().describe('Only repositories of this account'),
   }),
   response: S.listOf(S.Repo),
+  errors: ['cursor_mismatch'],
   shapeable: true,
   handler: (ctx) =>
     Effect.gen(function* () {

@@ -27,6 +27,7 @@ const report = {
 
 export const startRun = defineOp({
   id: 'runs.start',
+  secretResponse: true,
   summary: 'Start a run and get a token for it',
   description:
     'A run is one bounded piece of work by an agent. Starting one mints a token limited to this repository, with only the scopes asked for (never more than yours, never `tokens:manage`), that stops working when the run ends or after `ttl_minutes`. The token is in the response once. Give it to the agent and keep your own. Everything the agent does is attributed to you as an agent. At most 20 runs may be going at once.',

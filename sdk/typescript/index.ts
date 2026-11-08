@@ -2068,6 +2068,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'accounts.list': {
@@ -2078,6 +2079,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'api.batch': {
@@ -2088,6 +2090,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'api.errors': {
@@ -2098,6 +2101,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'api.limits': {
@@ -2108,6 +2112,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'api.openapi': {
@@ -2118,6 +2123,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'api.root': {
@@ -2128,6 +2134,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'auth.principal': {
@@ -2138,6 +2145,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'authorizations.list': {
@@ -2148,6 +2156,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'authorizations.revoke': {
@@ -2158,6 +2167,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'changes.abandon': {
@@ -2168,6 +2178,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'changes.create': {
@@ -2178,6 +2189,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'changes.get': {
@@ -2188,6 +2200,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'changes.land': {
@@ -2198,6 +2211,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'changes.list': {
@@ -2219,6 +2233,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'changes.mark_ready': {
@@ -2229,6 +2244,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'changes.restore': {
@@ -2239,6 +2255,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'changes.update': {
@@ -2249,6 +2266,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'checks.list': {
@@ -2259,6 +2277,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'checks.report': {
@@ -2269,6 +2288,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'env.audit': {
@@ -2279,6 +2299,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'env.list': {
@@ -2289,6 +2310,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'env.recipients': {
@@ -2299,6 +2321,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'env.set': {
@@ -2309,6 +2332,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'env.values': {
@@ -2319,6 +2343,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'read',
   },
   'events.list': {
@@ -2329,6 +2354,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'events.stream': {
@@ -2339,6 +2365,7 @@ const OPERATIONS = {
     rawBody: false,
     json: false,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'evidence.create': {
@@ -2349,6 +2376,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'evidence.list': {
@@ -2359,6 +2387,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'findings.dismiss': {
@@ -2369,6 +2398,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'findings.list': {
@@ -2379,6 +2409,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'findings.resolve': {
@@ -2389,6 +2420,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'git.blob': {
@@ -2399,6 +2431,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'git.commit': {
@@ -2409,6 +2442,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'git.commits': {
@@ -2419,6 +2453,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'git.diff': {
@@ -2429,6 +2464,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'git.raw': {
@@ -2439,6 +2475,7 @@ const OPERATIONS = {
     rawBody: false,
     json: false,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'git.tree': {
@@ -2449,6 +2486,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'grants.approve': {
@@ -2459,6 +2497,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'grants.list': {
@@ -2469,6 +2508,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'grants.request': {
@@ -2479,6 +2519,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'grants.revoke': {
@@ -2489,6 +2530,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'issues.create': {
@@ -2499,6 +2541,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'issues.get': {
@@ -2509,6 +2552,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'issues.list': {
@@ -2519,6 +2563,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'issues.update': {
@@ -2529,6 +2574,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'mirrors.create': {
@@ -2539,6 +2585,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'mirrors.delete': {
@@ -2549,6 +2596,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'mirrors.list': {
@@ -2559,6 +2607,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'mirrors.sync': {
@@ -2569,6 +2618,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'operations.get': {
@@ -2579,6 +2629,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'patch_sets.compare': {
@@ -2589,6 +2640,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'patch_sets.create': {
@@ -2599,6 +2651,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'patch_sets.get': {
@@ -2609,6 +2662,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'patch_sets.list': {
@@ -2619,6 +2673,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'policy.get': {
@@ -2629,6 +2684,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'policy.simulate': {
@@ -2639,6 +2695,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'repos.context': {
@@ -2649,6 +2706,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'repos.create': {
@@ -2659,6 +2717,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'repos.delete': {
@@ -2669,6 +2728,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'repos.get': {
@@ -2679,6 +2739,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'repos.list': {
@@ -2689,6 +2750,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'repos.number': {
@@ -2699,6 +2761,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'repos.update': {
@@ -2709,6 +2772,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'reviews.create': {
@@ -2719,6 +2783,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'runs.cancel': {
@@ -2729,6 +2794,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'runs.finish': {
@@ -2739,6 +2805,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'runs.get': {
@@ -2749,6 +2816,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'runs.list': {
@@ -2759,6 +2827,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'runs.note': {
@@ -2769,6 +2838,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'runs.start': {
@@ -2779,6 +2849,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'search.query': {
@@ -2789,6 +2860,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'stacks.land': {
@@ -2799,6 +2871,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'sync.get': {
@@ -2809,6 +2882,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'teams.create': {
@@ -2819,6 +2893,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'teams.delete': {
@@ -2829,6 +2904,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'teams.get': {
@@ -2839,6 +2915,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'teams.list': {
@@ -2849,6 +2926,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'teams.members.add': {
@@ -2859,6 +2937,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'teams.members.remove': {
@@ -2869,6 +2948,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'teams.repos.remove': {
@@ -2879,6 +2959,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'destructive',
   },
   'teams.repos.set': {
@@ -2889,6 +2970,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'teams.update': {
@@ -2899,6 +2981,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'tokens.create': {
@@ -2909,6 +2992,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'tokens.get': {
@@ -2919,6 +3003,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'tokens.list': {
@@ -2929,6 +3014,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'tokens.revoke': {
@@ -2939,6 +3025,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'uploads.content': {
@@ -2949,6 +3036,7 @@ const OPERATIONS = {
     rawBody: false,
     json: false,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'uploads.create': {
@@ -2959,6 +3047,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'uploads.get': {
@@ -2969,6 +3058,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'uploads.put': {
@@ -2979,6 +3069,7 @@ const OPERATIONS = {
     rawBody: true,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'webhooks.create': {
@@ -2989,6 +3080,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'webhooks.delete': {
@@ -2999,6 +3091,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'destructive',
   },
   'webhooks.deliveries.get': {
@@ -3009,6 +3102,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'webhooks.deliveries.list': {
@@ -3019,6 +3113,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'webhooks.deliveries.redeliver': {
@@ -3029,6 +3124,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'webhooks.get': {
@@ -3039,6 +3135,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'webhooks.list': {
@@ -3049,6 +3146,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'read',
   },
   'webhooks.ping': {
@@ -3059,6 +3157,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'webhooks.replay': {
@@ -3069,6 +3168,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: false,
     safety: 'write',
   },
   'webhooks.rotate_secret': {
@@ -3079,6 +3179,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: false,
+    secretResponse: true,
     safety: 'write',
   },
   'webhooks.update': {
@@ -3089,6 +3190,7 @@ const OPERATIONS = {
     rawBody: false,
     json: true,
     idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
 } as const
@@ -3707,7 +3809,7 @@ export function createClient(options: ClientOptions = {}): Client {
     }
     const read = op.method === 'GET'
     // A write that is not naturally idempotent is made safe to repeat: the same key is sent every time.
-    if (!read && !op.idempotent && !o.dryRun)
+    if (!read && !op.idempotent && !o.dryRun && !op.secretResponse)
       headers['idempotency-key'] = o.idempotencyKey ?? uuid()
     else if (o.idempotencyKey) headers['idempotency-key'] = o.idempotencyKey
     const cached = read ? cache.get(url) : undefined

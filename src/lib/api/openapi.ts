@@ -192,6 +192,7 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
       'x-sx-scopes': op.scopes ?? [],
       'x-sx-errors': operationErrors(op),
       'x-sx-async': !!op.mayBeAsync,
+      'x-sx-secret-response': !!op.secretResponse,
     }
     const item = (paths[op.path] ??= {}) as Json
     item[op.method.toLowerCase()] = entry

@@ -164,6 +164,8 @@ export type OpSpec<
   rawBody?: { maxBytes: number }
   response: TResponse
   status?: number
+  /** The response contains a secret or a one-time capability, so it is not stored for idempotency. */
+  secretResponse?: boolean
   /** The response is not JSON: the media type it is served as. */
   responseContentType?: string
   /** The response stays open, so it cannot be run inside a batch. */
@@ -173,7 +175,7 @@ export type OpSpec<
   /** Honours `?fields=`. */
   shapeable?: boolean
   /** Honours `?wait=` with `If-None-Match`; names the topic to wait on. */
-  waitOn?: (params: Infer<TParams>, query?: unknown) => string
+  waitOn?: (params: Infer<TParams>, query?: unknown, domain?: DomainCore) => string
   /**
    * The version of what is being read, found without building it. With it a
    * conditional read can answer 304 and a repeat read can come from the body

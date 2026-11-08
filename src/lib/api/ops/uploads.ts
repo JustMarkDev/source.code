@@ -47,6 +47,7 @@ const kindFits: Record<string, (type: string) => boolean> = {
 
 export const createUpload = defineOp({
   id: 'uploads.create',
+  secretResponse: true,
   summary: 'Announce a file you are about to upload',
   description:
     'Say what the file is. The response has an `upload_url`: PUT the bytes there with the same Content-Type, no token needed. The address works once, for exactly this type and size, for an hour. The first bytes of images and video are checked against the type.',
@@ -227,7 +228,7 @@ export const createEvidence = defineOp({
   }),
   response: S.Evidence,
   status: 201,
-  errors: ['not_found', 'forbidden', 'upload_incomplete', 'invalid_request', 'moved'],
+  errors: ['not_found', 'forbidden', 'upload_incomplete', 'invalid_state', 'invalid_request', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

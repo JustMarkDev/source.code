@@ -426,8 +426,20 @@ describe('runs', () => {
     expect(denied.status).toBe(403)
   })
 
-  test('a run cannot be given secrets:write', async () => {
+  test('runs started in the same millisecond page without loss', async () => {
     const h = harness()
+    for (let i = 0; i < 4; i++) await h.call('POST', `${REPO}/runs`, { body: { task: `run ${i}` } })
+    const seen: Array<string> = []
+    let cursor: string | null = null
+    do {
+      const r = await h.call('GET', `${REPO}/runs?limit=2${cursor ? `&cursor=${cursor}` : ''}`)
+      for (const x of r.json.data) seen.push(x.id)
+      cursor = r.json.next_cursor
+    } while (cursor)
+    expect(new Set(seen).size).toBe(4)
+  })
+
+  test('a run cannot be given secrets:write', async () => {    const h = harness()
     const r = await h.call('POST', `${REPO}/runs`, { body: { task: 'secret', scopes: ['secrets:write'] } })
     expect(r.status).toBe(403)
   })

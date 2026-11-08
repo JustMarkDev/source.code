@@ -265,6 +265,7 @@ export function createApi(options: ApiOptions) {
     const problem = toProblem(error, requestId)
     const headers: Record<string, string> = {
       'content-type': 'application/problem+json; charset=utf-8',
+      'cache-control': 'no-store',
       ...error.headers,
       ...extra,
     }
@@ -385,7 +386,7 @@ export function createApi(options: ApiOptions) {
 
     // Rate limit. The key is the token, or the client address when anonymous.
     const poolName = principal ? (op.pool === 'none' ? 'none' : op.pool) : op.pool === 'none' ? 'none' : 'anonymous'
-    const limitKey = principal ? principal.tokenId : `ip:${clientAddress(req)}`
+    const limitKey = principal ? principal.limitKey : `ip:${clientAddress(req)}`
     const cost = op.cost ?? 1
     let rate: { header: string; policy: string } | null = null
     let refund: (() => void) | null = null
@@ -419,6 +420,8 @@ export function createApi(options: ApiOptions) {
         res.headers.set('ratelimit-policy', rate.policy)
         res.headers.set('ratelimit', rate.header)
       }
+      if (!res.headers.has('server-timing'))
+        res.headers.set('server-timing', `total;dur=${(performance.now() - started).toFixed(2)}`)
       // A streaming response keeps its concurrency slot until the body closes.
       if (op.streaming && res.body && req.method !== 'HEAD') {
         const reader = res.body.getReader()
@@ -658,6 +661,8 @@ export function createApi(options: ApiOptions) {
     // Idempotency for writes.
     const key = req.headers.get('idempotency-key')
     let scope = ''
+    if (!isRead && key && op.secretResponse)
+      return fail(apiError('invalid_request', 'This operation cannot use Idempotency-Key because its response contains a secret.'))
     if (!isRead && key) {
       if (key.length > 64)
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
@@ -714,7 +719,7 @@ export function createApi(options: ApiOptions) {
       if (wantsWait && step.kind === 'not_modified') {
         // Real elapsed time, not the injectable clock: waiting is physical.
         const deadline = performance.now() + waitSeconds * 1000
-        const topic = op.waitOn!(parsedParams, query)
+        const topic = op.waitOn!(parsedParams, query, domain)
         while (step.kind === 'not_modified' && performance.now() < deadline) {
           await options.events.wait(topic, deadline - performance.now(), req.signal)
           if (req.signal.aborted) break
@@ -746,6 +751,7 @@ export function createApi(options: ApiOptions) {
       } else {
         let out = step.out
         if (out instanceof Raw) {
+          if (out.response.status === 304) refund?.()
           if (req.method === 'HEAD') {
             await out.response.body?.cancel().catch(() => {})
             return new Response(null, { status: out.response.status, headers: out.response.headers })
@@ -820,6 +826,7 @@ export function createApi(options: ApiOptions) {
         }
       }
       headers['content-type'] = wantsMarkdown && status < 300 ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8'
+      if (op.secretResponse && !headers['cache-control']) headers['cache-control'] = 'no-store'
       if (isRead) headers.vary = 'accept, authorization'
       if (dryRun) {
         headers['sx-dry-run'] = 'true'

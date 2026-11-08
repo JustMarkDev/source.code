@@ -1264,7 +1264,7 @@ export class MemoryDomain {
 
   async listRuns(owner: string, name: string, p: Viewer, q: { state?: string; after: CursorPosition | null; limit: number }) {
     const repo = this.resolve(owner, name, p)
-    const all = this.runsByRepo.get(`${repo.owner}/${repo.name}`) ?? []
+    const all = [...(this.runsByRepo.get(`${repo.owner}/${repo.name}`) ?? [])].sort((a, b) => a.started - b.started || (a.id < b.id ? -1 : 1))
     const page = pageSorted(all, (r) => r.started, (r) => r.id, {
       limit: q.limit,
       after: q.after,
@@ -1410,7 +1410,8 @@ export class MemoryDomain {
       t.updated = this.now()
       t.version++
     }
-    return this.presentTeam(t)
+    const shown = dry ? { ...t, name: body.name ?? t.name, description: body.description ?? t.description } : t
+    return this.presentTeam(shown)
   }
 
   async deleteTeam(org: string, slug: string, p: Principal, dry: boolean) {
@@ -1526,7 +1527,14 @@ export class MemoryDomain {
           hint: 'Pick another name, or delete the repository that has it.',
         })
     }
-    if (dry) return this.presentRepo(repo)
+    if (dry)
+      return this.presentRepo({
+        ...repo,
+        name: body.name ?? repo.name,
+        description: body.description ?? repo.description,
+        visibility: body.visibility ?? repo.visibility,
+        defaultBranch: body.default_branch ?? repo.defaultBranch,
+      })
     const from = `${repo.owner}/${repo.name}`
     const changed: Array<string> = []
     if (body.description !== undefined && body.description !== repo.description) {
@@ -1721,7 +1729,17 @@ export class MemoryDomain {
   }
 
   async syncVersion(owner: string, name: string, p: Viewer) {
-    return `${this.repoKey(this.resolve(owner, name, p))}.${this.events.oldest}`
+    return `${this.repoKey(this.repoForSync(`${owner}/${name}`, p))}.${this.events.oldest}`
+  }
+
+  /** Sync accepts an old name and the current name; it resolves the stable id. */
+  private repoForSync(full: string, p: Viewer) {
+    const id = this.repoIdForHistory(full)
+    const r = id ? this.reposById.get(id) : null
+    if (!r || !this.canRead(r, p)) throw apiError('not_found', `No repository ${full}.`, {
+      hint: 'Check the path. Private things answer 404 to everyone who cannot see them.',
+    })
+    return r
   }
 
   /** The repository id behind an address, after checking the caller may read it. */
@@ -2021,7 +2039,10 @@ export class MemoryDomain {
       })
       this.changeEvent(repo, c, 'change.updated', by, changed)
     }
-    return this.presentChange(repo, c, p)
+    const shown = dry
+      ? { ...c, title: body.title ?? c.title, description: body.description ?? c.description, labels: body.labels ?? c.labels }
+      : c
+    return this.presentChange(repo, shown, p)
   }
 
   /** `If-Match` carries the ETag the client read: `W/"<version>"`. */
@@ -2496,8 +2517,11 @@ export class MemoryDomain {
     return this.presentOp(op)
   }
 
-  async operationVersion(id: string, p: Viewer) {
-    const op = this.operations.get(id)
+  operationRepoId(id: string) {
+    return this.operations.get(id)?.repoId ?? null
+  }
+
+  async operationVersion(id: string, p: Viewer) {    const op = this.operations.get(id)
     if (!op || !p || !this.mayReadId(op.repoId, p)) return null
     return `${id}.${op.state}.${op.done}`
   }
@@ -2604,6 +2628,17 @@ export class MemoryDomain {
         { object: 'issue', id: i.id, number: i.number }, Object.keys(body), shown)
       return shown
     }
+    if (dry) {
+      const preview = {
+        ...i,
+        title: body.title ?? i.title,
+        body: body.body ?? i.body,
+        labels: body.labels ?? i.labels,
+        state: body.state ?? i.state,
+        closed: body.state === 'closed' ? this.now() : body.state === 'open' ? null : i.closed,
+      }
+      return this.presentIssue(repo, preview)
+    }
     return this.presentIssue(repo, i)
   }
 
@@ -2679,6 +2714,7 @@ export class MemoryDomain {
 
   /** The stable id behind a repository address, without requiring that it still exists. */
   repoIdForHistory(full: string): string | null {
+    if (full.startsWith('rep_')) return this.reposById.has(full) ? full : this.deletedIds.get(full) ?? null
     const direct = this.repos.get(full) ?? this.byLower(full.toLowerCase())
     if (direct) return direct.id
     let key = full.toLowerCase()
@@ -2732,7 +2768,7 @@ export class MemoryDomain {
     q: { repo: string; cursor?: string; limit: number },
   ): Promise<z.infer<typeof S.Sync>> {
     const [owner, name] = q.repo.split('/')
-    const repo = this.resolve(owner, name ?? '', p)
+    const repo = this.repoForSync(owner.startsWith('rep_') ? owner : `${owner}/${name ?? ''}`, p)
     const canPull = !p || p.scopes.has('pulls:read')
     const canIssue = !p || p.scopes.has('issues:read')
     const scopeOk = (t: string) =>

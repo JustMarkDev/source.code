@@ -65,6 +65,7 @@ async function handle({ request }: { request: Request }) {
       scopes: [...found.record.scopes],
       repos: found.record.repos ? [...found.record.repos] : null,
       audience: ['api'],
+      limitKey: found.record.id,
       ttlMs: 60_000,
     })
     client = clientFor(`${origin}${API_MOUNT}`, created.secret, (req) => api.fetch(req))

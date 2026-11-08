@@ -41,6 +41,13 @@ describe('the TypeScript client', () => {
     expect(again.id).toBe(made.id)
   })
 
+  test('a secret-bearing write is not given an automatic idempotency key', async () => {
+    const { sx, seen } = clientFor()
+    await sx.tokens.create({ body: { name: 'sdk-token', scopes: ['repo:read'] } })
+    const call = seen.find((s) => s.method === 'POST' && s.url.endsWith('/tokens'))
+    expect(call?.headers.get('idempotency-key')).toBeNull()
+  })
+
   test('uploads.put sends the declared content type', async () => {
     const { sx, seen } = clientFor()
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
@@ -103,14 +110,13 @@ describe('the TypeScript client', () => {
         return h.api.fetch(new Request(url, init))
       }) as unknown as typeof fetch,
     })
-    // Creating a token is not naturally idempotent: a repeat would make a second one.
-    const made = await sx.tokens.create({ body: { name: 'retried once', scopes: ['repo:read'], expires_in_days: 30 } })
-    expect(made.secret).toMatch(/^sxp_/)
+    // A write with an explicit key is retried with that same key.
+    const made = await sx.repos.create({ body: { name: 'retried-once' } }, { idempotencyKey: 'retry-key' })
+    expect(made.name).toBe('retried-once')
     expect(calls).toBe(3)
     expect(new Set(keys).size).toBe(1)
-    expect(keys[0]).toBeTruthy()
-    const mine = ((await h.call('GET', '/tokens')).json.data as Array<{ name: string }>).filter((t) => t.name === 'retried once')
-    expect(mine).toHaveLength(1)
+    expect(keys[0]).toBe('retry-key')
+    expect((await h.call('GET', '/repos/dana/retried-once')).status).toBe(200)
   })
 
   test('what cannot help is not retried, and the budget is respected', async () => {

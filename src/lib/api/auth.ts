@@ -55,10 +55,13 @@ export type TokenRecord = {
   revokedAt: number | null
   /** OAuth only: the authorization this token belongs to. */
   authorizationId?: string
+  /** A stable key for shared limits, when this token is a short bridge identity. */
+  limitKey?: string
 }
 
 export type Principal = {
   tokenId: string
+  limitKey: string
   handle: string
   actingAs: string
   class: ActorClass
@@ -129,6 +132,7 @@ export function principalOf(record: TokenRecord): Principal {
     const scopes = new Set(record.scopes)
     p = {
       tokenId: record.id,
+      limitKey: record.limitKey ?? record.id,
       handle: record.handle,
       actingAs: record.actingAs,
       class: record.class,
@@ -168,6 +172,7 @@ export type CreateToken = {
   audience?: ReadonlyArray<Audience>
   ttlMs: number
   authorizationId?: string
+  limitKey?: string
 }
 
 /**
@@ -207,6 +212,7 @@ export class AuthStore implements TokenStore {
       lastUsedAt: null,
       revokedAt: null,
       authorizationId: input.authorizationId,
+      limitKey: input.limitKey,
     }
     const hash = hashToken(secret)
     this.byHash.set(hash, record)

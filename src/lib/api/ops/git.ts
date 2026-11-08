@@ -214,7 +214,7 @@ export const gitCommit = defineOp({
         const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'read')
         return present(d, full, await d.svc.git.commit(full, ctx.params.sha))
       })
-      return reply(c, { headers: { 'cache-control': immutable() } })
+      return reply(c, { headers: { 'cache-control': isFullSha(ctx.params.sha) ? immutable() : 'private, no-cache' } })
     }),
 })
 
@@ -252,7 +252,7 @@ export const gitDiff = defineOp({
           files,
         }
       })
-      return reply(out, { headers: { 'cache-control': immutable() } })
+      return reply(out, { headers: { 'cache-control': isFullSha(ctx.params.sha) ? immutable() : 'private, no-cache' } })
     }),
 })
 

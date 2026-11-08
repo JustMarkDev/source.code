@@ -547,7 +547,7 @@ export const landStack = defineOp({
   body: z.strictObject({ expected_trees: z.record(z.string(), z.string()) }),
   response: S.Operation,
   status: 202,
-  errors: ['not_found', 'forbidden', 'stale_head', 'policy_blocked', 'invalid_state', 'moved'],
+  errors: ['not_found', 'forbidden', 'stale_head', 'parent_not_landed', 'policy_blocked', 'invalid_state', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

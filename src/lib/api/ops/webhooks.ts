@@ -94,6 +94,7 @@ export const listWebhooks = defineOp({
 export const createWebhook = defineOp({
   ...write,
   id: 'webhooks.create',
+  secretResponse: true,
   summary: 'Create a webhook',
   description:
     'The URL must be https and must not point at a private, loopback or link-local address. The response is the only time the signing secret is shown. A repository can have 10.',
@@ -178,7 +179,10 @@ export const updateWebhook = defineOp({
             })
         }
         if (!ctx.dryRun) d.svc.hooks.update(h, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description, active: ctx.body.active })
-        return presentHook(d, h, null)
+        const shown = ctx.dryRun
+          ? { ...h, url: ctx.body.endpoint ?? h.url, events: ctx.body.events ?? h.events, description: ctx.body.description ?? h.description, active: ctx.body.active ?? h.active }
+          : h
+        return presentHook(d, shown, null)
       })
     }),
 })
@@ -211,6 +215,7 @@ export const deleteWebhook = defineOp({
 export const rotateSecret = defineOp({
   ...write,
   id: 'webhooks.rotate_secret',
+  secretResponse: true,
   summary: 'Rotate the signing secret',
   description:
     'Returns the new secret once. Deliveries are signed with both the new and the old secret for 24 hours, so a receiver can switch without dropping events.',

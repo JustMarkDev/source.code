@@ -151,6 +151,7 @@ export function openapiOp(spec: () => unknown): Op {
 
 export const batchOp = defineOp({
   id: 'api.batch',
+  secretResponse: true,
   summary: 'Several requests in one',
   description: `Up to ${BATCH_LIMIT} requests. They run in parallel, each is authorised, rate limited and metered as if it had been sent alone, and each answer carries its own status. Batches do not nest. Use it to read a change, its policy and its checks in one round trip.`,
   tags: ['meta'],

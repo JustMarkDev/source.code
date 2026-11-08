@@ -114,7 +114,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "put": {
         "operationId": "teams.members.add",
@@ -223,7 +224,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/accounts/{handle}/teams/{slug}/repos/{owner}/{repo}": {
@@ -334,7 +336,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "put": {
         "operationId": "teams.repos.set",
@@ -476,7 +479,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/accounts/{handle}/teams/{slug}": {
@@ -570,7 +574,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "get": {
         "operationId": "teams.get",
@@ -664,7 +669,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "patch": {
         "operationId": "teams.update",
@@ -788,7 +794,8 @@
           "unsupported_version",
           "version_mismatch"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/accounts/{handle}/teams": {
@@ -898,7 +905,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "teams.create",
@@ -1019,7 +1027,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/accounts/{handle}": {
@@ -1110,7 +1119,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/accounts": {
@@ -1203,7 +1213,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/auth/principal": {
@@ -1271,7 +1282,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/authorizations/{id}": {
@@ -1355,7 +1367,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/authorizations": {
@@ -1455,7 +1468,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/batch": {
@@ -1575,7 +1589,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     },
     "/errors": {
@@ -1635,7 +1650,8 @@
           "rate_limited",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/events/stream": {
@@ -1728,7 +1744,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/events": {
@@ -1886,6 +1903,7 @@
           "insufficient_scope",
           "internal",
           "invalid_request",
+          "not_found",
           "rate_limited",
           "token_expired",
           "token_invalid",
@@ -1893,7 +1911,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/": {
@@ -1953,7 +1972,8 @@
           "rate_limited",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/limits": {
@@ -2013,7 +2033,8 @@
           "rate_limited",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/openapi.json": {
@@ -2077,7 +2098,8 @@
           "rate_limited",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/operations/{id}": {
@@ -2176,7 +2198,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/abandon": {
@@ -2287,7 +2310,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/checks": {
@@ -2418,7 +2442,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "checks.report",
@@ -2572,7 +2597,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/compare": {
@@ -2698,7 +2724,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/evidence": {
@@ -2829,7 +2856,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "evidence.create",
@@ -2964,6 +2992,7 @@
           "insufficient_scope",
           "internal",
           "invalid_request",
+          "invalid_state",
           "moved",
           "not_found",
           "payload_too_large",
@@ -2977,7 +3006,8 @@
           "unsupported_version",
           "upload_incomplete"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/findings/{finding}/dismiss": {
@@ -3119,7 +3149,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/findings/{finding}/resolve": {
@@ -3238,7 +3269,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/findings": {
@@ -3383,7 +3415,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/land": {
@@ -3520,7 +3553,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/patch-sets/{patchSet}": {
@@ -3634,7 +3668,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/patch-sets": {
@@ -3764,7 +3799,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "patch_sets.create",
@@ -3908,7 +3944,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/policy/simulate": {
@@ -4053,7 +4090,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/policy": {
@@ -4171,7 +4209,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/ready": {
@@ -4282,7 +4321,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/restore": {
@@ -4393,7 +4433,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}/reviews": {
@@ -4541,7 +4582,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes/{number}": {
@@ -4681,7 +4723,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "patch": {
         "operationId": "changes.update",
@@ -4823,7 +4866,8 @@
           "unsupported_version",
           "version_mismatch"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/changes": {
@@ -5049,7 +5093,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "changes.create",
@@ -5189,7 +5234,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/context": {
@@ -5313,7 +5359,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/{environment}/values": {
@@ -5433,7 +5480,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/{name}/{environment}": {
@@ -5581,7 +5629,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/audit": {
@@ -5703,7 +5752,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/grants/{grant}/approve": {
@@ -5837,7 +5887,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/grants/{grant}/revoke": {
@@ -5948,7 +5999,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/grants": {
@@ -6069,7 +6121,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "grants.request",
@@ -6206,7 +6259,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env/recipients": {
@@ -6327,7 +6381,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/env": {
@@ -6463,7 +6518,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/blob": {
@@ -6579,7 +6635,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/commits/{sha}/diff": {
@@ -6684,7 +6741,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/commits/{sha}": {
@@ -6788,7 +6846,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/commits": {
@@ -6932,7 +6991,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/raw": {
@@ -7048,7 +7108,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/git/tree": {
@@ -7164,7 +7225,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/issues/{number}": {
@@ -7297,7 +7359,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "patch": {
         "operationId": "issues.update",
@@ -7448,7 +7511,8 @@
           "unsupported_version",
           "version_mismatch"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/issues": {
@@ -7647,7 +7711,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "issues.create",
@@ -7782,7 +7847,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/mirrors/{mirror}/sync": {
@@ -7892,7 +7958,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/mirrors/{mirror}": {
@@ -7996,7 +8063,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/mirrors": {
@@ -8117,7 +8185,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "mirrors.create",
@@ -8261,7 +8330,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/numbers/{number}": {
@@ -8367,7 +8437,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/runs/{id}/cancel": {
@@ -8479,7 +8550,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/runs/{id}/finish": {
@@ -8620,7 +8692,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/runs/{id}/notes": {
@@ -8755,7 +8828,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/runs/{id}": {
@@ -8858,7 +8932,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/runs": {
@@ -9016,7 +9091,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "runs.start",
@@ -9180,7 +9256,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     },
     "/repos/{owner}/{repo}/stacks/{stack}/land": {
@@ -9309,6 +9386,7 @@
           "invalid_state",
           "moved",
           "not_found",
+          "parent_not_landed",
           "payload_too_large",
           "policy_blocked",
           "rate_limited",
@@ -9321,7 +9399,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": true
+        "x-sx-async": true,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}/redeliver": {
@@ -9432,7 +9511,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/deliveries/{delivery}": {
@@ -9545,7 +9625,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/deliveries": {
@@ -9712,7 +9793,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/ping": {
@@ -9814,7 +9896,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/replay": {
@@ -9966,7 +10049,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}/rotate-secret": {
@@ -10068,7 +10152,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     },
     "/repos/{owner}/{repo}/webhooks/{webhook}": {
@@ -10172,7 +10257,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "get": {
         "operationId": "webhooks.get",
@@ -10274,7 +10360,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "patch": {
         "operationId": "webhooks.update",
@@ -10419,7 +10506,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos/{owner}/{repo}/webhooks": {
@@ -10541,7 +10629,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "webhooks.create",
@@ -10679,7 +10768,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     },
     "/repos/{owner}/{repo}": {
@@ -10783,7 +10873,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "get": {
         "operationId": "repos.get",
@@ -10898,7 +10989,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "patch": {
         "operationId": "repos.update",
@@ -11035,7 +11127,8 @@
           "unsupported_version",
           "version_mismatch"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/repos": {
@@ -11166,6 +11259,7 @@
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "cursor_mismatch",
           "insufficient_scope",
           "internal",
           "invalid_request",
@@ -11175,7 +11269,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "repos.create",
@@ -11294,7 +11389,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/search": {
@@ -11438,7 +11534,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/sync": {
@@ -11550,6 +11647,7 @@
         "x-sx-errors": [
           "backend_unavailable",
           "concurrency_limited",
+          "cursor_mismatch",
           "insufficient_scope",
           "internal",
           "invalid_request",
@@ -11561,7 +11659,8 @@
           "token_revoked",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/tokens/{id}": {
@@ -11645,7 +11744,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "get": {
         "operationId": "tokens.get",
@@ -11727,7 +11827,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/tokens": {
@@ -11827,7 +11928,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       },
       "post": {
         "operationId": "tokens.create",
@@ -11987,7 +12089,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     },
     "/uploads/{id}/content": {
@@ -12069,7 +12172,8 @@
           "unsupported_version",
           "upload_incomplete"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/uploads/{id}/data": {
@@ -12175,7 +12279,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/uploads/{id}": {
@@ -12259,7 +12364,8 @@
           "unauthenticated",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": false
       }
     },
     "/uploads": {
@@ -12392,7 +12498,8 @@
           "unsupported_media_type",
           "unsupported_version"
         ],
-        "x-sx-async": false
+        "x-sx-async": false,
+        "x-sx-secret-response": true
       }
     }
   },

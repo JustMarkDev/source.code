@@ -34,7 +34,7 @@ export const listEvents = defineOp({
       .describe('Comma list of event types. `change.*` matches every change event'),
   }),
   response: S.listOf(S.Event),
-  errors: ['cursor_mismatch'],
+  errors: ['not_found', 'cursor_mismatch'],
   shapeable: true,
   waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
   probe: async (ctx, d) => ctx.query.repo ? d.repoHistoryVersion(ctx.query.repo, ctx.principal) : d.eventVersion(),
@@ -81,7 +81,7 @@ export const syncRepo = defineOp({
       .describe('Objects per response, 1 to 200'),
   }),
   response: S.Sync,
-  errors: ['not_found', 'moved'],
+  errors: ['not_found', 'cursor_mismatch', 'moved'],
   waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
   probe: (ctx, d) => {
     const [owner, name] = ctx.query.repo.split('/')
@@ -217,7 +217,10 @@ export const getOperation = defineOp({
   params: z.object({ id: z.string().describe('The operation `op_` id') }),
   response: S.Operation,
   errors: ['not_found'],
-  waitOn: (_p, q) => repoWaitTopic((q as { repo?: string } | undefined)?.repo),
+  waitOn: (p, _q, d) => {
+    const repoId = d?.operationRepoId(p.id)
+    return repoId ? `repo-id:${repoId}` : '*'
+  },
   probe: (ctx, d) =>
       d.operationVersion(ctx.params.id, ctx.principal),
   handler: (ctx) =>

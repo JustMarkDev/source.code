@@ -68,6 +68,7 @@ type Op = {
   idempotent: boolean
   safety: string
   rawBody: boolean
+  secretResponse: boolean
 }
 
 function readOps(doc: Json): Array<Op> {
@@ -94,6 +95,7 @@ function readOps(doc: Json): Array<Op> {
         response: json ? tsOf(json.schema) : null,
         raw: !!ok && !json && Object.keys(content).length > 0,
         idempotent: !!op['x-sx-idempotent'],
+        secretResponse: !!op['x-sx-secret-response'],
         safety: op['x-sx-safety'],
         rawBody: !!bodyContent && !bodyContent['application/json'],
       })
@@ -154,6 +156,7 @@ export function generateSdk(doc: Json): string {
         rawBody: op.rawBody,
         json: !op.raw,
         idempotent: op.idempotent,
+        secretResponse: op.secretResponse,
         safety: op.safety,
       })},`,
     )
@@ -306,7 +309,7 @@ export function createClient(options: ClientOptions = {}): Client {
     }
     const read = op.method === 'GET'
     // A write that is not naturally idempotent is made safe to repeat: the same key is sent every time.
-    if (!read && !op.idempotent && !o.dryRun) headers['idempotency-key'] = o.idempotencyKey ?? uuid()
+    if (!read && !op.idempotent && !o.dryRun && !op.secretResponse) headers['idempotency-key'] = o.idempotencyKey ?? uuid()
     else if (o.idempotencyKey) headers['idempotency-key'] = o.idempotencyKey
     const cached = read ? cache.get(url) : undefined
     if (cached) headers['if-none-match'] = cached.etag

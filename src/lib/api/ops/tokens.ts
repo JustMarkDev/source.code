@@ -69,6 +69,7 @@ export const listTokens = defineOp({
 export const createToken = defineOp({
   ...base,
   id: 'tokens.create',
+  secretResponse: true,
   summary: 'Create a token',
   description:
     'The response is the only time the secret is shown. A token can never have a scope its creator lacks, never outlives a year, and a token limited to repositories can only create tokens limited to the same ones.',

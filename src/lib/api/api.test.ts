@@ -313,6 +313,13 @@ describe('who can see what', () => {
     expect((await h.call('GET', `${REPO}/context`)).json.env.length).toBeGreaterThan(0)
   })
 
+  test('sync accepts an old repository name without a self-redirect', async () => {
+    const h = harness()
+    const r = await h.call('GET', '/sync?repo=dana/git-fs')
+    expect(r.status).toBe(200)
+    expect(r.json.object).toBe('sync')
+  })
+
   test('the context cursor can continue with sync', async () => {
     const h = harness()
     const context = await h.call('GET', `${REPO}/context`)
@@ -453,12 +460,19 @@ describe('generations and reuse', () => {
     expect((await h.call('POST', '/accounts/northwind/teams', { token: h.tokens.limited, body: { slug: 'nope' } })).status).toBe(403)
   })
 
+  test('a secret-bearing response refuses an Idempotency-Key', async () => {
+    const h = harness()
+    const r = await h.call('POST', '/tokens', { headers: { 'idempotency-key': 'secret-key' }, body: { name: 'x', scopes: ['repo:read'] } })
+    expect(r.status).toBe(400)
+    expect(r.json.code).toBe('invalid_request')
+  })
+
   test('a repeated dry run with the same key is not left in progress', async () => {
     const h = harness()
-    const body = { name: 'dry-run', scopes: ['repo:read'] }
+    const body = { name: 'dry-run' }
     const key = 'dry-run-key'
-    expect((await h.call('POST', '/tokens?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
-    expect((await h.call('POST', '/tokens?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
+    expect((await h.call('POST', '/repos?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
+    expect((await h.call('POST', '/repos?dry_run=true', { headers: { 'idempotency-key': key }, body })).status).toBe(200)
   })
 
   test('NDJSON is not replaced by a cached JSON body', async () => {
@@ -791,13 +805,20 @@ describe('writes', () => {
     const error = console.error
     console.error = () => {}
     try {
-      const first = await h.call('POST', '/tokens', { headers: { 'idempotency-key': key }, body: { name: 'x', scopes: ['repo:read'] } })
+      const first = await h.call('POST', '/repos', { headers: { 'idempotency-key': key }, body: { name: 'store-down' } })
       expect(first.status).toBe(201)
-      const retry = await h.call('POST', '/tokens', { headers: { 'idempotency-key': key }, body: { name: 'x', scopes: ['repo:read'] } })
+      const retry = await h.call('POST', '/repos', { headers: { 'idempotency-key': key }, body: { name: 'store-down' } })
       expect(retry.json.code).toBe('request_in_progress')
     } finally {
       console.error = error
     }
+  })
+
+  test('a dry run shows the change it would make', async () => {
+    const h = harness()
+    const preview = await h.call('PATCH', `${REPO}?dry_run=true`, { body: { description: 'Would be this' } })
+    expect(preview.json.description).toBe('Would be this')
+    expect((await h.call('GET', REPO)).json.description).not.toBe('Would be this')
   })
 
   test('an Idempotency-Key makes a create happen once', async () => {

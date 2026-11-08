@@ -112,7 +112,8 @@ describe('webhooks: endpoints', () => {
     const h = hooksHarness()
     const made = await h.create()
     const dry = await h.call('PATCH', `${REPO}/webhooks/${made.id}?dry_run=true`, { body: { active: false } })
-    expect(dry.json.active).toBe(true)
+    expect(dry.json.active).toBe(false)
+    expect((await h.call('GET', `${REPO}/webhooks/${made.id}`)).json.active).toBe(true)
     const up = await h.call('PATCH', `${REPO}/webhooks/${made.id}`, { body: { events: ['issue.*'], description: 'issues only' } })
     expect(up.json).toMatchObject({ events: ['issue.*'], description: 'issues only', version: 2 })
     expect((await h.call('PATCH', `${REPO}/webhooks/${made.id}`, { body: { endpoint: 'https://10.0.0.1/x' } })).status).toBe(400)
@@ -671,6 +672,14 @@ describe('environment variables and grants', () => {
     const unknown = await h.call('PUT', `${R}/NOT_A_VAR/development`, { body: { ciphertext: 'x' } })
     expect(unknown.status).toBe(400)
     expect(unknown.json.errors[0].code).toBe('not_in_schema')
+  })
+
+  test('a dry run reports the value it would set', async () => {
+    const h = harness()
+    const dry = await h.call('PUT', `${R}/STRIPE_KEY/development?dry_run=true`, { body: { ciphertext: 'age1ciphertext…' } })
+    expect(dry.json.set).toBe(true)
+    expect(dry.json.environments).toContain('development')
+    expect((await h.call('GET', `${R}/env/development/values`)).json.values).not.toHaveProperty('STRIPE_KEY')
   })
 
   test('a token with secrets:decrypt still needs a repository relationship', async () => {
