@@ -29,12 +29,14 @@ Where a project came from (GitHub, GitLab, Codeberg, Gitea) is private by design
 
 ## License
 
-Business Source License 1.1 (see `LICENSE`). The code is public so you can read it, build integrations and run the CLI against the hosted service. Production use of the server code needs a commercial license, and self-hosting is not offered or supported. Each version converts to Apache-2.0 four years after it is published.
+Server and web app: Business Source License 1.1 (see `LICENSE`). The code is public so you can read it, build integrations and run the CLI against the hosted service. Production use of the server code needs a commercial license, and self-hosting is not offered or supported. Each server version converts to Apache-2.0 four years after it is published.
 
-Any version published before this license change was under AGPL-3.0-only, and those versions stay available under that license to whoever received them.
+`cli/` and `sdk/typescript/` are Apache-2.0 (see `cli/LICENSE`, `sdk/typescript/LICENSE`), so you can use and fork the clients freely. They only talk to the hosted service; they do not let anyone host the service itself.
+
+Any version published before the BSL-1.1 change was under AGPL-3.0-only, and those versions stay available under that license to whoever received them.
 
 Third-party components keep their own licenses: see `THIRD_PARTY_NOTICES.md`.
 
 ## Contributing
 
-Outside contributions are not being accepted yet. When they are, a contributor license agreement will be required.
+Outside contributions are accepted under the terms in `CLA.md`. You keep ownership of your work but grant the project the rights to include it under BSL-1.1, Apache-2.0 (on Change Date, or immediately for `cli/` and `sdk/typescript/`), and any commercial license, so only the project owner can sell hosting.
