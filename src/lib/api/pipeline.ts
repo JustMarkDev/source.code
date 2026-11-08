@@ -663,7 +663,7 @@ export function createApi(options: ApiOptions) {
     let wasReplay = false
     // `If-Match: *` accepts any version, so it is not a concrete precondition:
     // a retry must replay rather than run again and overwrite a newer edit.
-    const wildcardIfMatch = ifMatch !== null && ifMatch.split(',').some((t) => t.trim().replace(/^W\//, '') === '*')
+    const wildcardIfMatch = ifMatch !== null && ifMatch.split(',').some((t) => t.trim().replace(/^W\//, '').replace(/"/g, '') === '*')
     const checkIfMatch = op.ifMatch === true && ifMatch !== null && !wildcardIfMatch
     if (!isRead && key && op.secretResponse)
       return fail(apiError('invalid_request', 'This operation cannot use Idempotency-Key because its response contains a secret.'))

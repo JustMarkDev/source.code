@@ -1129,16 +1129,18 @@ describe('writes', () => {
 
   test('a wildcard If-Match replays instead of overwriting', async () => {
     const h = harness()
-    const made = await h.call('POST', `${REPO}/issues`, { body: { title: 'wild' } })
-    const n = made.json.number
-    const headers = { 'idempotency-key': 'wild-key', 'if-match': '*' }
-    const body = { title: 'from retry' }
-    expect((await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })).status).toBe(200)
-    await h.call('PATCH', `${REPO}/issues/${n}`, { body: { title: 'concurrent' } })
-    const again = await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })
-    expect(again.status).toBe(200)
-    expect(again.headers.get('sx-replayed')).toBe('true')
-    expect((await h.call('GET', `${REPO}/issues/${n}`)).json.title).toBe('concurrent')
+    for (const wildcard of ['*', '"*"', 'W/"*"', 'W/"other", W/"*"']) {
+      const made = await h.call('POST', `${REPO}/issues`, { body: { title: `wild ${wildcard}` } })
+      const n = made.json.number
+      const headers = { 'idempotency-key': `wild-${wildcard}`, 'if-match': wildcard }
+      const body = { title: 'from retry' }
+      expect((await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })).status).toBe(200)
+      await h.call('PATCH', `${REPO}/issues/${n}`, { body: { title: 'concurrent' } })
+      const again = await h.call('PATCH', `${REPO}/issues/${n}`, { body, headers })
+      expect(again.status).toBe(200)
+      expect(again.headers.get('sx-replayed')).toBe('true')
+      expect((await h.call('GET', `${REPO}/issues/${n}`)).json.title).toBe('concurrent')
+    }
   })
 
   test('a repository-limited token keeps its key across a rename', async () => {
