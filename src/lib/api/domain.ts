@@ -1153,8 +1153,9 @@ export class MemoryDomain {
         })
     } else {
       if (acct.kind === 'person') maintainers.add(acct.handle)
-      for (const [h, r] of acct.members) if (r === 'owner' || r === 'admin') maintainers.add(h)
-      maintainers.add(p.handle)
+      for (const [h, r] of acct.members)
+        if ((r === 'owner' || r === 'admin') && this.accounts.get(h)?.kind === 'person') maintainers.add(h)
+      if (this.accounts.get(p.handle)?.kind === 'person') maintainers.add(p.handle)
     }
     const existing = this.repos.get(`${owner}/${input.name}`) ?? this.byLower(`${owner}/${input.name}`.toLowerCase())
     if (existing) return { repo: this.presentRepo(existing), created: false }
@@ -1568,6 +1569,12 @@ export class MemoryDomain {
           hint: 'Pick another name, or delete the repository that has it.',
         })
     }
+    if (body.maintainers !== undefined) {
+      for (const h of body.maintainers)
+        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
+          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
+        })
+    }
     if (dry)
       return this.presentRepo({
         ...repo,
@@ -1591,10 +1598,6 @@ export class MemoryDomain {
       changed.push('default_branch')
     }
     if (body.maintainers !== undefined) {
-      for (const h of body.maintainers)
-        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
-          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
-        })
       if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify([...body.maintainers].sort())) {
         repo.maintainers = new Set(body.maintainers)
         changed.push('maintainers')
