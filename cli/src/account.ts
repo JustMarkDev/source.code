@@ -2,20 +2,47 @@ import { SxError, exit } from './output'
 import { gitContext } from './repo'
 import { resolve } from './config'
 import { str } from './args'
-import { store } from './fixtures'
-import type { Account } from './fixtures'
+import type { Ctx } from './output'
 import type { Parsed } from './args'
+
+export type Account = {
+  handle: string
+  name: string
+  kind: 'person' | 'organization'
+  role: 'owner' | 'admin' | 'member' | null
+}
 
 /** Where the account in use came from. `sx account` says so, so a surprise is easy to trace. */
 export type From = 'flag' | 'env' | 'repo' | 'config' | 'default'
 export type Active = Account & { from: From }
 
-export const findAccount = (handle: string): Account | undefined =>
-  store.accounts.find((a) => a.handle === handle)
+/** Every account you can act as, with your role in each. */
+export async function accounts(ctx: Ctx): Promise<Array<Account>> {
+  const r = await ctx.api().once('/accounts')
+  return r.json.data as Array<Account>
+}
+
+/** Who the token is. */
+export async function whoami(ctx: Ctx): Promise<{
+  login: string
+  class: 'human' | 'agent' | 'bot'
+  scopes: Array<string>
+}> {
+  const r = await ctx.api().once('/auth/principal')
+  return r.json
+}
+
+export async function findAccount(
+  ctx: Ctx,
+  handle: string,
+): Promise<Account | undefined> {
+  return (await accounts(ctx)).find((a) => a.handle === handle)
+}
 
 /** The person the token belongs to. Always one of the accounts. */
-export function personal(): Account {
-  const own = findAccount(store.login)
+export async function personal(ctx: Ctx): Promise<Account> {
+  const login = (await whoami(ctx)).login
+  const own = await findAccount(ctx, login)
   if (!own) throw new Error('The login has no account of its own.')
   return own
 }
@@ -29,8 +56,8 @@ export function accountNotFound(handle: string): SxError {
   )
 }
 
-function named(handle: string, from: From): Active {
-  const a = findAccount(handle)
+async function named(ctx: Ctx, handle: string, from: From): Promise<Active> {
+  const a = await findAccount(ctx, handle)
   if (!a) throw accountNotFound(handle)
   return { ...a, from }
 }
@@ -47,15 +74,18 @@ function named(handle: string, from: From): Active {
  *
  * One login covers every account, so there is nothing to sign in to again.
  */
-export function activeAccount(flags: Parsed['flags']): Active {
+export async function activeAccount(
+  ctx: Ctx,
+  flags: Parsed['flags'],
+): Promise<Active> {
   const flag = str(flags, 'account')
-  if (flag) return named(flag, 'flag')
+  if (flag) return named(ctx, flag, 'flag')
   const env = process.env.SX_ACCOUNT
-  if (env) return named(env, 'env')
+  if (env) return named(ctx, env, 'env')
   const slug = str(flags, 'repo') ?? process.env.SX_REPO ?? gitContext().slug
   const owner = slug?.split('/').at(0)
-  if (owner && findAccount(owner)) return named(owner, 'repo')
+  if (owner && (await findAccount(ctx, owner))) return named(ctx, owner, 'repo')
   const saved = resolve('account').value
-  if (saved) return named(saved, 'config')
-  return { ...personal(), from: 'default' }
+  if (saved) return named(ctx, saved, 'config')
+  return { ...(await personal(ctx)), from: 'default' }
 }

@@ -7,6 +7,8 @@
  *    stable `code` and a `hint` that says what to run next.
  */
 
+import type { ApiClient } from './client'
+
 export const exit = {
   ok: 0,
   error: 1,
@@ -18,6 +20,7 @@ export const exit = {
 } as const
 
 export class SxError extends Error {
+  problem?: Record<string, unknown>
   constructor(
     readonly code: string,
     message: string,
@@ -32,6 +35,8 @@ export type Ctx = {
   json: boolean
   out: (s: string) => void
   err: (s: string) => void
+  /** The API client for this run. Made on first use. */
+  api: () => ApiClient
 }
 
 export function wantsJson(flags: Record<string, string | boolean>) {
@@ -72,7 +77,7 @@ export function fail(ctx: Ctx, e: unknown): number {
   if (ctx.json)
     ctx.err(
       JSON.stringify({
-        error: { code: err.code, message: err.message, hint: err.hint },
+        error: { ...(err.problem ?? {}), code: err.code, message: err.message, hint: err.hint },
       }),
     )
   else ctx.err(`error: ${err.message}${err.hint ? `\nhint: ${err.hint}` : ''}`)

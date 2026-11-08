@@ -1,0 +1,124 @@
+---
+icon: PlayIcon
+title: Quickstart
+description: From a first call to a landed change, including the refusal you will meet on the way.
+---
+
+<Callout type="warn" title="Preview">
+  This runs against sample data on your own machine. Start the app with `bun run
+  dev`.
+</Callout>
+
+```bash
+export SX=http://localhost:3000/api/v1
+export SX_TOKEN=sxp_dana_full_access_0001
+alias sxcurl='curl -s -H "Authorization: Bearer $SX_TOKEN" -H "Content-Type: application/json"'
+```
+
+## 1. Who am I
+
+```bash
+sxcurl $SX/auth/principal
+```
+
+```json
+{
+  "object": "principal",
+  "login": "dana",
+  "acting_as": "dana",
+  "class": "human",
+  "scopes": ["issues:comment", "issues:read", "issues:write", "pulls:comment", "pulls:merge", "pulls:read", "pulls:write", "repo:read", "repo:write", "secrets:decrypt", "secrets:schema", "secrets:write", "tokens:manage", "webhooks:read", "webhooks:write"]
+}
+```
+
+(Trimmed.) `class` is `human`, `agent` or `bot`. Policies read it, so the API shows it everywhere an actor appears.
+
+## 2. Start work with one request
+
+```bash
+sxcurl $SX/repos/dana/gitfs/context
+```
+
+You get the repository, every open change with its `policy` and what `blocking` it, open issues, and the env schema (names and kinds, never values). The `cursor` at the end is a place in the event log to continue from, see [Events and sync](/docs/api/events-and-sync).
+
+## 3. Read a change
+
+```bash
+sxcurl -i $SX/repos/dana/gitfs/changes/216
+```
+
+Note the `etag` header. Send it back and nothing is rebuilt:
+
+```bash
+sxcurl -i -H 'If-None-Match: W/"…"' $SX/repos/dana/gitfs/changes/216   # 304
+```
+
+Add `?fields=number,title,policy` to get only those, or `?expand=findings` for the reviewers' findings.
+
+## 4. Ask whether it can land
+
+`actions.land` already says no. Ask why:
+
+```bash
+sxcurl $SX/repos/dana/gitfs/changes/216/policy
+```
+
+Each requirement has a `state` (`pass`, `fail`, `pending`, `na`) and `needs`, which says what would satisfy it. Here a high finding is open and CI has not reported on the tree.
+
+## 5. Plan before you act
+
+Nothing is written by a simulation:
+
+```bash
+sxcurl -X POST $SX/repos/dana/gitfs/changes/216/policy/simulate \
+  -d '{"checks":{"ci/test":"pass"},"resolve":["F-2"]}'
+```
+
+`state` comes back `met`. That is the plan.
+
+## 6. Try to land, and be refused
+
+```bash
+sxcurl -X POST $SX/repos/dana/gitfs/changes/216/land -d '{"expected_tree":"9c4d7e1"}'
+```
+
+```json
+{
+  "status": 409,
+  "code": "policy_blocked",
+  "detail": "#216 cannot land: ci/test is running on tree 9c4d7e1; 1 open: F-2 from greptile.",
+  "hint": "Stop and report the failed requirements. Do not work around the policy.",
+  "retryable": false,
+  "exit_code": 5,
+  "requirements": ["…"]
+}
+```
+
+Add `?dry_run=true` to any write to get this answer without risking the write.
+
+## 7. Resolve, report CI, land
+
+```bash
+sxcurl -X POST $SX/repos/dana/gitfs/changes/216/findings/F-2/resolve
+
+sxcurl -X POST $SX/repos/dana/gitfs/changes/216/checks \
+  -d '{"key":"ci/test","state":"pass","tree":"9c4d7e1"}'
+
+sxcurl -X POST $SX/repos/dana/gitfs/changes/216/land \
+  -H "Idempotency-Key: $(uuidgen)" -d '{"expected_tree":"9c4d7e1"}'
+```
+
+`expected_tree` is the tree you checked. If someone pushed in between, you get `stale_head` and the new tree, and nothing lands. The change above it in the stack, #217, is rebased onto the result and keeps its approvals, because its tree did not change.
+
+## 8. Watch it happen
+
+```bash
+sxcurl "$SX/events?repo=dana/gitfs&type=change.*"
+curl -N -H "Authorization: Bearer $SX_TOKEN" $SX/events/stream      # live
+```
+
+Or keep a local copy up to date with one call: [`GET /sync`](/docs/api/events-and-sync#sync).
+
+## From the CLI
+
+`sx change land 216` follows the same rules: the same policy, the same error `code`s and the same exit codes (5 for a policy block). With `SX_API` and `SX_TOKEN` set (or after `sx auth login`) the CLI calls this API; without them it runs against the same sample data in-process.

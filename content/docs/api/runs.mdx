@@ -1,0 +1,60 @@
+---
+icon: CpuChipIcon
+title: Agent runs
+description: Give an agent a short-lived token for one task, watch what it says it is doing, and stop it at any moment.
+---
+
+A **run** is one bounded piece of work by an agent. You start it, hand the agent the token it returns, and read what the agent reports. When the run ends, the token stops working.
+
+```bash
+sxcurl -X POST $SX/repos/dana/gitfs/runs \
+  -d '{"task":"Fix the flaky cache test","change":216,"ttl_minutes":60}'
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6…",
+  "state": "running",
+  "actor": { "handle": "dana", "class": "agent" },
+  "scopes": ["repo:read", "issues:read", "issues:comment", "pulls:read", "pulls:comment", "secrets:schema"],
+  "token": "sxr_…",
+  "expires_at": "2026-11-08T12:00:00Z"
+}
+```
+
+The `token` is in this response and nowhere else. Give it to the agent and keep your own.
+
+## What the token can do
+
+- **Only this repository.** It cannot read another private repository, whatever you can read.
+- **Only the scopes asked for.** The default is to read, comment on issues and changes, and read the env schema. You can ask for more, never more than you have, and never `tokens:manage`: a run token that could mint tokens would outlive its run.
+- **Only for a while.** `ttl_minutes` is 1 to 240. A run past its time is `expired` whether or not anyone said so, and its token answers `token_expired`.
+- **Recorded as an agent.** Everything the agent does is attributed to you *as an agent*: same handle, class `agent`. Policy counts approvals from people, so an agent's review is never mistaken for yours, even though it is your account.
+- **Limited in number.** You can have 20 runs going at once.
+
+## Reporting
+
+The agent can use its own token to say what it is doing and how it ended:
+
+```bash
+curl -H "Authorization: Bearer $RUN_TOKEN" -X POST $SX/repos/dana/gitfs/runs/$RUN/notes \
+  -d '{"text":"Reproduced the failure on patch set 2"}'
+
+curl -H "Authorization: Bearer $RUN_TOKEN" -X POST $SX/repos/dana/gitfs/runs/$RUN/finish \
+  -d '{"state":"succeeded","summary":"Fixed in #217"}'
+```
+
+The last 50 notes are kept. Finishing twice with the same outcome is a no-op; finishing with a different one answers `invalid_state`. Finishing revokes the token.
+
+## Stopping one
+
+```bash
+sxcurl -X POST $SX/repos/dana/gitfs/runs/$RUN/cancel
+```
+
+The person who started the run, or an admin of the account, can cancel at any moment, and the token stops working at once. Deleting the repository ends its runs the same way.
+
+## Watching
+
+`GET /repos/{owner}/{repo}/runs?state=running` lists them, and `run.started` and `run.finished` are in the [event log](/docs/api/events-and-sync), so a webhook or a stream sees them as they happen.

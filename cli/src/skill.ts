@@ -55,7 +55,8 @@ ${Object.entries(exitMeaning)
   need to see a value, and must not try to.
 - To run something that needs values (tests, a dev server), go through sx:
   \`sx env run --env development -- <command>\`. The values reach that process
-  and are scrubbed from the output you get back.
+  and are scrubbed from the output you get back. A value shorter than four
+  characters is scrubbed only where it stands alone.
 - No grant yet? \`sx env grant request --env development --reason "<why>"\`. It
   exits 6: stop and tell the person it needs approval. Retry after they approve.
 - Never put a value in a commit, a log, a comment or a prompt. Never run a

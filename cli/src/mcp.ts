@@ -10,6 +10,7 @@ import { run } from './main'
 import { skillFile } from './skill'
 import { schema } from './schema'
 import { version } from './help'
+import type { ApiClient } from './client'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 
 const instructions = `source.code hosts git repositories, reviews changes and lands them under policy.
@@ -19,13 +20,14 @@ land_change fails with code policy_blocked when requirements are missing. Stop a
 Secret values are never returned. Only names and kinds.
 Prefer dry_run before anything that changes state.`
 
-async function sx(argv: Array<string>) {
+async function sx(argv: Array<string>, client?: ApiClient) {
   let out = ''
   let err = ''
-  const code = await run([...argv, '--json'], {
-    out: (s) => (out += s),
-    err: (s) => (err += s),
-  })
+  const code = await run(
+    [...argv, '--json'],
+    { out: (s) => (out += s), err: (s) => (err += s) },
+    { client },
+  )
   return { code, out, err }
 }
 
@@ -38,9 +40,17 @@ type Hint = {
   readOnly?: boolean
   idempotent?: boolean
   destructive?: boolean
+  /** Exit codes that carry a successful answer, such as policy blocked (5). */
+  allowExit?: Array<number>
 }
 
-export function createSxMcpServer(): McpServer {
+/**
+ * `client` is the caller's own: over HTTP it carries the token the request
+ * arrived with, so every tool is checked against that token's scopes.
+ */
+export function createSxMcpServer(
+  options: { client?: ApiClient } = {},
+): McpServer {
   const server = new McpServer(
     { name: 'source.code', version },
     { instructions },
@@ -74,9 +84,12 @@ export function createSxMcpServer(): McpServer {
         },
       },
       async (a: unknown): Promise<CallToolResult> => {
-        const r = await sx(argv(a as z.infer<z.ZodObject<TShape>>))
-        if (r.code === 0)
-          return { content: [{ type: 'text' as const, text: r.out }] }
+        const r = await sx(
+          argv(a as z.infer<z.ZodObject<TShape>>),
+          options.client,
+        )
+        if (r.code === 0 || (hint.allowExit?.includes(r.code) && r.out.trim() !== ''))
+          return { content: [{ type: 'text' as const, text: r.out || r.err }] }
         return {
           isError: true,
           content: [{ type: 'text' as const, text: r.err || r.out }],
@@ -116,7 +129,7 @@ export function createSxMcpServer(): McpServer {
   tool(
     'get_change',
     'One change and every requirement blocking it from landing. The same status the change page shows.',
-    { repo: repoArg, id: z.string().describe('Change id, like ch_7f3a.') },
+    { repo: repoArg, id: z.string().describe('Change number, like 216.') },
     (a) => ['change', 'view', a.id, ...repo(a)],
     { readOnly: true },
   )
@@ -157,7 +170,7 @@ export function createSxMcpServer(): McpServer {
     'Whether a change meets every policy, and which requirement asks for what.',
     { repo: repoArg, change: z.string() },
     (a) => ['policy', 'explain', a.change, ...repo(a)],
-    { readOnly: true },
+    { readOnly: true, allowExit: [5] },
   )
   tool(
     'list_issues',
@@ -255,9 +268,7 @@ export function createSxMcpServer(): McpServer {
     'Build the prompt for an issue or change and the command that starts an agent on it.',
     {
       repo: repoArg,
-      subject: z
-        .string()
-        .describe('An issue like #4 or a change like ch_7f3a.'),
+      subject: z.string().describe('An issue or change number, like 4 or 216.'),
       target: z.enum(['t3', 'boat', 'e2b']).optional(),
       runtime: z.string().optional(),
     },

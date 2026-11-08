@@ -6,6 +6,8 @@ import { SxError, exit } from './output'
 /** Every key sx reads, with its default. Documented in docs/cli/config. */
 export const defaults = {
   host: 'https://source.code',
+  /** The API to talk to. Empty runs the preview's sample data in this process. */
+  api: '',
   account: '',
   output: 'auto',
   'agent.target': 't3',

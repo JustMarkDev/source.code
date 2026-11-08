@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { parse } from './args'
 import { run } from './main'
+import { scrub } from './secrets'
 
 async function sx(...argv: Array<string>) {
   let out = ''
@@ -20,6 +21,45 @@ describe('parse', () => {
     const p = parse(['change', 'view', '-R', 'dana/gitfs', '--json', 'ch_1'])
     expect(p.positionals).toEqual(['change', 'view', 'ch_1'])
     expect(p.flags).toEqual({ repo: 'dana/gitfs', json: true })
+  })
+
+  test('--private is a boolean even before the name', () => {
+    const p = parse(['repo', 'create', '--private', 'notes'])
+    expect(p.positionals).toEqual(['repo', 'create', 'notes'])
+    expect(p.flags.private).toBe(true)
+  })
+})
+
+describe('scrub', () => {
+  test('replaces long values and their encodings everywhere', () => {
+    expect(scrub('token=hunter2 again hunter2', { TOKEN: 'hunter2' })).toBe(
+      'token=«TOKEN» again «TOKEN»',
+    )
+    expect(
+      scrub(Buffer.from('hunter2').toString('base64'), { TOKEN: 'hunter2' }),
+    ).toBe('«TOKEN»')
+  })
+
+  test('redacts short values only where they stand alone', () => {
+    expect(scrub('pin 42 port 421 42x', { PIN: '42' })).toBe(
+      'pin «PIN» port 421 42x',
+    )
+    expect(scrub('a cat', { A: 'a' })).toBe('«A» cat')
+    expect(scrub('path/to', { SLASH: '/' })).toBe('path/to')
+    expect(scrub('at https://example.com/a', { SLASH: '/' })).toBe('at https://example.com/a')
+    expect(scrub('a / b', { SLASH: '/' })).toBe('a «SLASH» b')
+    expect(
+      scrub('run --flag and -- again', { DASHES: '--' }),
+    ).toBe('run --flag and «DASHES» again')
+    expect(scrub('a.b and a.c', { DOT: 'a.' })).toBe('a.b and a.c')
+    expect(scrub('see a. now', { DOT: 'a.' })).toBe('see «DOT» now')
+    expect(scrub('{"pin":42}', { PIN: '42' })).toBe('{"pin":«PIN»}')
+    expect(scrub(':42', { PIN: '42' })).toBe(':«PIN»')
+    expect(scrub('42=', { PIN: '42' })).toBe('«PIN»=')
+  })
+
+  test('leaves empty values alone', () => {
+    expect(scrub('text', { EMPTY: '' })).toBe('text')
   })
 })
 
@@ -50,11 +90,11 @@ describe('sx', () => {
     expect(first.action).toBe('created')
     expect(second.action).toBe('patch_set_added')
     expect(second.id).toBe(first.id)
-    expect(second.patchSets).toBe(2)
+    expect(second.patch_set_count).toBe(2)
   })
 
   test('landing a blocked change exits 5 and says why', async () => {
-    const r = await sx('change', 'land', 'ch_7f3a', '-R', 'dana/gitfs')
+    const r = await sx('change', 'land', '216', '-R', 'dana/gitfs')
     expect(r.code).toBe(5)
     expect(JSON.parse(r.err).error.code).toBe('policy_blocked')
   })
@@ -80,10 +120,10 @@ describe('sx', () => {
   test('env list never contains values', async () => {
     const r = await sx('env', 'list', '-R', 'dana/gitfs')
     expect(r.out).not.toContain('value')
-    expect(JSON.parse(r.out)[0]).toEqual({
+    expect(JSON.parse(r.out)[0]).toMatchObject({
       name: 'DATABASE_URL',
       secret: true,
-      set: ['development', 'production'],
+      environments: ['development', 'production'],
     })
   })
 })
@@ -144,7 +184,7 @@ describe('mcp', () => {
     ).toBe(true)
     const r = await c.callTool({
       name: 'get_change',
-      arguments: { repo: 'dana/gitfs', id: 'ch_7f3a' },
+      arguments: { repo: 'dana/gitfs', id: '216' },
     })
     expect(JSON.parse(text(r)).blockers.length).toBeGreaterThan(0)
   })
@@ -153,7 +193,7 @@ describe('mcp', () => {
     const c = await client()
     const r = await c.callTool({
       name: 'land_change',
-      arguments: { repo: 'dana/gitfs', id: 'ch_7f3a' },
+      arguments: { repo: 'dana/gitfs', id: '216' },
     })
     expect((r as { isError?: boolean }).isError).toBe(true)
     expect(JSON.parse(text(r)).error.code).toBe('policy_blocked')
@@ -201,7 +241,7 @@ describe('agent access to secrets', () => {
       ),
     )
     expect(r.code).toBe(6)
-    expect(JSON.parse(r.err).error.code).toBe('production_needs_human')
+    expect(JSON.parse(r.err).error.code).toBe('human_required')
   })
 
   test('request, approve by a person, run: values are injected and scrubbed from output', async () => {
@@ -209,12 +249,14 @@ describe('agent access to secrets', () => {
       sx('env', 'grant', 'request', '-R', 'dana/gitfs', '--reason', 'tests'),
     )
     expect(req.code).toBe(6)
-    const id = /gr_[0-9a-f]+/.exec(JSON.parse(req.err).error.message)?.[0] ?? ''
+    const id =
+      /grt_[0-9a-z]+/.exec(JSON.parse(req.err).error.message)?.[0] ?? ''
     // An agent cannot approve its own request.
     const self = await asAgent(() =>
       sx('env', 'grant', 'approve', id, '-R', 'dana/gitfs'),
     )
-    expect(JSON.parse(self.err).error.code).toBe('human_only')
+    // The agent's token has no secrets:write, and an agent could not approve anyway.
+    expect(JSON.parse(self.err).error.code).toBe('insufficient_scope')
     // A person can.
     expect(
       (
@@ -382,7 +424,11 @@ describe('accounts', () => {
 
   test('repo list is the account you act as; --all is every account', async () => {
     const mine = json(await sx('repo', 'list')) as Array<{ slug: string }>
-    expect(mine.map((r) => r.slug)).toEqual(['dana/gitfs', 'dana/tinyqueue'])
+    expect(mine.map((r) => r.slug).sort()).toEqual([
+      'dana/gitfs',
+      'dana/notes',
+      'dana/tinyqueue',
+    ])
     const org = json(await sx('repo', 'list', '-A', 'northwind')) as Array<{
       slug: string
     }>
@@ -390,8 +436,9 @@ describe('accounts', () => {
     const all = json(await sx('repo', 'list', '--all')) as Array<{
       slug: string
     }>
-    expect(all.map((r) => r.slug)).toEqual([
+    expect(all.map((r) => r.slug).sort()).toEqual([
       'dana/gitfs',
+      'dana/notes',
       'dana/tinyqueue',
       'northwind/relay',
     ])
@@ -410,14 +457,14 @@ describe('accounts', () => {
     const r = await sx('repo', 'create', 'lumen-studio/x', '--dry-run')
     expect(r.code).toBe(5)
     const e = JSON.parse(r.err).error
-    expect(e.code).toBe('account_forbidden')
+    expect(e.code).toBe('forbidden')
     expect(e.hint).toContain('owner or admin')
   })
 
   test('creating under an account you cannot act as is not found', async () => {
     const r = await sx('repo', 'create', 'stranger/x', '--dry-run')
     expect(r.code).toBe(3)
-    expect(JSON.parse(r.err).error.code).toBe('account_not_found')
+    expect(JSON.parse(r.err).error.code).toBe('not_found')
   })
 
   test('context and auth status name the account', async () => {

@@ -1,0 +1,99 @@
+---
+icon: ArrowPathIcon
+title: Events and sync
+description: Stop polling. Wait for a change, stream the event log, or keep a local copy up to date with one call.
+---
+
+Polling a list to see what changed costs you requests and costs us load, and it is always a little late. There are four ways to do better. They all read from one event log.
+
+| You want                                   | Use                                                 |
+| ------------------------------------------ | --------------------------------------------------- |
+| To know when one thing changes             | [`?wait=`](#waiting-instead-of-polling)             |
+| A local copy of a repository, kept current | [`GET /sync`](#sync)                                |
+| Everything that happened, in order         | [`GET /events`](#the-event-log)                     |
+| Events the moment they happen              | [`GET /events/stream`](#the-stream)                 |
+
+## Waiting instead of polling
+
+Read something, keep its `ETag`, and read it again with `If-None-Match` and `wait`:
+
+```bash
+curl -i "$SX/repos/dana/gitfs/changes/216" -H "Authorization: Bearer $SX_TOKEN"
+# etag: W/"3-q9X…"
+
+curl -i "$SX/repos/dana/gitfs/changes/216?wait=20" \
+  -H "If-None-Match: W/\"3-q9X…\"" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+The request is held until the ETag would change or `wait` seconds pass (0 to 30). Changed: `200` with the new object. Not changed: `304`. Then ask again. It works on single objects, lists, the policy of a change, and operations.
+
+- It waits on the **repository**, so an event elsewhere does not wake it. Two thousand clients waiting on one change are woken by one event and answered in tens of milliseconds, and nothing is left behind when they leave.
+- A `304` costs **no rate-limit units**, so a held request that ends in `304` is free.
+- `wait` without `If-None-Match` is an error. It has nothing to compare.
+
+## The event log
+
+Everything that happens in a repository you can see is an event, in order.
+
+```json
+{
+  "object": "event",
+  "id": "evt_01m6…",
+  "sequence": 48211,
+  "type": "change.updated",
+  "created_at": "2026-11-07T09:14:03Z",
+  "repo": "dana/gitfs",
+  "actor": { "object": "actor", "handle": "hollis", "class": "agent" },
+  "subject": { "object": "change", "id": "chg_01m6…", "number": 216 },
+  "changes": ["head.patch_set", "policy.state", "checks.state"],
+  "data": { "object": "change", "number": 216, "…": "the change after this event" }
+}
+```
+
+- **`data` is the object a `GET` returns** after the event, so a handler parses events with the code it uses for reads. The one difference: `actions` is `null`, because what you may do depends on who is asking. Fetch the object for that.
+- **`changes`** lists what changed, as paths into `data`.
+- **`sequence`** has no gaps. The preview keeps a bounded count/size window; the hosted service keeps 30 days.
+
+```bash
+curl "$SX/events?repo=dana/gitfs&type=change.*&limit=100" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+Types so far: `issue.created`, `issue.updated`, `issue.closed`, `change.opened`, `change.updated`, `change.reviewed`, `change.landed`, `change.abandoned`, `finding.resolved`, `check.reported`, `ci.failed`, `operation.finished`, `repo.updated`, `repo.deleted`, `run.started`, `run.finished`, `webhook.disabled`. `type` takes a comma list, and `change.*` matches the family. Private repositories' events are shown only to people who can read them.
+
+## The stream
+
+```bash
+curl -N "$SX/events/stream?repo=dana/gitfs" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+Server-Sent Events. Each event is sent with its `sequence` as the SSE `id`, so when the connection drops, reconnect with `Last-Event-ID` and carry on without a gap, inside the retention window. A comment line is sent every 15 seconds to keep proxies from closing it. Without `Last-Event-ID` you start from now.
+
+```
+id: 48212
+event: issue.created
+data: {"object":"event","id":"evt_01m6…","sequence":48212,"type":"issue.created",…}
+```
+
+## Sync
+
+`GET /v1/sync?repo=owner/name` keeps a local copy of a repository, its changes and its issues up to date with one call per round.
+
+```bash
+# 1. A snapshot. reset is true; keep the cursor.
+curl "$SX/sync?repo=dana/gitfs" -H "Authorization: Bearer $SX_TOKEN"
+# { "object": "sync", "cursor": "e_rep_01m3kkw4m0zvf3zfc9_4811", "objects": [ … every object … ], "has_more": false, "reset": true }
+
+# 2. From then on, only what changed, newest state of each object.
+curl "$SX/sync?repo=dana/gitfs&cursor=e_rep_01m3kkw4m0zvf3zfc9_4811" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+- A large snapshot is paged: while `has_more` is true, call again with the new `cursor`.
+- Each object appears once, in its newest state, however many times it changed.
+- If the cursor is older than the retained log, or from the future, you get `reset: true` and a fresh snapshot. Replace your copy.
+- Combine it with `wait` to be told the moment something changes.
+
+An agent that keeps a repository's context in memory should use this instead of re-listing changes and issues.
+
+## Webhooks
+
+[Webhooks](/docs/api/webhooks) deliver the same events to your server: signed, retried for about 28 hours, and replayable with one call.

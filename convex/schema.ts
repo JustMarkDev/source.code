@@ -73,4 +73,33 @@ export default defineSchema({
   })
     .index('by_actorId', ['actorId'])
     .index('by_repoId', ['repoId']),
+
+  // ---- Shared state of the HTTP API (src/lib/api) --------------------------
+  // Everything below is read and written by the API servers through
+  // `apiStores.ts`, never by a browser. It is what lets many API nodes agree.
+
+  // One row per rate-limit key: the window it is in and the units already
+  // handed out. A node leases a block of units at a time, so this row is written
+  // once per block and not once per request.
+  apiLimits: defineTable({
+    key: v.string(),
+    start: v.number(),
+    used: v.number(),
+  })
+    .index('by_key', ['key'])
+    .index('by_start', ['start']),
+
+  // A POST with an Idempotency-Key runs once. The row holds the key, a hash of
+  // the request, and (when it finishes) the response to replay.
+  apiIdempotency: defineTable({
+    scope: v.string(),
+    key: v.string(),
+    fingerprint: v.string(),
+    expires: v.number(),
+    response: v.optional(
+      v.object({ status: v.number(), headers: v.string(), body: v.string() }),
+    ),
+  })
+    .index('by_scope_and_key', ['scope', 'key'])
+    .index('by_expires', ['expires']),
 })

@@ -28,12 +28,16 @@ import { Route as StatusRouteImport } from './routes/status'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as HandleIndexRouteImport } from './routes/$handle/index'
+import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
+import { Route as DotwellKnownOauthProtectedResourceRouteImport } from './routes/[.]well-known/oauth-protected-resource'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as SettingsSectionRouteImport } from './routes/settings/$section'
 import { Route as HandleRepoIndexRouteImport } from './routes/$handle/$repo/index'
 import { Route as HandleRepoTabRouteImport } from './routes/$handle/$repo/$tab'
+import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known/oauth-protected-resource_.mcp'
+import { Route as ApiV1SplatRouteImport } from './routes/api/v1/$'
 import { Route as OrganizationsHandleSectionRouteImport } from './routes/organizations/$handle.$section'
 import { Route as HandleRepoCommitShaRouteImport } from './routes/$handle/$repo/commit/$sha'
 
@@ -132,6 +136,18 @@ const HandleIndexRoute = HandleIndexRouteImport.update({
   path: '/$handle/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownOauthAuthorizationServerRoute =
+  DotwellKnownOauthAuthorizationServerRouteImport.update({
+    id: '/.well-known/oauth-authorization-server',
+    path: '/.well-known/oauth-authorization-server',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownOauthProtectedResourceRoute =
+  DotwellKnownOauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
   path: '/api/search',
@@ -160,6 +176,17 @@ const HandleRepoIndexRoute = HandleRepoIndexRouteImport.update({
 const HandleRepoTabRoute = HandleRepoTabRouteImport.update({
   id: '/$handle/$repo/$tab',
   path: '/$handle/$repo/$tab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotwellKnownOauthProtectedResourceMcpRoute =
+  DotwellKnownOauthProtectedResourceMcpRouteImport.update({
+    id: '/.well-known/oauth-protected-resource_/mcp',
+    path: '/.well-known/oauth-protected-resource/mcp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1SplatRoute = ApiV1SplatRouteImport.update({
+  id: '/api/v1/$',
+  path: '/api/v1/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrganizationsHandleSectionRoute =
@@ -193,12 +220,16 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
@@ -222,12 +253,16 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
@@ -252,12 +287,16 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/terms': typeof TermsRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
+  '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/$handle/': typeof HandleIndexRoute
   '/$handle/$repo/$tab': typeof HandleRepoTabRoute
+  '/.well-known/oauth-protected-resource_/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
+  '/api/v1/$': typeof ApiV1SplatRoute
   '/organizations/$handle/$section': typeof OrganizationsHandleSectionRoute
   '/$handle/$repo/': typeof HandleRepoIndexRoute
   '/$handle/$repo/commit/$sha': typeof HandleRepoCommitShaRoute
@@ -283,12 +322,16 @@ export interface FileRouteTypes {
     | '/status'
     | '/terms'
     | '/welcome'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/api/search'
     | '/docs/$'
     | '/organizations/new'
     | '/settings/$section'
     | '/$handle/'
     | '/$handle/$repo/$tab'
+    | '/.well-known/oauth-protected-resource/mcp'
+    | '/api/v1/$'
     | '/organizations/$handle/$section'
     | '/$handle/$repo/'
     | '/$handle/$repo/commit/$sha'
@@ -312,12 +355,16 @@ export interface FileRouteTypes {
     | '/status'
     | '/terms'
     | '/welcome'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/api/search'
     | '/docs/$'
     | '/organizations/new'
     | '/settings/$section'
     | '/$handle'
     | '/$handle/$repo/$tab'
+    | '/.well-known/oauth-protected-resource/mcp'
+    | '/api/v1/$'
     | '/organizations/$handle/$section'
     | '/$handle/$repo'
     | '/$handle/$repo/commit/$sha'
@@ -341,12 +388,16 @@ export interface FileRouteTypes {
     | '/status'
     | '/terms'
     | '/welcome'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/oauth-protected-resource'
     | '/api/search'
     | '/docs/$'
     | '/organizations/new'
     | '/settings/$section'
     | '/$handle/'
     | '/$handle/$repo/$tab'
+    | '/.well-known/oauth-protected-resource_/mcp'
+    | '/api/v1/$'
     | '/organizations/$handle/$section'
     | '/$handle/$repo/'
     | '/$handle/$repo/commit/$sha'
@@ -371,12 +422,16 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   TermsRoute: typeof TermsRoute
   WelcomeRoute: typeof WelcomeRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+  DotwellKnownOauthProtectedResourceRoute: typeof DotwellKnownOauthProtectedResourceRoute
   ApiSearchRoute: typeof ApiSearchRoute
   DocsSplatRoute: typeof DocsSplatRoute
   OrganizationsNewRoute: typeof OrganizationsNewRoute
   SettingsSectionRoute: typeof SettingsSectionRoute
   HandleIndexRoute: typeof HandleIndexRoute
   HandleRepoTabRoute: typeof HandleRepoTabRoute
+  DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
+  ApiV1SplatRoute: typeof ApiV1SplatRoute
   OrganizationsHandleSectionRoute: typeof OrganizationsHandleSectionRoute
   HandleRepoIndexRoute: typeof HandleRepoIndexRoute
   HandleRepoCommitShaRoute: typeof HandleRepoCommitShaRoute
@@ -517,6 +572,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-authorization-server': {
+      id: '/.well-known/oauth-authorization-server'
+      path: '/.well-known/oauth-authorization-server'
+      fullPath: '/.well-known/oauth-authorization-server'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/search': {
       id: '/api/search'
       path: '/api/search'
@@ -559,6 +628,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleRepoTabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource_/mcp': {
+      id: '/.well-known/oauth-protected-resource_/mcp'
+      path: '/.well-known/oauth-protected-resource/mcp'
+      fullPath: '/.well-known/oauth-protected-resource/mcp'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/$': {
+      id: '/api/v1/$'
+      path: '/api/v1/$'
+      fullPath: '/api/v1/$'
+      preLoaderRoute: typeof ApiV1SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/organizations/$handle/$section': {
       id: '/organizations/$handle/$section'
       path: '/organizations/$handle/$section'
@@ -595,12 +678,19 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   TermsRoute: TermsRoute,
   WelcomeRoute: WelcomeRoute,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRoute,
+  DotwellKnownOauthProtectedResourceRoute:
+    DotwellKnownOauthProtectedResourceRoute,
   ApiSearchRoute: ApiSearchRoute,
   DocsSplatRoute: DocsSplatRoute,
   OrganizationsNewRoute: OrganizationsNewRoute,
   SettingsSectionRoute: SettingsSectionRoute,
   HandleIndexRoute: HandleIndexRoute,
   HandleRepoTabRoute: HandleRepoTabRoute,
+  DotwellKnownOauthProtectedResourceMcpRoute:
+    DotwellKnownOauthProtectedResourceMcpRoute,
+  ApiV1SplatRoute: ApiV1SplatRoute,
   OrganizationsHandleSectionRoute: OrganizationsHandleSectionRoute,
   HandleRepoIndexRoute: HandleRepoIndexRoute,
   HandleRepoCommitShaRoute: HandleRepoCommitShaRoute,

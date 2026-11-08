@@ -2,21 +2,22 @@ import { SxError, exit, print, table } from '../output'
 import { readConfig, writeConfig } from '../config'
 import {
   accountNotFound,
+  accounts,
   activeAccount,
   findAccount,
   personal,
+  whoami,
 } from '../account'
-import { store } from '../fixtures'
 import type { Command } from './types'
 
 /** Who you are acting as. One login, any account you belong to, switched in one command. */
-export const account: Command = (
+export const account: Command = async (
   { rest: [sub = 'current', ...rest], flags },
   ctx,
 ) => {
   if (sub === 'list') {
-    const active = activeAccount(flags)
-    const rows = store.accounts.map((a) => ({
+    const active = await activeAccount(ctx, flags)
+    const rows = (await accounts(ctx)).map((a) => ({
       handle: a.handle,
       name: a.name,
       kind: a.kind,
@@ -29,7 +30,7 @@ export const account: Command = (
           r.active ? '*' : '',
           r.handle,
           r.kind,
-          r.role,
+          String(r.role),
           r.name,
         ]),
         ['', 'ACCOUNT', 'KIND', 'ROLE', 'NAME'],
@@ -38,20 +39,21 @@ export const account: Command = (
     return
   }
   if (sub === 'current') {
-    const a = activeAccount(flags)
+    const a = await activeAccount(ctx, flags)
+    const login = (await whoami(ctx)).login
     const data = {
       handle: a.handle,
       name: a.name,
       kind: a.kind,
       role: a.role,
       from: a.from,
-      login: store.login,
+      login,
     }
     print(
       ctx,
       data,
       () =>
-        `${a.handle}  ${a.kind}, ${a.role}  (from ${a.from})\nsigned in as ${store.login}`,
+        `${a.handle}  ${a.kind}, ${a.role}  (from ${a.from})\nsigned in as ${login}`,
     )
     return
   }
@@ -64,9 +66,11 @@ export const account: Command = (
         'Example: sx account switch northwind. sx account list shows yours.',
         exit.usage,
       )
-    const target = findAccount(handle)
+    const target = await findAccount(ctx, handle)
     if (!target) throw accountNotFound(handle)
-    const previous = readConfig().account || personal().handle
+    const previous = readConfig().account || (await personal(ctx)).handle
+    const savedAccount = readConfig().account
+    const dry = flags['dry-run'] === true
     // Switching to where you already are changes nothing, so it is safe to repeat.
     const switched = previous !== target.handle
     if (switched && flags['dry-run'] !== true)
@@ -84,12 +88,13 @@ export const account: Command = (
       switched,
       previous,
       overriddenBy,
+      dryRun: dry,
     }
     print(ctx, data, () =>
       overriddenBy
-        ? `saved ${target.handle}, but SX_ACCOUNT is set in this shell and wins`
+        ? `${savedAccount === target.handle ? 'already saved' : !switched ? 'already acting' : dry ? 'would save' : 'saved'} ${target.handle}, but SX_ACCOUNT is set in this shell and wins`
         : switched
-          ? `now acting as ${target.handle}`
+          ? `${dry ? 'would act' : 'now acting'} as ${target.handle}`
           : `already acting as ${target.handle}`,
     )
     return

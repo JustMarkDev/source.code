@@ -39,6 +39,7 @@ export function llmsIndex(origin: string) {
     '',
     '## Start here',
     `- [Teach an agent to use sx](${origin}/docs/cli/agent-guide): the skill, \`sx context\`, \`sx commands\`.`,
+    `- [The HTTP API for agents](${origin}/docs/api/agents): discovery, planning with simulate and dry run, safe retries, what to do on each error.`,
     `- [Full docs as one file](${origin}/llms-full.txt)`,
     '',
     '## Docs',

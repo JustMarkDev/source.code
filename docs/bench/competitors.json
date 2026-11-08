@@ -1,0 +1,500 @@
+{
+  "measuredAt": "2026-11-07T22:59:48.611Z",
+  "note": "GitHub and GitLab from the second run (corrected PR number, search pacing, request timeout); the others from the first run, 2026-11-07, Europe (CET), home network.",
+  "results": [
+    {
+      "target": "GitHub",
+      "name": "API root",
+      "status": 200,
+      "bytes": 2262,
+      "n": 50,
+      "timeouts": 0,
+      "min": 201.96545900000092,
+      "p50": 233.27983399999994,
+      "p95": 280.564042,
+      "p99": 476.14737499999865,
+      "max": 476.14737499999865,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "W/\"e5d3adceb07ccb8c5bbbcf217e5d8e50d613f0e9833aa0a94a27a43f81997638\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4724"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "One issue",
+      "status": 200,
+      "bytes": 4172,
+      "n": 50,
+      "timeouts": 0,
+      "min": 284.56083299999955,
+      "p50": 323.61291699999856,
+      "p95": 373.4710419999974,
+      "p99": 409.0935419999987,
+      "max": 409.0935419999987,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "W/\"7a95ceb045967d5049fa510f96be87a0ce7af755bd7e64849a92209654af51eb\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4671"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "One pull request",
+      "status": 200,
+      "bytes": 22670,
+      "n": 50,
+      "timeouts": 0,
+      "min": 289.6637919999994,
+      "p50": 326.76437499999884,
+      "p95": 435.75800000000163,
+      "p99": 502.13579200000095,
+      "max": 502.13579200000095,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "\"6bd3a1cf3b19d51b39d9f54496ff786ec6a4042cfc7831a31b0ff34d57647ceb\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4618"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "One issue, If-None-Match (304)",
+      "status": 304,
+      "bytes": 0,
+      "n": 50,
+      "timeouts": 0,
+      "min": 278.79175000000396,
+      "p50": 316.494832999997,
+      "p95": 367.864250000006,
+      "p99": 499.2442500000034,
+      "max": 499.2442500000034,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "\"7a95ceb045967d5049fa510f96be87a0ce7af755bd7e64849a92209654af51eb\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4568"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "List of 50 issues",
+      "status": 200,
+      "bytes": 341518,
+      "n": 50,
+      "timeouts": 0,
+      "min": 513.1821250000066,
+      "p50": 613.9854159999959,
+      "p95": 752.6877079999977,
+      "p99": 779.4189589999878,
+      "max": 779.4189589999878,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "W/\"ad90f9b0c578b654193475cfdb3560f3481ba43a362208aa412707c8d75248ff\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4564"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "List of 50 pull requests",
+      "status": 200,
+      "bytes": 1088609,
+      "n": 50,
+      "timeouts": 0,
+      "min": 667.134166999982,
+      "p50": 803.4246250000142,
+      "p95": 1052.4842920000083,
+      "p99": 1199.3932499999937,
+      "max": 1199.3932499999937,
+      "headers": {
+        "cache-control": "private, max-age=60, s-maxage=60",
+        "etag": "W/\"c497833117da3f949bb594d2f244835741ee989db91ac2f3fc7cd85296be6d7a\"",
+        "server": "github.com",
+        "x-ratelimit-remaining": "4511"
+      }
+    },
+    {
+      "target": "GitHub",
+      "name": "Search (issues, 50)",
+      "status": 200,
+      "bytes": 258209,
+      "n": 15,
+      "timeouts": 0,
+      "min": 836.7266660000023,
+      "p50": 932.9881660000246,
+      "p95": 1068.4336670000048,
+      "p99": 1068.4336670000048,
+      "max": 1068.4336670000048,
+      "headers": {
+        "cache-control": "no-cache",
+        "server": "github.com",
+        "x-ratelimit-remaining": "26"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "Repository",
+      "status": 200,
+      "bytes": 311,
+      "n": 50,
+      "min": 121.54466700000921,
+      "p50": 124.56191600000602,
+      "p95": 131.16829200001666,
+      "p99": 136.93954200000735,
+      "max": 136.93954200000735,
+      "headers": {
+        "cache-control": "private, no-store",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "One issue",
+      "status": 200,
+      "bytes": 1264,
+      "n": 50,
+      "min": 125.56729100001394,
+      "p50": 128.88837500000955,
+      "p95": 139.49662499999977,
+      "p99": 175.68658300000243,
+      "max": 175.68658300000243,
+      "headers": {
+        "cache-control": "private, no-store",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "List of issues (7)",
+      "status": 200,
+      "bytes": 13196,
+      "n": 50,
+      "min": 128.08049999998184,
+      "p50": 134.7199590000091,
+      "p95": 144.99154099999578,
+      "p99": 157.996375000017,
+      "max": 157.996375000017,
+      "headers": {
+        "cache-control": "private, no-store",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "List of pull requests (1)",
+      "status": 200,
+      "bytes": 778,
+      "n": 50,
+      "min": 133.1329160000023,
+      "p50": 136.03633299999638,
+      "p95": 185.71920799999498,
+      "p99": 216.43754199999967,
+      "max": 216.43754199999967,
+      "headers": {
+        "cache-control": "private, no-store",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "One pull request",
+      "status": 200,
+      "bytes": 1451,
+      "n": 50,
+      "min": 138.51270799999475,
+      "p50": 141.97883399997954,
+      "p95": 189.4487080000108,
+      "p99": 225.28295799999614,
+      "max": 225.28295799999614,
+      "headers": {
+        "cache-control": "private, no-cache",
+        "etag": "\"pr1-0e2c81df87e30949f46b168f879cc255\"",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "git.cafe",
+      "name": "Explore (5 repositories)",
+      "status": 200,
+      "bytes": 1159,
+      "n": 50,
+      "min": 119.28479199999128,
+      "p50": 121.22537500000908,
+      "p95": 161.65066700000898,
+      "p99": 1360.7089170000108,
+      "max": 1360.7089170000108,
+      "headers": {
+        "cache-control": "private, no-store",
+        "ratelimit-policy": "\"api-anon\";q=1200;w=3600"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "Project",
+      "status": 200,
+      "bytes": 970,
+      "n": 50,
+      "timeouts": 0,
+      "min": 213.01329199998872,
+      "p50": 250.75074999997742,
+      "p95": 329.359832999995,
+      "p99": 366.3639169999806,
+      "max": 366.3639169999806,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"fc6921d03ad1088409534751149962a4\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff0f11ac0bb11-MXP"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "One issue",
+      "status": 200,
+      "bytes": 3087,
+      "n": 50,
+      "timeouts": 0,
+      "min": 239.5064999999886,
+      "p50": 303.06595899999957,
+      "p95": 386.09825000001,
+      "p99": 495.4735830000136,
+      "max": 495.4735830000136,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"bacb38828ab1d3c5f4d0ae398ac0b7f9\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff1560ac5bb11-MXP"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "One merge request",
+      "status": 200,
+      "bytes": 7389,
+      "n": 50,
+      "timeouts": 0,
+      "min": 265.8399170000048,
+      "p50": 323.39487499999814,
+      "p95": 454.8882079999894,
+      "p99": 572.7694999999949,
+      "max": 572.7694999999949,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"4d254dcba30a7115f3689a10f592741e\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff1c99a38bb11-MXP"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "One issue, If-None-Match (304)",
+      "status": 304,
+      "bytes": 0,
+      "n": 50,
+      "timeouts": 0,
+      "min": 237.63620900001843,
+      "p50": 277.6907080000383,
+      "p95": 375.55099999997765,
+      "p99": 451.5465410000179,
+      "max": 451.5465410000179,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"bacb38828ab1d3c5f4d0ae398ac0b7f9\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff247fe08bb11-MXP"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "List of 50 issues",
+      "status": 200,
+      "bytes": 234070,
+      "n": 20,
+      "timeouts": 0,
+      "min": 487.4433339999523,
+      "p50": 588.8376249999856,
+      "p95": 670.7016660000081,
+      "p99": 670.7016660000081,
+      "max": 670.7016660000081,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"2570647267aad9d450e0bcb7f18b9e8a\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff2ba6b1abb11-MXP"
+      }
+    },
+    {
+      "target": "GitLab",
+      "name": "List of 50 merge requests",
+      "status": 200,
+      "bytes": 268156,
+      "n": 20,
+      "timeouts": 0,
+      "min": 405.2850000000326,
+      "p50": 471.2682499999646,
+      "p95": 686.4978330000304,
+      "p99": 686.4978330000304,
+      "max": 686.4978330000304,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "etag": "W/\"221e8d297587e81eacf15797e33837e8\"",
+        "server": "cloudflare",
+        "cf-ray": "a56ff313082dbb11-MXP"
+      }
+    },
+    {
+      "target": "Codeberg",
+      "name": "One issue",
+      "status": 200,
+      "bytes": 3292,
+      "n": 30,
+      "min": 61.79574999999022,
+      "p50": 164.1432499999646,
+      "p95": 252.68545900000026,
+      "p99": 253.2353750000475,
+      "max": 253.2353750000475,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "ratelimit-policy": "\"baseline\";q=2000;w=600"
+      }
+    },
+    {
+      "target": "Codeberg",
+      "name": "One pull request",
+      "status": 200,
+      "bytes": 7853,
+      "n": 30,
+      "min": 249.22308399999747,
+      "p50": 363.28824999998324,
+      "p95": 480.9734579999931,
+      "p99": 590.6833329999936,
+      "max": 590.6833329999936,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "ratelimit-policy": "\"baseline\";q=2000;w=600"
+      }
+    },
+    {
+      "target": "Codeberg",
+      "name": "List of 50 issues",
+      "status": 200,
+      "bytes": 219388,
+      "n": 6,
+      "min": 939.554124999966,
+      "p50": 2538.3659169999883,
+      "p95": 2852.043875000032,
+      "p99": 2852.043875000032,
+      "max": 2852.043875000032,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "ratelimit-policy": "\"baseline\";q=2000;w=600"
+      }
+    },
+    {
+      "target": "Codeberg",
+      "name": "List of 50 pull requests",
+      "status": 200,
+      "bytes": 1244149,
+      "n": 4,
+      "min": 9159.560750000062,
+      "p50": 14757.89512500004,
+      "p95": 17898.793707999983,
+      "p99": 17898.793707999983,
+      "max": 17898.793707999983,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "ratelimit-policy": "\"baseline\";q=2000;w=600"
+      }
+    },
+    {
+      "target": "Gitea",
+      "name": "One issue",
+      "status": 200,
+      "bytes": 1381,
+      "n": 20,
+      "min": 192.35462500003632,
+      "p50": 195.84566700004507,
+      "p95": 335.31099999998696,
+      "p99": 335.31099999998696,
+      "max": 335.31099999998696,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "server": "Caddy"
+      }
+    },
+    {
+      "target": "Gitea",
+      "name": "List of 50 issues",
+      "status": 200,
+      "bytes": 166728,
+      "n": 5,
+      "min": 705.0262080000248,
+      "p50": 893.9955409999238,
+      "p95": 1059.326958999969,
+      "p99": 1059.326958999969,
+      "max": 1059.326958999969,
+      "headers": {
+        "cache-control": "max-age=0, private, must-revalidate",
+        "server": "Caddy"
+      }
+    },
+    {
+      "target": "Bitbucket",
+      "name": "Repository",
+      "status": 200,
+      "bytes": 3046,
+      "n": 8,
+      "min": 216.53904199996032,
+      "p50": 239.57066600001417,
+      "p95": 540.3055000000168,
+      "p99": 540.3055000000168,
+      "max": 540.3055000000168,
+      "headers": {
+        "cache-control": "max-age=900",
+        "etag": "W/\"f7b0cd7b190e990a2f443991dbb7974c\"",
+        "server": "AtlassianEdge",
+        "server-timing": "cdn-upstream-layer;desc=\"EDGE\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=206,atl-edge;dur=105,atl-edge-internal;dur=8,atl-edge-upstream;dur=97,atl-edge-pop;desc=\"aws-us-east-1\",cdn-cache-miss,cdn-pop;desc=\"MXP53-P3\",cdn-rid;desc=\"ur56CeHcPoeQ_HOChsrwcK5LsgIKUOni1y9LgyA4OZe3ME7r8BtiuA==\",cdn-downstream-fbl;dur=210",
+        "via": "1.1 6812ba1c26abf20c0ba6ea000d71fb52.cloudfront.net (CloudFront)"
+      }
+    },
+    {
+      "target": "Bitbucket",
+      "name": "One pull request",
+      "status": 200,
+      "bytes": 11033,
+      "n": 8,
+      "min": 471.6589999999851,
+      "p50": 514.2559579999652,
+      "p95": 762.7284999999683,
+      "p99": 762.7284999999683,
+      "max": 762.7284999999683,
+      "headers": {
+        "cache-control": "max-age=900",
+        "server": "AtlassianEdge",
+        "server-timing": "cdn-upstream-layer;desc=\"EDGE\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=501,atl-edge;dur=401,atl-edge-internal;dur=7,atl-edge-upstream;dur=394,atl-edge-pop;desc=\"aws-us-east-1\",cdn-cache-miss,cdn-pop;desc=\"MXP53-P3\",cdn-rid;desc=\"7s0sQ-ezIKRns6gPKuzPP4RQGoWVhKvgP17FVP1eRnOahlwI2rh1Lg==\",cdn-downstream-fbl;dur=505",
+        "via": "1.1 6812ba1c26abf20c0ba6ea000d71fb52.cloudfront.net (CloudFront)"
+      }
+    },
+    {
+      "target": "Bitbucket",
+      "name": "List of 50 pull requests",
+      "status": 200,
+      "bytes": 657918,
+      "n": 6,
+      "min": 2402.196249999921,
+      "p50": 2494.8630839999532,
+      "p95": 2950.886375000002,
+      "p99": 2950.886375000002,
+      "max": 2950.886375000002,
+      "headers": {
+        "cache-control": "max-age=900",
+        "server": "AtlassianEdge",
+        "server-timing": "cdn-upstream-layer;desc=\"EDGE\",cdn-upstream-dns;dur=0,cdn-upstream-connect;dur=0,cdn-upstream-fbl;dur=2425,atl-edge;dur=2315,atl-edge-internal;dur=12,atl-edge-upstream;dur=2303,atl-edge-pop;desc=\"aws-us-east-1\",cdn-cache-miss,cdn-pop;desc=\"MXP53-P3\",cdn-rid;desc=\"mK3VHOooJjYDpTLT0CMWlpT-250-8q90VANHSVGJKLZKCCamjtJv6A==\",cdn-downstream-fbl;dur=2428",
+        "via": "1.1 6812ba1c26abf20c0ba6ea000d71fb52.cloudfront.net (CloudFront)"
+      }
+    }
+  ]
+}

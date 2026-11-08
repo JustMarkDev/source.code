@@ -28,7 +28,8 @@ sx config path
 
 | Key              | Default               | Environment         | Meaning                                                 |
 | ---------------- | --------------------- | ------------------- | ------------------------------------------------------- |
-| `host`           | `https://source.code` | `SX_HOST`           | The server to talk to                                   |
+| `host`           | `https://source.code` | `SX_HOST`           | The server, for links and the browser                   |
+| `api`            | (sample data)         | `SX_API`            | The API to call. Empty runs the preview's sample data   |
 | `account`        | (you)                 | `SX_ACCOUNT`        | The account commands act as. Set by `sx account switch` |
 | `output`         | `auto`                | `SX_OUTPUT`         | `auto`, `json` or `text`                                |
 | `agent.target`   | `t3`                  | `SX_AGENT_TARGET`   | Where `sx agent start` points: `t3`, `boat` or `e2b`    |
@@ -41,7 +42,7 @@ sx config path
 
 | Variable        | Meaning                                        |
 | --------------- | ---------------------------------------------- |
-| `SX_TOKEN`      | A token for signing in                         |
+| `SX_TOKEN`      | A token. Wins over a saved sign-in             |
 | `SX_REPO`       | The repository when you are not in a clone     |
 | `SX_ACCOUNT`    | The account to act as. Wins over the saved one |
 | `SX_CONFIG_DIR` | Where the settings file lives                  |

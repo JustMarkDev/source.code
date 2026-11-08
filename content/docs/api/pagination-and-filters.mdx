@@ -1,0 +1,71 @@
+---
+icon: ListBulletIcon
+title: Pagination and filters
+description: Cursor lists that never skip or repeat, the same parameters on every list, and ndjson for big exports.
+---
+
+Every list is an object, never a bare array, so we can add to it later without breaking you.
+
+```json
+{
+  "object": "list",
+  "data": [{ "object": "change", "number": 218 }],
+  "has_more": true,
+  "next_cursor": "c_WzE3OTQwMzQ4MDAwMDAs…"
+}
+```
+
+## Cursors
+
+Pass `next_cursor` back as `cursor` to get the next page. Stop when `has_more` is `false`.
+
+```bash
+curl "$SX/repos/dana/gitfs/changes?state=all&limit=50&cursor=c_WzE3…" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+- **Keyset, not offset.** A cursor holds the sort key and ID of the last item you got. The next page starts after it. Items added or removed meanwhile never shift the pages, and a page 150 deep costs the same as the first. There is no `page=N`.
+- **No repeats.** An item that is edited during your walk can move, but it is never sent twice, and every item that was not touched appears exactly once.
+- **It does not expire.** It is tied to the filter and sort that made it. Change either and you get `400 cursor_mismatch`, not a page from the wrong list.
+- **Use it as returned.** It is opaque.
+
+## Page size
+
+`limit` is 1 to 200 and defaults to 50. A larger value is clamped and the response says so in `Sx-Limit-Applied`. Both numbers are in `GET /v1/limits`, so a client does not have to hard-code them.
+
+## No totals by default
+
+Counting is the slowest part of most lists, so no list returns a total today. To check whether anything matches, ask for `limit=1` and read `data` and `has_more`.
+
+## Filters and sorting
+
+Every list uses the same words: filters are named after the field, and `sort` takes a field with `-` for descending.
+
+```bash
+curl "$SX/repos/dana/gitfs/changes?state=open,draft&author=ines&label=perf&sort=-number"
+curl "$SX/repos/dana/gitfs/issues?state=all&label=bug"
+```
+
+| List      | Filters                                          | Sort                                         |
+| --------- | ------------------------------------------------ | -------------------------------------------- |
+| Changes   | `state`, `author`, `label`                       | `-updated_at` (default), `updated_at`, `-number`, `number` |
+| Issues    | `state` (`open`, `closed`, `all`), `label`, `author` | newest number first                      |
+| Repos     | `owner`                                          | newest first                                 |
+| Events    | `repo`, `type` (`change.*` matches the family)   | oldest first                                 |
+
+`state` on changes takes a comma list of `draft`, `open`, `landed`, `abandoned`, or `all`. It defaults to `open,draft`.
+
+A filter that matches very few items still scans only as far as it must to fill the page. If a filter is rare, expect the page to take longer, not to be short.
+
+## Streaming a long list
+
+Ask for newline-delimited JSON and the list arrives as it is produced:
+
+```bash
+curl "$SX/repos/dana/gitfs/changes?state=all" -H "Accept: application/x-ndjson" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+One object per line, then a last line `{"object":"page","has_more":false,"next_cursor":null}`. Use it for exports and for clients that want to start work before the page ends.
+
+## Don't poll a list
+
+To follow changes to a list, use [`wait`](/docs/api/events-and-sync#waiting-instead-of-polling) or [`sync`](/docs/api/events-and-sync#sync). They cost less and are always current.

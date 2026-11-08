@@ -112,7 +112,7 @@ export const schema: Array<CommandSpec> = [
     mutates: false,
     idempotent: true,
     exits: [2, 3],
-    example: 'sx change view ch_7f3a',
+    example: 'sx change view 216',
   },
   {
     command: 'change create',
@@ -132,7 +132,7 @@ export const schema: Array<CommandSpec> = [
     mutates: true,
     idempotent: false,
     exits: [3, 5],
-    example: 'sx change land ch_7f3a',
+    example: 'sx change land 216',
   },
   {
     command: 'change checkout',
@@ -141,7 +141,7 @@ export const schema: Array<CommandSpec> = [
     mutates: false,
     idempotent: true,
     exits: [3],
-    example: 'sx change checkout ch_7f3a',
+    example: 'sx change checkout 216',
   },
   {
     command: 'issue list',
@@ -215,7 +215,7 @@ export const schema: Array<CommandSpec> = [
     mutates: false,
     idempotent: true,
     exits: [2, 5],
-    example: 'sx policy check ch_7f3a',
+    example: 'sx policy check 216',
   },
   {
     command: 'policy explain',
@@ -224,7 +224,7 @@ export const schema: Array<CommandSpec> = [
     mutates: false,
     idempotent: true,
     exits: [2, 5],
-    example: 'sx policy explain ch_7f3a',
+    example: 'sx policy explain 216',
   },
   {
     command: 'mirror list',
@@ -248,11 +248,40 @@ export const schema: Array<CommandSpec> = [
     command: 'agent start',
     summary:
       'Build the prompt for an issue or change and print the command that starts an agent.',
-    args: '<#n|ch_id> [--target t3|boat|e2b] [--runtime r]',
+    args: '<number> [--target t3|boat|e2b] [--runtime r]',
     mutates: false,
     idempotent: true,
     exits: [2, 3],
     example: 'sx agent start #4 --target t3',
+  },
+  {
+    command: 'auth status',
+    summary:
+      'Whether you are signed in, to what, as whom, and with which scopes.',
+    args: '',
+    mutates: false,
+    idempotent: true,
+    exits: [4],
+    example: 'sx auth status',
+  },
+  {
+    command: 'auth login',
+    summary:
+      'Sign in with a code you approve in a browser (the device flow). Saves a token that refreshes itself, readable only by you. SX_TOKEN always wins.',
+    args: '[--scope "a b c"]',
+    mutates: true,
+    idempotent: true,
+    exits: [1, 2],
+    example: 'sx auth login',
+  },
+  {
+    command: 'auth logout',
+    summary: 'Revoke the saved sign-in on the server and delete it here.',
+    args: '',
+    mutates: true,
+    idempotent: true,
+    exits: [],
+    example: 'sx auth logout',
   },
   {
     command: 'skill',

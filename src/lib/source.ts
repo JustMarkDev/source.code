@@ -2,7 +2,9 @@ import { createElement } from 'react'
 import {
   ArrowDownTrayIcon,
   ArrowPathIcon,
+  BoltIcon,
   BookOpenIcon,
+  CodeBracketIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   CpuChipIcon,
@@ -29,7 +31,9 @@ import { GitMergeIcon } from '~/components/icons'
 const icons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   ArrowDownTrayIcon,
   ArrowPathIcon,
+  BoltIcon,
   BookOpenIcon,
+  CodeBracketIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   CpuChipIcon,

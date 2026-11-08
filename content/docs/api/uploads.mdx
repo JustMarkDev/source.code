@@ -1,0 +1,89 @@
+---
+icon: ArrowDownTrayIcon
+title: Uploads and evidence
+description: Send a file to a signed address, attach it to a change, and show a reviewer what the change does.
+---
+
+A diff says what the code does. It does not say what a person will see. **Evidence** is a file attached to a change: before and after images, a recording, an interactive preview, or test results. Each says who made it.
+
+Files do not go through the JSON API. You announce a file, send the bytes to a signed address, then attach it.
+
+## 1. Announce
+
+```bash
+curl -X POST "$SX/uploads" -H "Authorization: Bearer $SX_TOKEN" -H "Content-Type: application/json" \
+  -d '{"filename":"after.png","content_type":"image/png","size":48213}'
+```
+
+```json
+{
+  "object": "upload",
+  "id": "upl_01m6dqs9m0g7q74420",
+  "filename": "after.png",
+  "content_type": "image/png",
+  "size": 48213,
+  "state": "pending",
+  "upload_url": "https://api.source.code/v1/uploads/upl_01m6dqs9m0g7q74420/data?exp=1794131643000&sig=…",
+  "content_url": null,
+  "expires_at": "2026-11-07T10:14:03Z"
+}
+```
+
+You need the `repo:write` scope. You can have 50 uploads waiting for their file.
+
+## 2. Send the bytes
+
+```bash
+curl -X PUT "<upload_url>" -H "Content-Type: image/png" --data-binary @after.png
+```
+
+No token. The address is the credential, and it is narrow:
+
+- It works **once**, for **an hour**.
+- For exactly the **type** and **size** you declared. A different `Content-Type` is `415`; a different size is `400`.
+- The first bytes are checked against the type. A script sent as `image/png` is refused (`400`, "not a valid image/png"). The same goes for video, JSON and text.
+- An unknown id, a wrong signature and an expired address all answer `403 signature_invalid`, so nothing is revealed about which uploads exist.
+
+The response is the upload with `state: "uploaded"`, its `sha256`, and a `content_url`.
+
+## 3. Attach
+
+```bash
+curl -X POST "$SX/repos/dana/gitfs/changes/216/evidence" \
+  -H "Authorization: Bearer $SX_TOKEN" -H "Content-Type: application/json" \
+  -d '{"upload":"upl_01m6dqs9m0g7q74420","kind":"image","caption":"After: the cache stats line"}'
+```
+
+The upload must be yours and finished. Its type must fit the kind. A file attaches once. The change's `evidence_count` goes up and a `change.updated` event is written.
+
+| `kind`         | Accepts                                  |
+| -------------- | ---------------------------------------- |
+| `image`        | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
+| `recording`    | `video/mp4`, `video/webm`                |
+| `preview`      | `text/html`: an interactive page         |
+| `test_results` | `application/json`, `text/plain`         |
+
+`GET …/changes/216/evidence` lists what is attached.
+
+## Types and sizes
+
+| Type                                   | Up to  |
+| -------------------------------------- | -----: |
+| `image/png`, `jpeg`, `gif`, `webp`     | 10 MiB |
+| `video/mp4`, `video/webm`              | 50 MiB |
+| `application/json`, `text/plain`, `text/html` | 5 MiB  |
+
+SVG is not accepted: it can carry script.
+
+## Reading a file back
+
+`GET /uploads/{id}/content`. You can read your own uploads with a token that has `repo:read`; without that scope the read answers `403 insufficient_scope`. Once a file is attached to a change, **anyone who can read that repository can read it**, including people with no token on a public repository. Until then nobody else can.
+
+The file is served with:
+
+- `X-Content-Type-Options: nosniff`, so a browser does not guess a different type,
+- `Content-Security-Policy: sandbox; default-src 'none'`, so a preview page cannot run scripts or reach anything,
+- `Content-Disposition: attachment` for everything except images and video, which display inline,
+- an `ETag` that is the file's SHA-256, `Cache-Control: private, max-age=31536000, immutable`, and `304` for `If-None-Match`. The content never changes.
+
+An interactive preview is a download, not a page on our origin. The web app shows it in a sandboxed frame.

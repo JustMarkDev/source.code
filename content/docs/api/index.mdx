@@ -1,0 +1,112 @@
+---
+icon: CodeBracketIcon
+title: API
+description: Everything the web app does, over HTTP. Stable, fast, one shape for everything, and readable by an agent that has never seen it.
+---
+
+The source.code API is plain HTTP and JSON at `https://api.source.code/v1`. The `sx` command line and the MCP server are clients of it, with the caller's own token, so they can do no more than the token allows. The web app is meant to be the third: no second, private API behind the screens.
+
+<Callout type="warn" title="Preview">
+  The API runs today on sample data, in memory, so every endpoint, header and
+  error in these docs is real and tested, but nothing you write is stored for
+  good. Real accounts, tokens and storage arrive with the hosted service. [What
+  is built and what is not](/docs/api/roadmap).
+</Callout>
+
+## Try it
+
+Run the app (`bun run dev`) and call it. The sample tokens work only on your own machine; see [Authentication](/docs/api/authentication#sample-tokens).
+
+```bash
+export SX=http://localhost:3000/api/v1
+export SX_TOKEN=sxp_dana_full_access_0001
+
+curl "$SX/repos/dana/gitfs/context" -H "Authorization: Bearer $SX_TOKEN"
+```
+
+`context` returns the open changes and what blocks each one, open issues, a policy summary and the env schema, in one request. It is what an agent calls first.
+
+## What you can count on
+
+<Cards>
+  <Card title="Stable" href="/docs/api/versioning">
+    Within v1 we only add. A check in our build fails if a field is removed or
+    changes type.
+  </Card>
+  <Card title="One shape" href="/docs/api/requests-and-responses">
+    Objects, lists, errors, IDs and timestamps look the same everywhere.
+  </Card>
+  <Card title="Fast" href="/docs/api/performance">
+    Conditional requests cost nothing, a list carries what you would otherwise
+    fetch per item, and long work never blocks.
+  </Card>
+  <Card title="Safe to retry" href="/docs/api/writes">
+    Idempotency keys, `If-Match`, and landing only the tree that was checked.
+  </Card>
+  <Card title="Honest limits" href="/docs/api/rate-limits">
+    Every limit is published and every response says how much is left. No
+    hidden throttles.
+  </Card>
+  <Card title="Made for agents" href="/docs/api/agents">
+    Errors say what to do next, objects say what you can do now, and every
+    operation says whether it is safe before you call it.
+  </Card>
+</Cards>
+
+<Cards>
+  <Card title="Repositories, teams and git data" href="/docs/api/repositories">
+    Rename and delete a repository, give people access through teams, and read
+    files, history and diffs.
+  </Card>
+  <Card title="Agent runs" href="/docs/api/runs">
+    A short-lived token for one task, progress notes, an outcome, and a stop
+    button.
+  </Card>
+  <Card title="TypeScript client" href="/docs/api/sdk">
+    Typed, dependency-free and generated from the API's own definitions.
+  </Card>
+</Cards>
+
+## The shape of a response
+
+Every object says what it is, where it lives and which version it is.
+
+```json
+{
+  "object": "change",
+  "id": "chg_01m6dqs9m0g7q74420",
+  "number": 216,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216",
+  "title": "Cache negative ref lookups",
+  "state": "open",
+  "checks": { "state": "pending", "passed": 0, "failed": 0, "pending": 1 },
+  "policy": { "state": "blocked", "blocking": 2 },
+  "actions": {
+    "land": { "allowed": false, "reasons": ["policy:ci-evidence pending", "policy:findings fail"] }
+  },
+  "version": 1
+}
+```
+
+(Trimmed. [The full object](/docs/api/reference/changes#changesget).) Two things to notice. `checks` and `policy` are on the change itself, so a list of changes with their CI and policy state is one request, not one per item. And `actions` answers "can I land this?" without reading the policy first.
+
+## Where to go next
+
+| You want to                                   | Read                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| Make a first call and land a change           | [Quickstart](/docs/api/quickstart)                                  |
+| Get a token and understand scopes             | [Authentication](/docs/api/authentication)                          |
+| Sign in an application, an agent or the CLI   | [OAuth](/docs/api/oauth)                                            |
+| Get told when something happens               | [Webhooks](/docs/api/webhooks)                                      |
+| Find things                                   | [Search](/docs/api/search)                                          |
+| Show what a change does with a picture        | [Uploads and evidence](/docs/api/uploads)                           |
+| Know the rules every endpoint follows         | [Requests and responses](/docs/api/requests-and-responses)          |
+| Page through a long list                      | [Pagination and filters](/docs/api/pagination-and-filters)          |
+| Handle a failure                              | [Errors](/docs/api/errors)                                          |
+| Write without fear of a retry                 | [Writes: retries, edits and long work](/docs/api/writes)            |
+| Stop polling                                  | [Events and sync](/docs/api/events-and-sync)                        |
+| Build an agent on it                          | [Agents](/docs/api/agents)                                          |
+| Look up an endpoint                           | [Reference](/docs/api/reference/changes)                            |
+| See how it differs from other hosts' APIs     | [Compared with other hosts](/docs/api/compared)                     |
+
+The whole API is also one OpenAPI 3.1 document, generated from the same definitions the server runs: `GET /v1/openapi.json`.

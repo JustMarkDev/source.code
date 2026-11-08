@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as apiStores from "../apiStores.js";
+import type * as crons from "../crons.js";
 import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
 
@@ -18,6 +20,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  apiStores: typeof apiStores;
+  crons: typeof crons;
   profiles: typeof profiles;
   seed: typeof seed;
 }>;
