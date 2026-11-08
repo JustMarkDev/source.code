@@ -26,16 +26,23 @@ function mdxFiles(dir: string): Array<string> {
 /** Every event type the code can write, found in its source. */
 function allEventTypes(): Array<string> {
   const dir = new URL('.', import.meta.url).pathname
+  const sources = [
+    ...readdirSync(dir + 'domain').map((f) => `domain/${f}`),
+    'webhooks.ts',
+  ]
   const types = new Set<string>()
-  for (const f of ['domain.ts', 'webhooks.ts'])
-    for (const m of readFileSync(dir + f, 'utf8').matchAll(
+  for (const f of sources) {
+    const text = readFileSync(dir + f, 'utf8')
+    for (const m of text.matchAll(
       /(?:emit|changeEvent)\([^)]*?'((?:issue|change|finding|check|ci|operation|webhook|repo|run)\.[a-z_]+)'/gs,
     ))
       types.add(m[1])
-  for (const m of readFileSync(dir + 'domain.ts', 'utf8').matchAll(
-    /'(change\.[a-z_]+|issue\.[a-z_]+|finding\.resolved|check\.reported|ci\.failed|operation\.finished|repo\.[a-z_]+|run\.[a-z_]+)'/g,
-  ))
-    types.add(m[1])
+    if (f.startsWith('domain/'))
+      for (const m of text.matchAll(
+        /'(change\.[a-z_]+|issue\.[a-z_]+|finding\.resolved|check\.reported|ci\.failed|operation\.finished|repo\.[a-z_]+|run\.[a-z_]+)'/g,
+      ))
+        types.add(m[1])
+  }
   types.add('webhook.disabled')
   return [...types]
 }

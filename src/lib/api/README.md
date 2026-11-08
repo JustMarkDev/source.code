@@ -11,7 +11,8 @@ pipeline.ts     everything that is the same for every operation
 schemas.ts      the public shape of every object (zod, strict)
 problem.ts      the error catalog and ApiError
 ops/*.ts        one file per area; each exports a list of operations
-domain.ts       the data behind the API, in memory, async by design
+domain/         the data behind the API, in memory, async by design;
+                one file per layer, see domain/index.ts
 events.ts       the event log and its per-topic waiters
 limiter.ts      leased rate limits over a shared store, concurrency guard
 idempotency.ts  idempotency store (interface + memory)
@@ -35,7 +36,7 @@ committed files.
    Say what it is: `safety`, `idempotent`, `scopes`, `pool`, `cost`, `errors`,
    `dryRun`, `shapeable`, `waitOn`. They are published in OpenAPI and tell an
    agent what is safe, so they must be true.
-3. Put the data work in `MemoryDomain` as an `async` method. A write bumps the
+3. Put the data work in the `domain/` layer that owns it, as an `async` method. A write bumps the
    object's `version` and emits **one event** that carries the object.
 4. If the object is read often, give the operation a `version` probe so it gets
    `304`s and the body cache. The object's `version` must cover **everything in

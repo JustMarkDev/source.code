@@ -123,7 +123,7 @@ export default defineConfig({
         // promises: the Convex-backed domain and code.storage's `Repo`. The
         // methods stay `async` so a throw rejects, and so the real stores drop
         // in without touching a caller.
-        files: ['src/lib/api/domain.ts', 'src/git/fake.ts'],
+        files: ['src/lib/api/domain/**', 'src/git/fake.ts'],
         rules: { 'typescript/require-await': 'off' },
       },
       {
