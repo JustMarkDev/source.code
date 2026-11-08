@@ -775,13 +775,16 @@ export class MemoryDomain {
     const parent = this.parentOf(repo, c)
     if (parent && parent.state !== 'landed')
       reasons.push(`parent:#${parent.number} not landed`)
+    const branchOwner = repo.openChangeByBranch.get(c.branch)
     return {
       land: { allowed: reasons.length === 0, reasons },
       abandon: canPull && (c.state === 'open' || c.state === 'draft')
         ? { allowed: true, reasons: [] }
         : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
       restore: canPull && c.state === 'abandoned'
-        ? { allowed: true, reasons: [] }
+        ? branchOwner
+          ? { allowed: false, reasons: [`branch:#${branchOwner.number}`] }
+          : { allowed: true, reasons: [] }
         : no(canPull ? `state:${c.state}` : 'scope:pulls:write'),
       mark_ready: canPull && c.state === 'draft'
         ? { allowed: true, reasons: [] }
@@ -846,7 +849,7 @@ export class MemoryDomain {
   shownChange(repo: RepoRec, c: ChangeRec, viewer: Viewer | 'event', expand: ReadonlyArray<string> = []): Pre {
     const who = viewer === 'event' ? 'event' : viewer ? viewer.capId : 'anonymous'
     const ex = expand.length ? expand.join(',') : ''
-    const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${ex}|${who}|${repo.version}|${this.accessRevision}${expand.includes('repo') ? `|${repo.rev}` : ''}`
+    const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${repo.openChangeByBranch.get(c.branch)?.id ?? ''}|${ex}|${who}|${repo.version}|${this.accessRevision}${expand.includes('repo') ? `|${repo.rev}` : ''}`
     const hit = this.shown.get(key)
     if (hit) return hit
     const obj = this.presentChange(repo, c, viewer, expand)
@@ -1992,7 +1995,7 @@ export class MemoryDomain {
   }
 
   private changeKey(repo: RepoRec, c: ChangeRec, expand: ReadonlyArray<string> = []) {
-    return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}.${repo.version}.${this.accessRevision}${expand.includes('repo') ? `.${repo.rev}` : ''}`
+    return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}.${repo.openChangeByBranch.get(c.branch)?.id ?? ''}.${repo.version}.${this.accessRevision}${expand.includes('repo') ? `.${repo.rev}` : ''}`
   }
 
   private stackRev(repo: RepoRec, c: ChangeRec) {

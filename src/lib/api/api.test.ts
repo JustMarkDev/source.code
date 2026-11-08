@@ -1172,9 +1172,21 @@ describe('review, policy and landing', () => {
     const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'restore' } })
     const a = await h.call('POST', '/repos/dana/restore/changes', { body: { branch: 'topic' } })
-    expect((await h.call('POST', `/repos/dana/restore/changes/${a.json.number}/abandon`)).json.state).toBe('abandoned')
+    await h.call('POST', `/repos/dana/restore/changes/${a.json.number}/abandon`)
+    const free = await h.call('GET', `/repos/dana/restore/changes/${a.json.number}`)
+    expect(free.json.actions.restore).toEqual({ allowed: true, reasons: [] })
+    const etag = free.headers.get('etag')!
     const b = await h.call('POST', '/repos/dana/restore/changes', { body: { branch: 'topic' } })
     expect(b.status).toBe(201)
+
+    const taken = await h.call('GET', `/repos/dana/restore/changes/${a.json.number}`, {
+      headers: { 'if-none-match': etag },
+    })
+    expect(taken.status).toBe(200)
+    expect(taken.json.actions.restore).toEqual({ allowed: false, reasons: [`branch:#${b.json.number}`] })
+    const list = await h.call('GET', '/repos/dana/restore/changes?state=all')
+    expect(list.json.data.find((c: { id: string }) => c.id === a.json.id).actions.restore.allowed).toBe(false)
+
     const again = await h.call('POST', `/repos/dana/restore/changes/${a.json.number}/restore`)
     expect(again.status).toBe(409)
     expect(again.json.code).toBe('invalid_state')

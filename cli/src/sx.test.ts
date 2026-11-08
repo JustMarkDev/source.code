@@ -40,10 +40,12 @@ describe('scrub', () => {
     )
     expect(scrub('a cat', { A: 'a' })).toBe('«A» cat')
     expect(scrub('path/to', { SLASH: '/' })).toBe('path/to')
+    expect(scrub('a / b', { SLASH: '/' })).toBe('a «SLASH» b')
     expect(
       scrub('run --flag and -- again', { DASHES: '--' }),
     ).toBe('run --flag and «DASHES» again')
     expect(scrub('a.b and a.c', { DOT: 'a.' })).toBe('a.b and a.c')
+    expect(scrub('see a. now', { DOT: 'a.' })).toBe('see «DOT» now')
   })
 
   test('leaves empty values alone', () => {

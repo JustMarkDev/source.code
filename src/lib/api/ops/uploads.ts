@@ -157,7 +157,7 @@ export const uploadContent = defineOp({
   id: 'uploads.content',
   summary: 'Read the file',
   description:
-    'You can read your own uploads. Once a file is attached to a change, anyone who can read that repository can read it. Served with `nosniff` and a sandboxing policy; only images and video display inline. The ETag is the SHA-256, and the content never changes.',
+    'You can read your own uploads with a token that has `repo:read`; without it the read answers `403 insufficient_scope`. Once a file is attached to a change, anyone who can read that repository can read it. Served with `nosniff` and a sandboxing policy; only images and video display inline. The ETag is the SHA-256, and the content never changes.',
   tags: ['uploads'],
   method: 'GET',
   path: '/uploads/{id}/content',

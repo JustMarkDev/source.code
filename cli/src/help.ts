@@ -67,7 +67,7 @@ export const groupHelp: Record<string, string> = {
   list                    names, kinds and whether each has a value. Never values.
   set <NAME> <value|->    encrypt a value for an environment (- reads stdin)
   pull                    write .env.local for an environment
-  run -- <command>        run with values injected into that process only; output is scrubbed
+  run -- <command>        run with values injected into that process only; output is scrubbed (short values when standalone)
   grant request|list|approve|revoke   time-limited access for agents (development only)
   rotate                  rotate the data key
   recipients              who can decrypt
