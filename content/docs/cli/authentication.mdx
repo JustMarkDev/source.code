@@ -25,7 +25,7 @@ and check the code is BCDF-GHJK
 
 Open the address in any browser, check the code matches, and approve. `sx` waits, then saves a token that **refreshes itself**. This is the OAuth device flow (RFC 8628), so it works over SSH and on machines with no browser. The code and the address go to stderr, so a script's stdout stays clean.
 
-The saved sign-in is in `credentials.json` next to your settings, readable only by you. `sx auth logout` revokes it on the server and deletes it. Ask for fewer powers with `--scope "repo:read pulls:read"`. [How the flow works](/docs/api/oauth).
+The saved sign-in is in `credentials.json` next to your settings, readable only by you. `sx auth logout` revokes it on the server and deletes it. Ask for fewer powers with `--scope "repo:read pulls:read"`. The default includes `pulls:merge` and `secrets:write`, so the documented landing and secret commands work. `sx env pull` and `sx env run` need `secrets:decrypt`, which OAuth does not grant; use a personal `SX_TOKEN` with that scope. [How the flow works](/docs/api/oauth).
 
 ## Tokens for scripts and agents
 

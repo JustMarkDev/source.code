@@ -141,6 +141,10 @@ export const getWebhook = defineOp({
   params: hookParams,
   response: S.Webhook,
   errors: ['not_found', 'forbidden', 'moved'],
+  probe: async (ctx, d) => {
+    const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal, 'read')
+    return `${h.id}.${h.version}`
+  },
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -165,12 +169,13 @@ export const updateWebhook = defineOp({
     active: z.boolean().optional(),
   }),
   response: S.Webhook,
-  errors: ['not_found', 'forbidden', 'moved'],
+  errors: ['not_found', 'forbidden', 'version_mismatch', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
       return yield* run(async (d) => {
         const h = await hookOf(d, ctx.params.owner, ctx.params.repo, ctx.params.webhook, ctx.principal)
+        d.assertVersion(ctx.ifMatch, `${h.id}.${h.version}`, () => presentHook(d, h, null))
         if (ctx.body.endpoint !== undefined) {
           const problem = endpointProblem(ctx.body.endpoint, d.svc.hooks.allowPrivate)
           if (problem)

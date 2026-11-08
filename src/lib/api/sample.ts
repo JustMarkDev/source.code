@@ -106,7 +106,7 @@ export function seedSample(d: MemoryDomain) {
   })
   d.seedRepo('dana', 'tinyqueue', { storeId: 'tinyqueue', description: 'Zero-dependency job queue.', stars: 640, created: days(30) })
   d.seedRepo('dana', 'notes', { description: 'Private notes.', visibility: 'private', created: days(20) })
-  d.seedRepo('northwind', 'relay', { description: 'A small message relay with at-least-once delivery.', stars: 310, created: days(25), collaborators: ['hollis'] })
+  d.seedRepo('northwind', 'relay', { description: 'A small message relay with at-least-once delivery.', stars: 310, created: days(25), collaborators: ['hollis'], maintainers: ['dana', 'hollis'] })
   d.seedAlias('dana/git-fs', 'dana/gitfs')
 
   const a = (name: string) => d.actors.get(name)!

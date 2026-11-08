@@ -301,6 +301,11 @@ export class WebhookService {
   }
 
   update(hook: Hook, patch: { url?: string; events?: Array<string>; description?: string; active?: boolean }) {
+    const changed = (patch.url !== undefined && patch.url !== hook.url) ||
+      (patch.events !== undefined && JSON.stringify(patch.events) !== JSON.stringify(hook.events)) ||
+      (patch.description !== undefined && patch.description !== hook.description) ||
+      (patch.active !== undefined && patch.active !== hook.active)
+    if (!changed) return
     if (patch.url !== undefined) hook.url = patch.url
     if (patch.events !== undefined) hook.events = patch.events
     if (patch.description !== undefined) hook.description = patch.description

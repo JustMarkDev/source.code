@@ -1132,7 +1132,7 @@ export class MemoryDomain {
 
   async createRepo(
     p: Principal,
-    input: { owner?: string; name: string; description?: string; visibility: 'public' | 'private' },
+    input: { owner?: string; name: string; description?: string; visibility: 'public' | 'private'; maintainers?: Array<string> },
     dry: boolean,
   ) {
     const owner = input.owner ?? p.actingAs
@@ -1145,14 +1145,25 @@ export class MemoryDomain {
         hint: 'Ask an owner or admin, or create it in an account you manage. GET /v1/accounts shows your role in each.',
       })
     if (p.repos) throw apiError('forbidden', 'A token limited to repositories cannot create new ones.')
+    const maintainers = new Set(input.maintainers ?? [])
+    if (input.maintainers) {
+      for (const h of input.maintainers)
+        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
+          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
+        })
+    } else {
+      if (acct.kind === 'person') maintainers.add(acct.handle)
+      for (const [h, r] of acct.members) if (r === 'owner' || r === 'admin') maintainers.add(h)
+      maintainers.add(p.handle)
+    }
     const existing = this.repos.get(`${owner}/${input.name}`) ?? this.byLower(`${owner}/${input.name}`.toLowerCase())
     if (existing) return { repo: this.presentRepo(existing), created: false }
     if (dry)
       return {
-        repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now() })),
+        repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers] })),
         created: true,
       }
-    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now() })
+    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now(), maintainers: [...maintainers] })
     const lower = `${owner}/${input.name}`.toLowerCase()
     this.aliases.delete(lower)
     for (const [key, value] of this.aliases) if (value.toLowerCase() === lower) this.aliases.delete(key)
@@ -1496,6 +1507,7 @@ export class MemoryDomain {
     const repo = this.resolve(owner, name, p, 'read')
     // A team belongs to an organization and reaches only that organization's repositories.
     if (repo.owner !== org) throw apiError('invalid_request', `${repo.owner}/${repo.name} is not in ${org}.`, { hint: 'A team can only be given repositories of its own organization.' })
+    if (t.repos.get(`${repo.owner}/${repo.name}`) === permission) return this.presentTeam(t)
     if (!dry) {
       t.repos.set(`${repo.owner}/${repo.name}`, permission)
       t.updated = this.now()
@@ -1536,7 +1548,7 @@ export class MemoryDomain {
     owner: string,
     name: string,
     p: Principal,
-    body: { name?: string; description?: string; visibility?: 'public' | 'private'; default_branch?: string },
+    body: { name?: string; description?: string; visibility?: 'public' | 'private'; default_branch?: string; maintainers?: Array<string> },
     ifMatch: string | null,
     dry: boolean,
   ) {
@@ -1577,6 +1589,16 @@ export class MemoryDomain {
     if (body.default_branch !== undefined && body.default_branch !== repo.defaultBranch) {
       repo.defaultBranch = body.default_branch
       changed.push('default_branch')
+    }
+    if (body.maintainers !== undefined) {
+      for (const h of body.maintainers)
+        if (this.accounts.get(h)?.kind !== 'person') throw apiError('invalid_request', `${h} is not a person.`, {
+          errors: [{ pointer: '/body/maintainers', code: 'not_a_person', message: `${h} is not a person.` }],
+        })
+      if (JSON.stringify([...repo.maintainers].sort()) !== JSON.stringify([...body.maintainers].sort())) {
+        repo.maintainers = new Set(body.maintainers)
+        changed.push('maintainers')
+      }
     }
     if (renaming) {
       const to = `${repo.owner}/${body.name}`
@@ -2100,6 +2122,11 @@ export class MemoryDomain {
     return this.presentChange(repo, shown, p)
   }
 
+  /** Public entry for operations that keep their own versioned records. */
+  assertVersion(ifMatch: string | null, version: string, current: () => unknown) {
+    this.assertMatch(ifMatch, version, current)
+  }
+
   /** `If-Match` carries the ETag the client read: `W/"<version>"`. */
   private assertMatch(
     ifMatch: string | null,
@@ -2434,6 +2461,13 @@ export class MemoryDomain {
     if (!from[action].includes(c.state))
       throw apiError('invalid_state', `Change #${c.number} is ${c.state}; it cannot be ${action === 'ready' ? 'marked ready' : action === 'abandon' ? 'abandoned' : 'restored'}.`)
     const next = action === 'abandon' ? 'abandoned' : 'open'
+    if (action === 'restore') {
+      const branchOwner = repo.openChangeByBranch.get(c.branch)
+      if (branchOwner && branchOwner !== c)
+        throw apiError('invalid_state', `#${branchOwner.number} already owns branch ${c.branch}.`, {
+          hint: 'Land or abandon that change before restoring this one.',
+        })
+    }
     if (dry) return this.presentChange(repo, { ...c, state: next }, p)
     this.touchChange(repo, c, () => {
         c.state = next

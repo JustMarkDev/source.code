@@ -789,12 +789,13 @@ A bare name goes in the account you act as; set `owner` to use another. Naturall
 
 **Request body**
 
-| Member        | Type                          | Notes                                           |
-| ------------- | ----------------------------- | ----------------------------------------------- |
-| `name`        | string (pattern)              | Required.                                       |
-| `owner`       | string                        | Account handle. Default: the account you act as |
-| `description` | string (up to 500 characters) |                                                 |
-| `visibility`  | `public` or `private`         | Default `"public"`.                             |
+| Member        | Type                          | Notes                                                                                 |
+| ------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
+| `name`        | string (pattern)              | Required.                                                                             |
+| `owner`       | string                        | Account handle. Default: the account you act as                                       |
+| `description` | string (up to 500 characters) |                                                                                       |
+| `visibility`  | `public` or `private`         | Default `"public"`.                                                                   |
+| `maintainers` | array of string               | People who can approve core-path changes. Default: the account owners/admins and you. |
 
 **Errors**
 
@@ -984,12 +985,13 @@ Owners of the account and admins of the organization only. Send `If-Match` with 
 
 **Request body**
 
-| Member           | Type                                      | Notes |
-| ---------------- | ----------------------------------------- | ----- |
-| `name`           | string (pattern)                          |       |
-| `description`    | string (up to 500 characters)             |       |
-| `visibility`     | `public` or `private`                     |       |
-| `default_branch` | string (up to 200 characters, at least 1) |       |
+| Member           | Type                                      | Notes                                    |
+| ---------------- | ----------------------------------------- | ---------------------------------------- |
+| `name`           | string (pattern)                          |                                          |
+| `description`    | string (up to 500 characters)             |                                          |
+| `visibility`     | `public` or `private`                     |                                          |
+| `default_branch` | string (up to 200 characters, at least 1) |                                          |
+| `maintainers`    | array of string                           | People who can approve core-path changes |
 
 **Errors**
 

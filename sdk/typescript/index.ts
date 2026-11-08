@@ -1508,6 +1508,8 @@ export interface Operations {
         owner?: string
         description?: string
         visibility?: 'public' | 'private'
+        /** People who can approve core-path changes. Default: the account owners/admins and you. */
+        maintainers?: Array<string>
       }
     }
     output: Repo
@@ -1572,6 +1574,8 @@ export interface Operations {
         description?: string
         visibility?: 'public' | 'private'
         default_branch?: string
+        /** People who can approve core-path changes */
+        maintainers?: Array<string>
       }
     }
     output: Repo

@@ -20,6 +20,7 @@ export const exit = {
 } as const
 
 export class SxError extends Error {
+  problem?: Record<string, unknown>
   constructor(
     readonly code: string,
     message: string,
@@ -76,7 +77,7 @@ export function fail(ctx: Ctx, e: unknown): number {
   if (ctx.json)
     ctx.err(
       JSON.stringify({
-        error: { code: err.code, message: err.message, hint: err.hint },
+        error: { ...(err.problem ?? {}), code: err.code, message: err.message, hint: err.hint },
       }),
     )
   else ctx.err(`error: ${err.message}${err.hint ? `\nhint: ${err.hint}` : ''}`)

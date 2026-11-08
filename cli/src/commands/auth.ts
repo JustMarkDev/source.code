@@ -120,7 +120,7 @@ export async function signIn(
   const scope =
     typeof flags.scope === 'string'
       ? flags.scope
-      : 'repo:read repo:write issues:read issues:write pulls:read pulls:write pulls:comment secrets:schema'
+      : 'repo:read repo:write issues:read issues:write pulls:read pulls:write pulls:comment pulls:merge secrets:schema secrets:write'
   const started = await post(
     '/oauth/device_authorization',
     form({ client_id: clientId, scope }),

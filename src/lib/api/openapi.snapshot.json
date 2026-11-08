@@ -10585,7 +10585,8 @@
           "token_revoked",
           "unauthenticated",
           "unsupported_media_type",
-          "unsupported_version"
+          "unsupported_version",
+          "version_mismatch"
         ],
         "x-sx-async": false,
         "x-sx-secret-response": false
@@ -11136,6 +11137,14 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200
+                  },
+                  "maintainers": {
+                    "description": "People who can approve core-path changes",
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -11401,6 +11410,14 @@
                       "public",
                       "private"
                     ]
+                  },
+                  "maintainers": {
+                    "description": "People who can approve core-path changes. Default: the account owners/admins and you.",
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [

@@ -184,6 +184,7 @@ export const updateRepo = defineOp({
     description: z.string().max(500).optional(),
     visibility: z.enum(['public', 'private']).optional(),
     default_branch: z.string().min(1).max(200).optional(),
+    maintainers: z.array(z.string()).max(50).optional().describe('People who can approve core-path changes'),
   }),
   response: S.Repo,
   errors: ['not_found', 'forbidden', 'version_mismatch', 'invalid_state', 'moved'],
