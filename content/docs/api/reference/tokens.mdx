@@ -74,14 +74,14 @@ ratelimit: "read";r=1173;t=60
 
 Every access and refresh token the application holds stops working at once.
 
-| About      |                               |
-| ---------- | ----------------------------- |
-| Safety     | `destructive`, safe to repeat |
-| Needs      | a token                       |
-| Scopes     | `tokens:manage`               |
-| Rate limit | `write` pool, 1 unit          |
-| Dry run    | `?dry_run=true`               |
-| Success    | `204`, no body                |
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `tokens:manage`                           |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -246,7 +246,7 @@ ratelimit: "write";r=107;t=60
   "scopes": ["repo:read", "pulls:read"],
   "repos": ["dana/gitfs"],
   "prefix": "sxp_U8Ja",
-  "secret": "sxp_U8Ja1R9AD6LEpfHvW2qiuC1b8QxPoape",
+  "secret": "sxp_…",
   "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80jm2pgnhb",
   "expires_at": "2026-12-07T10:00:00.000Z",
   "created_at": "2026-11-07T10:00:00.000Z",
@@ -262,14 +262,14 @@ ratelimit: "write";r=107;t=60
 
 It stops working at once. Revoking a token that is already revoked answers 404.
 
-| About      |                               |
-| ---------- | ----------------------------- |
-| Safety     | `destructive`, safe to repeat |
-| Needs      | a token                       |
-| Scopes     | `tokens:manage`               |
-| Rate limit | `write` pool, 1 unit          |
-| Dry run    | `?dry_run=true`               |
-| Success    | `204`, no body                |
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `tokens:manage`                           |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 

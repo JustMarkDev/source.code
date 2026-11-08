@@ -142,7 +142,7 @@ ratelimit: "write";r=104;t=60
   "events": ["change.*", "issue.created"],
   "active": true,
   "disabled_reason": null,
-  "secret": "whsec_gFFNvz8OxXK7u4jWaNztVEL4g93c0Q8z",
+  "secret": "whsec_…",
   "last_delivery": null,
   "html_url": "https://source.code/dana/gitfs/settings",
   "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tkff2y77",
@@ -160,14 +160,14 @@ ratelimit: "write";r=104;t=60
 
 Pending deliveries are dropped.
 
-| About      |                               |
-| ---------- | ----------------------------- |
-| Safety     | `destructive`, safe to repeat |
-| Needs      | a token                       |
-| Scopes     | `webhooks:write`              |
-| Rate limit | `write` pool, 1 unit          |
-| Dry run    | `?dry_run=true`               |
-| Success    | `204`, no body                |
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `webhooks:write`                          |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
 
 **Path parameters**
 
@@ -779,7 +779,7 @@ ratelimit: "write";r=98;t=60
   "events": ["change.*", "issue.*"],
   "active": true,
   "disabled_reason": null,
-  "secret": "whsec_3L5N8LoLx3uG+1kP7cbhFXpzQaClAUT1",
+  "secret": "whsec_…+1kP7cbhFXpzQaClAUT1",
   "last_delivery": {
     "id": "dlv_01m6tq6r80gyd9hzpz",
     "state": "succeeded",

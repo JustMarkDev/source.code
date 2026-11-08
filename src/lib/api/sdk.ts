@@ -313,7 +313,7 @@ export function createClient(options: ClientOptions = {}): Client {
     else if (o.idempotencyKey) headers['idempotency-key'] = o.idempotencyKey
     const cached = read ? cache.get(url) : undefined
     if (cached) headers['if-none-match'] = cached.etag
-    const canRetry = read || op.idempotent || !!headers['idempotency-key']
+    const canRetry = read || (op.idempotent && !o.ifMatch) || !!headers['idempotency-key']
 
     for (let attempt = 0; ; attempt++) {
       let res: Response

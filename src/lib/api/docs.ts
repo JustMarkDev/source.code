@@ -376,12 +376,19 @@ function trim(value: unknown, depth = 0): unknown {
   }
   if (value && typeof value === 'object')
     return Object.fromEntries(Object.entries(value as Json).map(([k, v]) => [k, trim(v, depth + 1)]))
-  if (typeof value === 'string' && value.length > 160) return `${value.slice(0, 157)}…`
+  if (typeof value === 'string') {
+    const redacted = value
+      .replace(/\b((?:sxp|sxb|sxr|sxo|sxf)_)[A-Za-z0-9_-]{6,}/g, '$1…')
+      .replace(/\b(whsec_)[A-Za-z0-9_-]{6,}/g, '$1…')
+      .replace(/([?&]sig=)[^&]+/g, '$1…')
+    return redacted.length > 160 ? `${redacted.slice(0, 157)}…` : redacted
+  }
   return value
 }
 
 function curl(rec: Recorded) {
-  const lines = [`curl ${rec.method === 'GET' ? '' : `-X ${rec.method} `}"${BASE}${rec.path}"`.replace('curl "', 'curl "')]
+  const path = rec.path.replace(/([?&]sig=)[^&]+/g, '$1…')
+  const lines = [`curl ${rec.method === 'GET' ? '' : `-X ${rec.method} `}"${BASE}${path}"`.replace('curl "', 'curl "')]
   if (rec.token) lines.push('  -H "Authorization: Bearer $SX_TOKEN"')
   for (const [k, v] of Object.entries(rec.headers)) lines.push(`  -H "${k}: ${v}"`)
   if (rec.raw) lines.push('  --data-binary @after.png')

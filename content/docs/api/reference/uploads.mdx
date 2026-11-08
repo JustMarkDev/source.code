@@ -222,7 +222,7 @@ ratelimit: "write";r=96;t=60
   "purpose": "evidence",
   "state": "pending",
   "sha256": null,
-  "upload_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=xG53cCku9PO2ivZ4SnH5xX9e27oXQK4xDnv5mXJFJdo",
+  "upload_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=…",
   "content_url": null,
   "expires_at": "2026-11-07T11:00:00.000Z",
   "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72",
@@ -360,7 +360,7 @@ The address comes from `uploads.create`. It carries its own signature in `exp` a
 **Example**
 
 ```bash
-curl -X PUT "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=xG53cCku9PO2ivZ4SnH5xX9e27oXQK4xDnv5mXJFJdo" \
+curl -X PUT "https://api.source.code/v1/uploads/upl_01m6tq6r80xr6j9s72/data?exp=1794049200000&sig=…" \
   -H "content-type: image/png" \
   --data-binary @after.png
 ```

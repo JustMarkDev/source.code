@@ -196,7 +196,7 @@ export const deleteWebhook = defineOp({
   path: '/repos/{owner}/{repo}/webhooks/{webhook}',
   params: hookParams,
   safety: 'destructive',
-  idempotent: true,
+  idempotent: false,
   dryRun: true,
   response: z.null(),
   status: 204,

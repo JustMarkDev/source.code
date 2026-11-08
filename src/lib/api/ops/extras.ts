@@ -176,7 +176,7 @@ export const deleteMirror = defineOp({
   scopes: ['repo:write'],
   pool: 'write',
   safety: 'destructive',
-  idempotent: true,
+  idempotent: false,
   dryRun: true,
   response: z.null(),
   status: 204,
@@ -448,6 +448,7 @@ export const approveGrant = defineOp({
         const g = x.grants.find((e) => e.id === ctx.params.grant)
         if (!g) throw apiError('not_found', `No grant ${ctx.params.grant}.`)
         if (g.state === 'revoked') throw apiError('invalid_state', 'That grant was revoked.')
+        if (g.state === 'active') return presentGrant(d, full, g, ctx.now())
         if (!ctx.dryRun) {
           g.state = 'active'
           g.expires = ctx.now() + ctx.body.ttl_minutes * 60_000

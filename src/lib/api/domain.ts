@@ -1212,7 +1212,11 @@ export class MemoryDomain {
     const full = `${repo.owner}/${repo.name}`
     if (input.change !== undefined && !repo.changes.has(input.change)) throw apiError('not_found', `No change #${input.change} in ${full}.`)
     // A run token can never do more than the one that started it.
-    const wanted = input.scopes ?? MemoryDomain.RUN_SCOPES.filter((s) => p.scopes.has(s))
+    if (!p.scopes.has('repo:read'))
+      throw apiError('insufficient_scope', 'A run token needs repo:read to report on itself.', {
+        extra: { required_scopes: ['repo:read'], token_scopes: [...p.scopes] },
+      })
+    const wanted = [...new Set([...(input.scopes ?? MemoryDomain.RUN_SCOPES.filter((s) => p.scopes.has(s))), 'repo:read'])]
     const missing = wanted.filter((s) => !p.scopes.has(s as never))
     if (missing.length)
       throw apiError('insufficient_scope', `A run cannot have scopes you do not have: ${missing.join(', ')}.`, {
@@ -1424,6 +1428,9 @@ export class MemoryDomain {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
     this.assertMatch(ifMatch, `${t.id}.${t.version}`, () => this.presentTeam(t))
+    const same = (body.name === undefined || body.name === t.name) &&
+      (body.description === undefined || body.description === t.description)
+    if (same) return this.presentTeam(t)
     if (!dry) {
       if (body.name !== undefined) t.name = body.name
       if (body.description !== undefined) t.description = body.description
@@ -2073,6 +2080,10 @@ export class MemoryDomain {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
     this.assertMatch(ifMatch, `${c.id}.${c.version}`, () => this.presentChange(repo, c, p))
+    const same = (body.title === undefined || body.title === c.title) &&
+      (body.description === undefined || body.description === c.description) &&
+      (body.labels === undefined || JSON.stringify(body.labels) === JSON.stringify(c.labels))
+    if (same) return this.presentChange(repo, c, p)
     if (!dry) {
       const by = this.asActor(p!)
       const changed = Object.keys(body)
@@ -2504,7 +2515,7 @@ export class MemoryDomain {
     if (c.stackId) {
       const members = repo.stacks.get(c.stackId) ?? []
       const above = repo.changes.get(members[members.indexOf(c.number) + 1])
-      if (above && above.state !== 'landed')
+      if (above && (above.state === 'open' || above.state === 'draft'))
         this.pushPatchSet(repo, above, by, {
           sha: this.fakeSha(repo, `${above.branch}/rebase`),
           kind: 'rebase',
@@ -2527,6 +2538,17 @@ export class MemoryDomain {
     const by = this.asActor(p!)
     const open = members.map((n) => repo.changes.get(n)!).filter((c) => c.state === 'open')
     if (open.length === 0) throw apiError('invalid_state', 'Nothing in this stack is open.')
+    // A draft or abandoned member between two open members would make the
+    // operation fail after the ones below it already landed.
+    const firstAt = members.indexOf(open[0].number)
+    const lastAt = members.indexOf(open[open.length - 1].number)
+    for (const n of members.slice(firstAt, lastAt + 1)) {
+      const c = repo.changes.get(n)!
+      if (c.state !== 'open' && c.state !== 'landed')
+        throw apiError('invalid_state', `#${c.number} in this stack is ${c.state}.`, {
+          hint: 'Every change between the open ones must be open or already landed.',
+        })
+    }
     // Check the first now so an obvious refusal is a plain error, not an operation.
     const first = open[0]
     const trees = body.expected_trees
@@ -2686,6 +2708,11 @@ export class MemoryDomain {
     const i = repo.issues.get(n)
     if (!i) throw apiError('not_found', `No issue #${n} in ${owner}/${name}.`)
     this.assertMatch(ifMatch, `${i.id}.${i.version}`, () => this.presentIssue(repo, i))
+    const same = (body.title === undefined || body.title === i.title) &&
+      (body.body === undefined || body.body === i.body) &&
+      (body.labels === undefined || JSON.stringify(body.labels) === JSON.stringify(i.labels)) &&
+      (body.state === undefined || body.state === i.state)
+    if (same) return this.presentIssue(repo, i)
     if (!dry) {
       if (repo.openIssueByTitle.get(i.title) === i) repo.openIssueByTitle.delete(i.title)
       if (body.title !== undefined) i.title = body.title

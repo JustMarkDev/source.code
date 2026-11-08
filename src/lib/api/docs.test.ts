@@ -38,6 +38,12 @@ describe('the API documentation', () => {
       expect(read(`api/${file}`), file).toBe(text)
   })
 
+  test('examples never publish a token, webhook secret or signed URL', async () => {
+    const files = await generateReference()
+    for (const [file, text] of files)
+      expect(text, file).not.toMatch(/(?:sxp|sxb|sxr|sxo|sxf)_[A-Za-z0-9_-]{8,}|whsec_[A-Za-z0-9_-]{8,}|[?&]sig=[A-Za-z0-9_-]{8,}/)
+  })
+
   test('every operation has a real example in the reference', async () => {
     // The event stream is a live connection, documented in prose.
     expect(await exampleless()).toEqual(['events.stream'])
