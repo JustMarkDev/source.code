@@ -47,6 +47,9 @@ describe('scrub', () => {
     ).toBe('run --flag and «DASHES» again')
     expect(scrub('a.b and a.c', { DOT: 'a.' })).toBe('a.b and a.c')
     expect(scrub('see a. now', { DOT: 'a.' })).toBe('see «DOT» now')
+    expect(scrub('{"pin":42}', { PIN: '42' })).toBe('{"pin":«PIN»}')
+    expect(scrub(':42', { PIN: '42' })).toBe(':«PIN»')
+    expect(scrub('42=', { PIN: '42' })).toBe('«PIN»=')
   })
 
   test('leaves empty values alone', () => {

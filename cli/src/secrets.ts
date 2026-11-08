@@ -56,7 +56,7 @@ export function scrub(text: string, secrets: Record<string, string>): string {
       if (f.length < 4) {
         const escaped = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         out = out.replace(
-          new RegExp(`(?<![^\\s(\\[{"'=,;])${escaped}(?![^\\s)\\]}"'.,;:!?])`, 'g'),
+          new RegExp(`(?<![^\\s()\\[\\]{}"'=,;:!?.])${escaped}(?![^\\s()\\[\\]{}"'=,;:!?.])`, 'g'),
           `«${name}»`,
         )
         continue

@@ -146,6 +146,7 @@ export const streamEvents = defineOp({
             headers: {
               'content-type': 'text/event-stream; charset=utf-8',
               'cache-control': 'no-store',
+              'x-accel-buffering': 'no',
             },
           }),
         )
