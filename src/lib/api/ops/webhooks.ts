@@ -113,6 +113,7 @@ export const createWebhook = defineOp({
       const { run } = yield* Domain
       const h = yield* run(async (d) => {
         const full = await d.repoAccess(ctx.params.owner, ctx.params.repo, ctx.principal, 'write')
+        const repoId = await d.repoIdOf(ctx.params.owner, ctx.params.repo, ctx.principal)
         const problem = endpointProblem(ctx.body.endpoint, d.svc.hooks.allowPrivate)
         if (problem)
           throw apiError('invalid_request', 'That URL cannot be a webhook endpoint.', {
@@ -120,8 +121,8 @@ export const createWebhook = defineOp({
           })
         if (d.svc.hooks.list(full).length >= MAX_HOOKS_PER_REPO)
           throw apiError('limit_reached', `A repository can have ${MAX_HOOKS_PER_REPO} webhooks.`)
-        if (ctx.dryRun) return presentHook(d, { id: 'whk_dryrun', repo: full, url: ctx.body.endpoint, description: ctx.body.description ?? '', events: ctx.body.events, active: true, disabledReason: null, secrets: [], failures: 0, createdAt: ctx.now(), updatedAt: ctx.now(), version: 1, deliveries: [], lastDelivery: null }, null)
-        const { hook, secret } = d.svc.hooks.create(full, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description })
+        if (ctx.dryRun) return presentHook(d, { id: 'whk_dryrun', repo: full, repoId, url: ctx.body.endpoint, description: ctx.body.description ?? '', events: ctx.body.events, active: true, disabledReason: null, secrets: [], failures: 0, createdAt: ctx.now(), updatedAt: ctx.now(), version: 1, deliveries: [], lastDelivery: null }, null)
+        const { hook, secret } = d.svc.hooks.create(full, repoId, { url: ctx.body.endpoint, events: ctx.body.events, description: ctx.body.description })
         return presentHook(d, hook, secret)
       })
       return reply(h, { status: 201, headers: { location: h.url, 'cache-control': 'no-store' } })

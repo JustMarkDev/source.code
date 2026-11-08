@@ -298,9 +298,11 @@ describe('teams', () => {
 
   test('edits need the current version, and unknown people and teams are 404', async () => {
     const h = await withVault()
-    const t = await h.call('POST', ORG, { body: { slug: 'readers' } })
+    await h.call('POST', ORG, { body: { slug: 'readers' } })
     expect((await h.call('PATCH', `${ORG}/readers`, { body: { name: 'R' }, headers: { 'if-match': '"99"' } })).status).toBe(412)
-    const ok = await h.call('PATCH', `${ORG}/readers`, { body: { name: 'R' }, headers: { 'if-match': `"${t.json.version}"` } })
+    const t = await h.call('GET', `${ORG}/readers`)
+    const etag = t.headers.get('etag')!
+    const ok = await h.call('PATCH', `${ORG}/readers`, { body: { name: 'R' }, headers: { 'if-match': etag } })
     expect(ok.json.name).toBe('R')
     expect((await h.call('PUT', `${ORG}/readers/members/nobody`)).status).toBe(404)
     expect((await h.call('GET', `${ORG}/missing`)).status).toBe(404)

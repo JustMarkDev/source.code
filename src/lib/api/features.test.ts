@@ -271,7 +271,8 @@ describe('webhooks: deliveries', () => {
     const h = hooksHarness()
     await h.create(['issue.created'])
     h.transport.delay = 5
-    for (let i = 0; i < 150; i++) h.api.domain.events.append({ type: 'issue.created', repo: 'dana/gitfs', actor: { object: 'actor', id: 'acc_x', handle: 'dana', class: 'human' }, subject: { object: 'issue', id: `iss_${i}`, number: i }, changes: [], data: null })
+    const repoId = h.api.domain.repos.get('dana/gitfs')!.id
+    for (let i = 0; i < 150; i++) h.api.domain.events.append({ type: 'issue.created', repo: 'dana/gitfs', repo_id: repoId, actor: { object: 'actor', id: 'acc_x', handle: 'dana', class: 'human' }, subject: { object: 'issue', id: `iss_${i}`, number: i }, changes: [], data: null })
     for (let i = 0; i < 60 && h.transport.sent.length < 150; i++) await new Promise((r) => setTimeout(r, 10))
     expect(h.transport.sent.length).toBe(150)
     expect(h.transport.peak).toBeLessThanOrEqual(64)
@@ -372,6 +373,13 @@ describe('search', () => {
     expect(titles(await h.call('GET', `/search?q=${encodeURIComponent('wombat state:closed')}`))).toEqual(['Wombat crash'])
   })
 
+  test('a repository description change reaches the index', async () => {
+    const h = harness()
+    await h.call('PATCH', REPO, { body: { description: 'zebra words here' } })
+    const r = await h.call('GET', '/search?q=zebra')
+    expect(r.json.data.some((x: { repo: string }) => x.repo === 'dana/gitfs')).toBe(true)
+  })
+
   test('private repositories never leak into results', async () => {
     const h = harness()
     await h.call('POST', '/repos/dana/notes/issues', { body: { title: 'Secret xylophone plan' } })
@@ -450,6 +458,22 @@ describe('uploads', () => {
     expect((await put(h, made.upload_url, PNG)).status).toBe(400)
   })
 
+  test('an anonymous idempotency key belongs to one caller, not everyone', async () => {
+    const h = harness()
+    const a = (await start(h)).json
+    const b = (await start(h)).json
+    const send = (u: { upload_url: string }, ip: string) =>
+      h.api.fetch(new Request(u.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), {
+        method: 'PUT',
+        headers: { 'content-type': 'image/png', 'idempotency-key': 'same-key', 'x-forwarded-for': ip },
+        body: PNG as unknown as BodyInit,
+      }))
+    expect((await send(a, '1.1.1.1')).status).toBe(200)
+    const second = await send(b, '2.2.2.2')
+    expect(second.status).toBe(200)
+    expect(second.headers.get('sx-replayed')).toBeNull()
+  })
+
   test('the address expires after an hour', async () => {
     const now = clock()
     const h = harness({ now })
@@ -472,6 +496,13 @@ describe('uploads', () => {
     const bad = await h.call('POST', '/uploads', { body: { filename: 'x.svg', content_type: 'image/svg+xml', size: 10 } })
     expect(bad.status).toBe(400)
     expect((await h.call('POST', '/uploads', { body: { filename: 'x.png', content_type: 'image/png', size: 11 << 20 } })).status).toBe(413)
+  })
+
+  test('a check details URL cannot be a script or data URL', async () => {
+    const h = harness()
+    for (const url of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>'])
+      expect((await h.call('POST', `${REPO}/changes/216/checks`, { body: { key: 'ci/x', state: 'pass', tree: '9c4d7e1', details_url: url } })).status).toBe(400)
+    expect((await h.call('POST', `${REPO}/changes/216/checks`, { body: { key: 'ci/x', state: 'pass', tree: '9c4d7e1', details_url: 'https://ci.example.com/1' } })).status).toBe(201)
   })
 
   test('the body is capped before it is read', async () => {

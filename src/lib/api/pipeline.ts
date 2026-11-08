@@ -70,17 +70,51 @@ const CORS = {
     'authorization, content-type, idempotency-key, if-match, if-none-match, sx-version, sx-account, sx-agent',
   'access-control-allow-methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS',
   'access-control-expose-headers':
-    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, server-timing',
+    'etag, location, link, retry-after, ratelimit, ratelimit-policy, sx-request-id, sx-version, sx-outcome, sx-replayed, sx-limit-applied, sx-dry-run, server-timing',
   'access-control-max-age': '86400',
 }
 
 const hash = (text: string) =>
   createHash('sha1').update(text).digest('base64url').slice(0, 16)
 
-/** A small least-recently-used cache of serialized bodies. */
+/** Read a request body while enforcing a byte limit, so a chunked body is stopped as it arrives. */
+async function readLimited(req: Request, max: number): Promise<Uint8Array | null> {
+  const body = req.body
+  if (!body) return new Uint8Array()
+  const reader = body.getReader()
+  const chunks: Array<Uint8Array> = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > max) {
+        await reader.cancel().catch(() => {})
+        return null
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return null
+  }
+  const bytes = new Uint8Array(total)
+  let at = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, at)
+    at += chunk.byteLength
+  }
+  return bytes
+}
+
+/** A small least-recently-used cache of serialized bodies, bounded by count and size. */
 class BodyCache {
   private readonly map = new Map<string, string>()
-  constructor(private readonly max: number) {}
+  private held = 0
+  constructor(
+    private readonly max: number,
+    private readonly maxChars = 24_000_000,
+  ) {}
   get(key: string) {
     const v = this.map.get(key)
     if (v !== undefined) {
@@ -91,9 +125,17 @@ class BodyCache {
   }
   set(key: string, value: string) {
     if (this.max <= 0) return
+    const old = this.map.get(key)
+    if (old !== undefined) this.held -= old.length
+    this.map.delete(key)
     this.map.set(key, value)
-    if (this.map.size > this.max)
-      this.map.delete(this.map.keys().next().value as string)
+    this.held += value.length
+    while ((this.map.size > this.max || this.held > this.maxChars) && this.map.size > 1) {
+      const oldest = this.map.keys().next().value as string
+      const gone = this.map.get(oldest)!
+      this.held -= gone.length
+      this.map.delete(oldest)
+    }
   }
   get size() {
     return this.map.size
@@ -111,10 +153,26 @@ function pointerIssues(where: 'params' | 'query' | 'body', error: z.ZodError) {
   }))
 }
 
-function keysOf(schema: z.ZodType | undefined): Array<string> {
-  if (!schema) return []
-  const def = (schema as { shape?: Record<string, unknown> }).shape
-  return def ? Object.keys(def) : []
+function unwrap(schema: z.ZodType): z.ZodType {
+  let s = schema
+  for (let i = 0; i < 5; i++) {
+    const next = (s as { unwrap?: () => z.ZodType }).unwrap
+    if (typeof next !== 'function') break
+    s = next.call(s)
+  }
+  return s
+}
+
+/** Whether a dotted path names a real member, all the way down. */
+function hasSchemaPath(schema: z.ZodType | undefined, path: string): boolean {
+  let s = schema
+  for (const segment of path.split('.')) {
+    if (!s) return false
+    const shape = (unwrap(s) as { shape?: Record<string, z.ZodType> }).shape
+    if (!shape || !(segment in shape)) return false
+    s = shape[segment]
+  }
+  return true
 }
 
 /** Keeps only the listed dotted paths of an object. */
@@ -155,8 +213,11 @@ export function createApi(options: ApiOptions) {
     limiter.sweep()
     if (limitStore instanceof MemoryLimitStore) limitStore.sweep(now())
     if (idem instanceof MemoryIdempotencyStore) idem.sweep()
+    options.tokens.sweep?.(now())
+    options.oauth?.sweepNow()
+    domain.svc.uploads.sweepNow()
   }, 5 * 60_000)
-  ;(sweeper as { unref?: () => void }).unref?.()
+  sweeper.unref?.()
   const domain = options.domain
   const policyHeaders: Record<string, string> = {}
   const variants = new Map<string, string>()
@@ -300,6 +361,8 @@ export function createApi(options: ApiOptions) {
     if (match.kind === 'method')
       return fail(apiError('method_not_allowed', `${req.method} is not allowed on ${path}.`), { allow: match.allow.join(', ') })
     const { op, params } = match
+    if (depth > 0 && (op.streaming || op.rawBody || (op.responseContentType && !op.responseContentType.includes('json'))))
+      return fail(apiError('invalid_request', 'This operation cannot run inside a batch.'))
 
     const auth = await authenticate(req, requestId)
     if (auth.error) {
@@ -441,11 +504,9 @@ export function createApi(options: ApiOptions) {
       const declared = Number(req.headers.get('content-length') ?? '0')
       if (Number.isFinite(declared) && declared > BODY_LIMIT)
         return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
-      bodyText = await req.text()
-      // The limit is bytes, not UTF-16 code units: one emoji is four bytes but
-      // two characters, and a body must not grow past the limit by encoding.
-      if (Buffer.byteLength(bodyText, 'utf8') > BODY_LIMIT)
-        return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
+      const read = await readLimited(req, BODY_LIMIT)
+      if (read === null) return fail(apiError('payload_too_large', 'The body is over 1 MiB.'))
+      bodyText = new TextDecoder().decode(read)
       let json: unknown = {}
       if (bodyText.trim() !== '')
         try {
@@ -462,8 +523,8 @@ export function createApi(options: ApiOptions) {
       const declared = Number(req.headers.get('content-length') ?? '0')
       if (declared > op.rawBody.maxBytes)
         return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
-      const buf = new Uint8Array(await req.arrayBuffer())
-      if (buf.byteLength > op.rawBody.maxBytes)
+      const buf = await readLimited(req, op.rawBody.maxBytes)
+      if (buf === null)
         return fail(apiError('payload_too_large', `The body is over ${op.rawBody.maxBytes} bytes.`))
       bytes = buf
     }
@@ -474,12 +535,10 @@ export function createApi(options: ApiOptions) {
     // Unknown `fields` names are an error, not a silently empty answer.
     const fieldPaths = fields ? fields.split(',').map((s) => s.trim()).filter(Boolean) : null
     if (fieldPaths) {
-      const known = keysOf(
-        (op.response as { shape?: { data?: { element?: z.ZodType } } }).shape?.data?.element ?? op.response,
-      )
-      const bad = known.length ? fieldPaths.filter((f) => !known.includes(f.split('.')[0])) : []
+      const root = (op.response as { shape?: { data?: { element?: z.ZodType } } }).shape?.data?.element ?? op.response
+      const bad = fieldPaths.filter((f) => !hasSchemaPath(root, f))
       if (bad.length)
-        return fail(apiError('invalid_request', `Unknown field ${bad.join(', ')}.`, { errors: bad.map((f) => ({ pointer: '/query/fields', code: 'unknown_field', message: `${f} is not a field. Known: ${known.join(', ')}.` })), }))
+        return fail(apiError('invalid_request', `Unknown field ${bad.join(', ')}.`, { errors: bad.map((f) => ({ pointer: '/query/fields', code: 'unknown_field', message: `${f} is not a field.` })), }))
     }
 
     const ifMatch = req.headers.get('if-match')
@@ -550,7 +609,7 @@ export function createApi(options: ApiOptions) {
       .map(([k, v]) => `${k}=${v}`)
       .join('&')
     const wantsMarkdown = isRead && !!op.markdown && (req.headers.get('accept') ?? '').includes('text/markdown')
-    const variantKey = `${canonical}|${principal?.capId ?? 'a'}${wantsMarkdown ? '|md' : ''}`
+    const variantKey = `${canonical}|${principal?.capId ?? 'anonymous'}${wantsMarkdown ? '|md' : ''}`
     let variant = variants.get(variantKey)
     if (variant === undefined) {
       variant = hash(variantKey)
@@ -565,7 +624,7 @@ export function createApi(options: ApiOptions) {
     if (!isRead && key) {
       if (key.length > 64)
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
-      scope = principal ? principal.actingAs : 'anonymous'
+      scope = principal ? `${principal.tokenId}@${principal.actingAs}` : `ip:${clientAddress(req)}`
       const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, bodyText))
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
@@ -638,7 +697,10 @@ export function createApi(options: ApiOptions) {
         status = step.status
       } else {
         let out = step.out
-        if (out instanceof Raw) return out.response
+        if (out instanceof Raw)
+          return req.method === 'HEAD'
+            ? new Response(null, { status: out.response.status, headers: out.response.headers })
+            : out.response
         if (out instanceof Reply) {
           status = out.init.status ?? status
           Object.assign(headers, out.init.headers)
@@ -650,6 +712,7 @@ export function createApi(options: ApiOptions) {
         // body when an ETag is made, so a long body is not hashed.
         let ready: string | null = null
         let seed: string | null = null
+        let markdown: string | null = null
         if (out instanceof Pre) {
           if (!fieldPaths) {
             ready = out.json
@@ -667,6 +730,9 @@ export function createApi(options: ApiOptions) {
           }
         }
         if (fieldPaths) {
+          // Build the readable form from the full object before projecting it:
+          // a markdown builder reads members that `fields` may have removed.
+          if (wantsMarkdown && status < 300) markdown = op.markdown!(out as Record<string, unknown>)
           const list = out as { object?: string; data?: Array<unknown> }
           out =
             list?.object === 'list' && Array.isArray(list.data)
@@ -689,7 +755,8 @@ export function createApi(options: ApiOptions) {
         }
         json = ready ?? JSON.stringify(out)
         // The readable form is made from the JSON, so the two cannot disagree.
-        if (wantsMarkdown && status < 300) json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
+        if (markdown !== null) json = markdown
+        else if (wantsMarkdown && status < 300) json = op.markdown!(JSON.parse(json) as Record<string, unknown>)
         if (isRead) {
           etag = step.versionKey !== null && step.versionKey !== undefined ? etagOf(step.versionKey) : `W/"${seed === null ? hash(json) : cyrb53(`${seed}|${variant}`).toString(36)}"`
           if (step.versionKey !== null && step.versionKey !== undefined)

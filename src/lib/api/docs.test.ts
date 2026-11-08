@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { allScopes } from './auth'
-import { exampleless, generateReference } from './docs'
+import { captureExamples, exampleless, generateReference } from './docs'
 import { errorCatalog } from './problem'
 import { pools } from './limiter'
 import { sampleTokens } from './sample'
@@ -41,6 +41,14 @@ describe('the API documentation', () => {
   test('every operation has a real example in the reference', async () => {
     // The event stream is a live connection, documented in prose.
     expect(await exampleless()).toEqual(['events.stream'])
+  })
+
+  test('every recorded example is a successful response', async () => {
+    const examples = await captureExamples()
+    for (const [id, rec] of examples) {
+      expect(rec.status, id).toBeGreaterThanOrEqual(200)
+      expect(rec.status, id).toBeLessThan(300)
+    }
   })
 
   test('every error code has a section on the errors page, and nothing else does', () => {

@@ -104,7 +104,7 @@ An agent token has a `class` of `agent` or `bot`, and everything it writes is at
 - Its scopes can be reduced while it is installed and never grown. To add one, remove the install and approve it again.
 - It never sees a secret value. `secrets:decrypt` is separate from `secrets:schema` and is a grant, not a standing permission.
 
-Send `Sx-Agent: claude-code/2.1; model=…; run=run_912` to say who is acting. It is recorded and shown beside what the agent wrote. It is a label, not a credential.
+The `Sx-Agent` header is reserved: clients may send it, but this version does not record it. An actor's `class` (`human`, `agent` or `bot`) is what marks automation.
 
 ## Sample tokens
 

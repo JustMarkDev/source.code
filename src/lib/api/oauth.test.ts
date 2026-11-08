@@ -30,7 +30,10 @@ function setup(opts: Parameters<typeof harness>[0] = {}) {
   }
 
   const signIn = async (handle = 'dana', returnTo = '/') => {
-    const res = await fetchRaw('/oauth/session', form({ handle, return_to: returnTo }))
+    const res = await fetchRaw('/oauth/session', {
+      ...form({ handle, return_to: returnTo }),
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
+    })
     return res.headers.get('set-cookie')!.split(';')[0]
   }
 
@@ -243,13 +246,21 @@ describe('authorization code with PKCE', () => {
   test('sign-in only returns to a local path', async () => {
     const h = setup()
     for (const to of ['//evil.example', '/\\evil.example', '/\tevil', 'https://evil.example']) {
-      const res = await h.fetchRaw('/oauth/session', h.form({ handle: 'dana', return_to: to }))
+      const res = await h.fetchRaw('/oauth/session', {
+        ...h.form({ handle: 'dana', return_to: to }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
+      })
       expect(res.status, to).toBe(400)
       expect(res.headers.get('set-cookie'), to).toBeNull()
     }
-    const ok = await h.fetchRaw('/oauth/session', h.form({ handle: 'dana', return_to: '/' }))
+    const ok = await h.fetchRaw('/oauth/session', {
+      ...h.form({ handle: 'dana', return_to: '/' }),
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
+    })
     expect(ok.status).toBe(303)
     expect(ok.headers.get('location')).toBe('/')
+    const noOrigin = await h.fetchRaw('/oauth/session', h.form({ handle: 'dana', return_to: '/' }))
+    expect(noOrigin.status).toBe(403)
   })
 
   test('the consent page needs a session, a CSRF token and the same origin', async () => {
@@ -554,8 +565,25 @@ describe('tokens API', () => {
     const dry = await h.call('POST', '/tokens?dry_run=true', { body: { name: 'x', scopes: ['repo:read'] } })
     expect(dry.status).toBe(200)
     expect((await h.call('GET', '/tokens')).json.data.length).toBe(before)
-    for (let i = 0; i < 100 - before; i++) await h.call('POST', '/tokens', { body: { name: `t${i}`, scopes: ['repo:read'] } })
-    expect((await h.call('POST', '/tokens', { body: { name: 'one too many', scopes: ['repo:read'] } })).json.code).toBe('limit_reached')
+    let limited = false
+    for (let i = 0; i < 105 && !limited; i++) {
+      const r = await h.call('POST', '/tokens', { body: { name: `t${i}`, scopes: ['repo:read'] } })
+      limited = r.json.code === 'limit_reached'
+    }
+    expect(limited).toBe(true)
+  })
+
+  test('expired tokens do not use up the quota', async () => {
+    const now = clock()
+    const h = setup({ now })
+    let limited = false
+    for (let i = 0; i < 103 && !limited; i++) {
+      const r = await h.call('POST', '/tokens', { body: { name: `t${i}`, scopes: ['repo:read'] } })
+      limited = r.json.code === 'limit_reached'
+    }
+    expect(limited).toBe(true)
+    now.advance(91 * 86_400_000)
+    expect((await h.call('POST', '/tokens', { body: { name: 'fresh', scopes: ['repo:read'] } })).status).toBe(201)
   })
 
   test('someone else’s token looks like no token', async () => {

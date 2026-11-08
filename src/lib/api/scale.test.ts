@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { Effect } from 'effect'
 import { z } from 'zod'
 import { Limiter, MemoryLimitStore } from './limiter'
+import { ConvexLimitStore } from './stores/convex'
 import { MemoryIdempotencyStore } from './idempotency'
 import { defineOp } from './registry'
 import { seedBulk } from './sample'
@@ -17,6 +18,21 @@ const p99 = (xs: Array<number>) => [...xs].sort((a, b) => a - b)[Math.floor(xs.l
 const p50 = (xs: Array<number>) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length * 0.5)]
 
 describe('rate limits across many nodes', () => {
+  test('an unreachable shared store admits one small block, not one unit per request', async () => {
+    const store = new ConvexLimitStore(() => Promise.reject(new Error('down')), 'secret')
+    const policy = { limit: 100, windowMs: 60_000 }
+    const error = console.error
+    console.error = () => {}
+    try {
+      const a = await store.take('key', 10, policy, 1_000)
+      const b = await store.take('key', 10, policy, 1_001)
+      expect(a.granted).toBe(1)
+      expect(b.granted).toBe(0)
+    } finally {
+      console.error = error
+    }
+  })
+
   test('nodes sharing a store never admit more than the limit, and rarely ask the store', async () => {
     const store = new MemoryLimitStore()
     const now = clock()

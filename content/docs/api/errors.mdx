@@ -243,12 +243,6 @@ Wait for a running request to finish, or wait for `Retry-After`.
 
 Retry after `Retry-After` seconds with backoff. Reads and keyed writes are safe to repeat.
 
-### `repo_warming`
-
-**503.** The repository is waking from cold storage. Retryable. CLI exit code 1.
-
-Retry after `Retry-After` seconds.
-
 ### `internal`
 
 **500.** Something broke on our side. Not retryable. CLI exit code 1.

@@ -642,6 +642,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
           "default": {
             "description": "An error",
             "content": {
@@ -6957,7 +6960,7 @@
               }
             },
             "content": {
-              "application/json": {
+              "application/octet-stream": {
                 "schema": {
                   "type": "string"
                 }
@@ -11975,7 +11978,7 @@
               }
             },
             "content": {
-              "application/json": {
+              "*/*": {
                 "schema": {
                   "type": "string"
                 }
@@ -12062,6 +12065,17 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -12775,6 +12789,12 @@
               "null"
             ]
           },
+          "repo_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "actor": {
             "$ref": "#/components/schemas/Actor"
           },
@@ -12834,6 +12854,7 @@
           "type",
           "created_at",
           "repo",
+          "repo_id",
           "actor",
           "subject",
           "changes",
@@ -15952,11 +15973,6 @@
       "exit_code": 1
     },
     "backend_unavailable": {
-      "status": 503,
-      "retryable": true,
-      "exit_code": 1
-    },
-    "repo_warming": {
       "status": 503,
       "retryable": true,
       "exit_code": 1

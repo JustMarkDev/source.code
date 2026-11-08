@@ -62,6 +62,7 @@ export const listChanges = defineOp({
   errors: ['not_found', 'moved', 'cursor_mismatch'],
   shapeable: true,
   waitOn: topic,
+  probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -406,7 +407,7 @@ export const reportCheck = defineOp({
     state: z.enum(['pending', 'pass', 'fail']),
     tree: z.string().regex(/^[0-9a-f]{7,40}$/),
     name: z.string().max(200).optional(),
-    details_url: z.url().optional(),
+    details_url: z.url().refine((v) => /^https?:\/\//i.test(v), { message: 'Use an http or https URL.' }).optional(),
   }),
   response: S.CheckRun,
   status: 201,
@@ -437,6 +438,7 @@ export const getPolicy = defineOp({
   response: S.PolicyEvaluation,
   errors: ['not_found', 'moved'],
   waitOn: topic,
+  probe: (ctx, d) => d.changeVersion(ctx.params.owner, ctx.params.repo, String(ctx.params.number), ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

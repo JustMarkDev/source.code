@@ -79,8 +79,9 @@ export const createUpload = defineOp({
         const pending = d.svc.uploads.countPending(owner)
         if (pending >= MAX_PENDING) throw apiError('limit_reached', `You can have ${MAX_PENDING} uploads waiting for their file.`)
         const rec = ctx.dryRun
-          ? { id: 'upl_dryrun', owner, filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose, state: 'pending' as const, sha256: null, expires: ctx.now() + 3_600_000, created: ctx.now(), attachedTo: null }
+          ? { id: 'upl_dryrun', owner, filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose, state: 'pending' as const, sha256: null, expires: ctx.now() + 3_600_000, created: ctx.now(), attachedTo: null, attachedRepoId: null }
           : d.svc.uploads.create(owner, { filename: b.filename, contentType: b.content_type, size: b.size, purpose: b.purpose })
+        if (!rec) throw apiError('limit_reached', 'Too many uploads are stored. Try again after the oldest expire.')
         return present(d, rec, true)
       })
       return reply(out, { status: 201, headers: { location: out.url } })
@@ -162,6 +163,7 @@ export const uploadContent = defineOp({
   safety: 'read',
   idempotent: true,
   response: z.string(),
+  responseContentType: '*/*',
   errors: ['not_found', 'upload_incomplete'],
   handler: (ctx) =>
     Effect.gen(function* () {
@@ -169,7 +171,7 @@ export const uploadContent = defineOp({
       return yield* run(async (d) => {
         const rec = d.svc.uploads.get(ctx.params.id)
         const mine = rec && ctx.principal?.handle === rec.owner
-        if (!rec || !(mine || (rec.attachedTo && d.mayRead(rec.attachedTo, ctx.principal))))
+        if (!rec || !(mine || (rec.attachedRepoId && d.mayReadId(rec.attachedRepoId, ctx.principal))))
           throw apiError('not_found', 'No such upload.')
         if (rec.state !== 'uploaded') throw apiError('upload_incomplete', 'The file has not been uploaded yet.')
         const etag = `"${rec.sha256}"`
@@ -180,7 +182,10 @@ export const uploadContent = defineOp({
           'content-security-policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
         }
         const sent = ctx.header('if-none-match')
-        if (sent && sent.split(',').some((t) => t.trim() === etag || t.trim() === '*'))
+        if (sent && sent.split(',').some((t) => {
+          const tag = t.trim().replace(/^W\//, '')
+          return tag === etag || tag === '*'
+        }))
           return new Raw(new Response(null, { status: 304, headers: common }))
         const inline = ALLOWED[rec.contentType].inline
         return new Raw(

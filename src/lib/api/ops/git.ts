@@ -139,6 +139,7 @@ export const gitRaw = defineOp({
   params: repoParams,
   query: z.strictObject({ ref: refQuery, path: z.string().min(1).max(1000) }),
   response: z.string(),
+  responseContentType: 'application/octet-stream',
   errors: ['not_found', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {

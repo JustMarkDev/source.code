@@ -198,6 +198,8 @@ export type Delivery = {
 export type Hook = {
   id: string
   repo: string
+  /** Stable id, so a reused repository name cannot deliver another repository's events. */
+  repoId: string
   url: string
   description: string
   events: Array<string>
@@ -268,12 +270,13 @@ export class WebhookService {
     return this.hooks.get(id) ?? null
   }
 
-  create(repo: string, input: { url: string; events: Array<string>; description?: string }) {
+  create(repo: string, repoId: string, input: { url: string; events: Array<string>; description?: string }) {
     const t = this.now()
     const secret = newSecret()
     const hook: Hook = {
       id: newId('webhook', t),
       repo,
+      repoId,
       url: input.url,
       description: input.description ?? '',
       events: input.events,
@@ -360,12 +363,12 @@ export class WebhookService {
   // ----- delivering --------------------------------------------------------
 
   private onEvent(e: EventRecord) {
-    if (!e.repo) return
+    if (!e.repo || !e.repo_id) return
     const ids = this.byRepo.get(e.repo)
     if (!ids) return
     for (const id of ids) {
       const hook = this.hooks.get(id)
-      if (hook?.active && matchesType(hook.events, e.type)) this.enqueue(hook, e, null)
+      if (hook?.active && hook.repoId === e.repo_id && matchesType(hook.events, e.type)) this.enqueue(hook, e, null)
     }
   }
 
@@ -382,7 +385,14 @@ export class WebhookService {
     }
     hook.deliveries.unshift(d)
     if (hook.deliveries.length > MAX_DELIVERIES_PER_HOOK)
-      for (const old of hook.deliveries.splice(MAX_DELIVERIES_PER_HOOK)) this.deliveries.delete(old.id)
+      for (const old of hook.deliveries.splice(MAX_DELIVERIES_PER_HOOK)) {
+        this.deliveries.delete(old.id)
+        // Stop a retry that would otherwise outlive the delivery it belongs to.
+        this.cancel.get(old.id)?.()
+        this.cancel.delete(old.id)
+        old.state = 'failed'
+        old.nextAt = null
+      }
     hook.lastDelivery = d.id
     this.deliveries.set(d.id, d)
     queueMicrotask(() => void this.attempt(hook, d))
@@ -398,6 +408,7 @@ export class WebhookService {
       type: 'webhook.ping',
       created_at: new Date(t).toISOString(),
       repo: hook.repo,
+      repo_id: hook.repoId,
       actor: { object: 'actor', id: 'acc_webhooks000000000', handle: 'webhooks', class: 'bot' },
       subject: { object: 'webhook', id: hook.id, number: null },
       changes: [],
@@ -412,7 +423,7 @@ export class WebhookService {
 
   /** Re-send every matching event after a sequence, for a receiver that was down. */
   replay(hook: Hook, after: number, limit: number) {
-    const { events, scannedTo } = this.o.events.since(after, limit, (e) => e.repo === hook.repo && matchesType(hook.events, e.type))
+    const { events, scannedTo } = this.o.events.since(after, limit, (e) => e.repoId === hook.repoId && matchesType(hook.events, e.type))
     for (const e of events) this.enqueue(hook, parseEvent(e), null)
     // Report how far the scan got, so a page with no matching events still
     // advances the caller instead of replaying the same window forever.
@@ -436,6 +447,8 @@ export class WebhookService {
   private async attempt(hook: Hook, d: Delivery) {
     this.cancel.delete(d.id)
     if (!this.hooks.has(hook.id)) return
+    // An evicted delivery must not keep sending or count failures.
+    if (this.deliveries.get(d.id) !== d) return
     if (!hook.active && d.event.type !== 'webhook.ping') {
       d.state = 'failed'
       d.nextAt = null
@@ -500,6 +513,7 @@ export class WebhookService {
       this.o.events.append({
         type: 'webhook.disabled',
         repo: hook.repo,
+        repo_id: hook.repoId,
         actor: { object: 'actor', id: 'acc_webhooks000000000', handle: 'webhooks', class: 'bot' },
         subject: { object: 'webhook', id: hook.id, number: null },
         changes: ['active'],

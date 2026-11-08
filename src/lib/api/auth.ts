@@ -94,6 +94,8 @@ export interface TokenStore {
   ) => FindResult | Promise<FindResult>
   /** Note that the token was used. Never a write on every request. */
   touch?: (record: TokenRecord, now: number) => void
+  /** Drop expired and long-revoked records. Called on a schedule when present. */
+  sweep?: (now: number) => void
 }
 
 export const hashToken = (token: string) =>
@@ -348,17 +350,22 @@ export class AuthStore implements TokenStore {
       .sort((a, b) => b.createdAt - a.createdAt)
   }
 
-  countActive(handle: string) {
+  countActive(handle: string, now = this.clock()) {
     let n = 0
     for (const t of this.byHandle.get(handle) ?? [])
-      if (t.revokedAt === null && t.kind !== 'oauth') n++
+      if (t.revokedAt === null && t.kind !== 'oauth' && t.expiresAt > now) n++
     return n
   }
 
-  /** Drop expired and long-revoked tokens. */
+  /** Drop expired and long-revoked tokens, and authorizations revoked long ago. */
   sweep(now: number) {
     for (const t of [...this.byId.values()])
       if (t.expiresAt + 86_400_000 < now || (t.revokedAt && t.revokedAt + 86_400_000 < now)) this.forgetByRecord(t)
+    for (const [id, a] of this.authorizations)
+      if (a.revokedAt !== null && a.revokedAt + 86_400_000 < now) {
+        this.authorizations.delete(id)
+        this.byAuthorization.delete(id)
+      }
   }
 }
 

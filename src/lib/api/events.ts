@@ -17,6 +17,8 @@ export type EventRecord = {
   type: string
   created_at: string
   repo: string | null
+  /** The stable repository id, so a reused name cannot inherit another repository's history. */
+  repo_id: string | null
   actor: { object: 'actor'; id: string; handle: string; class: ActorLike['class'] }
   subject: { object: string; id: string; number: number | null }
   changes: Array<string>
@@ -39,6 +41,7 @@ export type StoredEvent = {
   readonly sequence: number
   readonly type: string
   readonly repo: string | null
+  readonly repoId: string | null
   readonly json: string
 }
 
@@ -104,6 +107,7 @@ export class EventLog {
       sequence: record.sequence,
       type: record.type,
       repo: record.repo,
+      repoId: record.repo_id,
       json: JSON.stringify(record),
     }
     this.held += stored.json.length

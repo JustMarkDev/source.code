@@ -177,24 +177,30 @@ export const batchOp = defineOp({
   handler: (ctx) =>
     Effect.tryPromise({
       try: async () => {
-        const results = await Promise.all(
-          ctx.body.requests.map(async (r) => {
-            const res = await ctx.dispatch(r.method, r.path, r.body)
-            const text = await res.text()
-            let body: unknown = null
-            if (text) {
-              try {
-                body = JSON.parse(text)
-              } catch {
-                body = text
+        const results: Array<{ id: string; status: number; headers: Record<string, string>; body: unknown }> = []
+        // A batch holds one concurrency slot; run a few at a time so a full
+        // batch of 25 does not collide with the per-token cap.
+        for (let i = 0; i < ctx.body.requests.length; i += 5) {
+          const part = await Promise.all(
+            ctx.body.requests.slice(i, i + 5).map(async (r) => {
+              const res = await ctx.dispatch(r.method, r.path, r.body)
+              const text = await res.text()
+              let body: unknown = null
+              if (text) {
+                try {
+                  body = JSON.parse(text)
+                } catch {
+                  body = text
+                }
               }
-            }
-            const headers: Record<string, string> = {}
-            for (const k of ['etag', 'location', 'sx-outcome', 'ratelimit', 'retry-after'])
-              if (res.headers.has(k)) headers[k] = res.headers.get(k)!
-            return { id: r.id, status: res.status, headers, body }
-          }),
-        )
+              const headers: Record<string, string> = {}
+              for (const k of ['etag', 'location', 'sx-outcome', 'ratelimit', 'retry-after'])
+                if (res.headers.has(k)) headers[k] = res.headers.get(k)!
+              return { id: r.id, status: res.status, headers, body }
+            }),
+          )
+          results.push(...part)
+        }
         return { object: 'batch' as const, results }
       },
       catch: (e) => (e instanceof ApiError ? e : apiError('internal', 'The batch failed.')),

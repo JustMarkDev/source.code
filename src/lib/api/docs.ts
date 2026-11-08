@@ -55,7 +55,7 @@ async function authorizeAnApp(api: { fetch: (r: Request) => Promise<Response>; o
   const reg = (await (await f('/oauth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client_name: 'My agent', redirect_uris: ['http://127.0.0.1:8123/callback'] }) })).json()) as Json
   const verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'
   const challenge = createHash('sha256').update(verifier).digest('base64url')
-  const cookie = (await f('/oauth/session', form({ handle: 'dana', return_to: '/' }))).headers.get('set-cookie')!.split(';')[0]
+  const cookie = (await f('/oauth/session', { ...form({ handle: 'dana', return_to: '/' }), headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' } })).headers.get('set-cookie')!.split(';')[0]
   const q = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: 'http://127.0.0.1:8123/callback', code_challenge: challenge, code_challenge_method: 'S256', scope: 'repo:read pulls:read' })
   const html = await (await f(`/oauth/authorize?${q}`, { headers: { cookie } })).text()
   const done = await f('/oauth/authorize', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', cookie }, body: new URLSearchParams({ request_id: /name="request_id" value="([^"]+)"/.exec(html)![1], csrf: /name="csrf" value="([^"]+)"/.exec(html)![1], decision: 'approve' }).toString() })
@@ -146,7 +146,7 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
     await call('policy.simulate', 'POST', `${R}/changes/216/policy/simulate`, {
       body: { checks: { 'ci/test': 'pass' }, resolve: ['F-2'] },
     })
-    await call('changes.land', 'POST', `${R}/changes/216/land`, { body: { expected_tree: '9c4d7e1' } })
+    await call('changes.land', 'POST', '/repos/dana/stacky/changes/1/land?dry_run=true', { body: { expected_tree: '1111111' } })
     await call('findings.resolve', 'POST', `${R}/changes/216/findings/F-2/resolve`)
     await call('findings.dismiss', 'POST', `${R}/changes/216/findings/F-3/dismiss`, {
       body: { reason: 'Covered by the docs change in #209' },
@@ -256,8 +256,8 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
     await call('runs.list', 'GET', `${R}/runs`)
     await call('runs.get', 'GET', `${R}/runs/${runId}`)
     await call('runs.finish', 'POST', `${R}/runs/${runId}/finish`, { token: runToken, body: { state: 'succeeded', summary: 'Fixed in #217' } })
-    await call('runs.start', 'POST', `${R}/runs`, { body: { task: 'Triage new issues' } })
-    await call('runs.cancel', 'POST', `${R}/runs/${((out.get('runs.start')!.json as Json).id as string)}/cancel`)
+    const run2 = await call(null, 'POST', `${R}/runs`, { body: { task: 'Triage new issues' } })
+    await call('runs.cancel', 'POST', `${R}/runs/${(run2.json as Json).id as string}/cancel`)
 
     // ----- teams
     await call('teams.create', 'POST', '/accounts/northwind/teams', { body: { slug: 'support', name: 'Support', description: 'Reads private repositories to answer questions' } })
@@ -278,8 +278,8 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
     const sha = (((out.get('git.commits')!.json as Json).data as Array<Json>)[0].sha as string)
     await call('git.commit', 'GET', `${R}/git/commits/${sha}`)
     await call('git.diff', 'GET', `${R}/git/commits/${sha}/diff`)
-    await call('repos.update', 'PATCH', '/repos/dana/notes2', { body: { name: 'notes', description: 'Scratch space' } })
-    await call('repos.delete', 'DELETE', '/repos/dana/notes?confirm=dana/notes')
+    await call('repos.update', 'PATCH', '/repos/dana/notes2', { body: { name: 'scratch2', description: 'Scratch space' } })
+    await call('repos.delete', 'DELETE', '/repos/dana/scratch2?confirm=dana/scratch2')
     await call('mirrors.list', 'GET', `${R}/mirrors`)
     await call('mirrors.create', 'POST', `${R}/mirrors`, { body: { host: 'codeberg', slug: 'dana/gitfs', direction: 'push' } })
     const failing = ((out.get('mirrors.list')!.json as Json).data as Array<Json>)[1].id as string
@@ -567,7 +567,7 @@ const ERROR_GROUPS: Array<[string, Array<string>]> = [
   ['State and policy', ['invalid_state', 'stale_head', 'parent_not_landed', 'policy_blocked', 'version_mismatch', 'limit_reached', 'upload_incomplete']],
   ['Retries', ['idempotency_key_reused', 'request_in_progress']],
   ['Limits', ['rate_limited', 'concurrency_limited']],
-  ['Our side', ['backend_unavailable', 'repo_warming', 'internal']],
+  ['Our side', ['backend_unavailable', 'internal']],
 ]
 
 /** Hints are plain text; make anything MDX would read as markup into code. */

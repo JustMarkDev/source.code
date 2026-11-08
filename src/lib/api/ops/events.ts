@@ -29,6 +29,7 @@ export const listEvents = defineOp({
   errors: ['cursor_mismatch'],
   shapeable: true,
   waitOn: () => '*',
+  probe: async (_ctx, d) => d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -73,6 +74,7 @@ export const syncRepo = defineOp({
   response: S.Sync,
   errors: ['not_found', 'moved'],
   waitOn: () => '*',
+  probe: async (_ctx, d) => d.eventVersion(),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -97,12 +99,14 @@ export const streamEvents = defineOp({
     type: z.string().optional().describe('Comma list of event types'),
   }),
   response: z.string(),
+  responseContentType: 'text/event-stream',
+  streaming: true,
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      const { events, can } = yield* run(async (d) => ({
+      const { events, domain } = yield* run(async (d) => ({
         events: d.events,
-        can: d.canSee(ctx.principal),
+        domain: d,
       }))
       const last = ctx.header('last-event-id')
       let after = last && /^\d+$/.test(last) ? Number(last) : events.head
@@ -130,9 +134,12 @@ export const streamEvents = defineOp({
             return
           }
           while (open && !ctx.signal.aborted) {
+            // Re-read access for every batch: a repository may become private,
+            // or a membership may be removed, while the stream stays open.
+            const can = domain.canSeeId(ctx.principal)
             const { events: batch, scannedTo } = events.since(after, 100, (e) => {
               if (repo && e.repo !== repo) return false
-              if (!can(e.repo)) return false
+              if (!can(e.repoId)) return false
               return (
                 !types ||
                 types.some((t) => (t.endsWith('.*') ? e.type.startsWith(t.slice(0, -1)) : t === e.type))

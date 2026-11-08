@@ -209,6 +209,27 @@ describe('errors', () => {
     expect(big.status).toBe(413)
   })
 
+  test('a body is stopped while it is read, even without a Content-Length', async () => {
+    const h = harness()
+    let sent = false
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent) {
+          controller.close()
+          return
+        }
+        sent = true
+        controller.enqueue(new Uint8Array(1_100_000))
+      },
+    })
+    const res = await h.api.fetch(new Request('https://api.test/v1/repos/dana/gitfs/issues', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${h.tokens.dana}`, 'content-type': 'application/json' },
+      body,
+    }))
+    expect(res.status).toBe(413)
+  })
+
   test('an unsupported version is refused', async () => {
     const h = harness()
     const r = await h.call('GET', '/', { headers: { 'sx-version': '2020-01-01' } })
@@ -275,6 +296,67 @@ describe('who can see what', () => {
     expect((await h.call('GET', `${REPO}/numbers/216`)).json.type).toBe('change')
     expect((await h.call('GET', `${REPO}/numbers/4`)).json.type).toBe('issue')
     expect((await h.call('GET', `${REPO}/numbers/9999`)).status).toBe(404)
+  })
+
+  test('context shows environment names only to a token that may see the schema', async () => {
+    const h = harness()
+    expect((await h.call('GET', `${REPO}/context`, { token: null })).json.env).toEqual([])
+    expect((await h.call('GET', `${REPO}/context`, { token: h.tokens.triage })).json.env).toEqual([])
+    expect((await h.call('GET', `${REPO}/context`)).json.env.length).toBeGreaterThan(0)
+  })
+})
+
+describe('generations and reuse', () => {
+  test('a recreated repository never serves the deleted one from cache', async () => {
+    const h = harness()
+    const made = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'phoenix', visibility: 'private' } })
+    expect(made.status).toBe(201)
+    expect((await h.call('GET', '/repos/dana/phoenix')).status).toBe(200)
+    expect((await h.call('DELETE', '/repos/dana/phoenix?confirm=dana/phoenix')).status).toBe(204)
+    const again = await h.call('POST', '/repos', { body: { owner: 'dana', name: 'phoenix', visibility: 'public' } })
+    expect(again.status).toBe(201)
+    const anon = await h.call('GET', '/repos/dana/phoenix', { token: null })
+    expect(anon.status).toBe(200)
+    expect(anon.json.visibility).toBe('public')
+    expect(anon.json.id).toBe(again.json.id)
+  })
+
+  test('events do not cross a reused repository name', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'echo', visibility: 'private' } })
+    await h.call('POST', '/repos/dana/echo/issues', { body: { title: 'Secret echo' } })
+    await h.call('DELETE', '/repos/dana/echo?confirm=dana/echo')
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'echo', visibility: 'public' } })
+    const events = await h.call('GET', '/events', { token: h.tokens.stranger })
+    expect(events.json.data.some((e: { data?: { title?: string } }) => e.data?.title === 'Secret echo')).toBe(false)
+  })
+
+  test('a recreated repository cannot inherit attached evidence', async () => {
+    const h = harness()
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'media', visibility: 'private' } })
+    const change = await h.call('POST', '/repos/dana/media/changes', { body: { branch: 'show' } })
+    expect(change.status, change.text).toBe(201)
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+    const up = (await h.call('POST', '/uploads', { body: { filename: 'a.png', content_type: 'image/png', size: png.length } })).json
+    await h.api.fetch(new Request(up.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), { method: 'PUT', headers: { 'content-type': 'image/png' }, body: png as unknown as BodyInit }))
+    await h.call('POST', `/repos/dana/media/changes/${change.json.number}/evidence`, { body: { upload: up.id, kind: 'image' } })
+    const url = `https://api.test/v1/uploads/${up.id}/content`
+    await h.call('DELETE', '/repos/dana/media?confirm=dana/media')
+    await h.call('POST', '/repos', { body: { owner: 'dana', name: 'media', visibility: 'public' } })
+    expect((await h.api.fetch(new Request(url))).status).toBe(404)
+  })
+})
+
+describe('If-Match', () => {
+  test('accepts the ETag the API returned for repositories, changes and teams', async () => {
+    const h = harness()
+    const repo = await h.call('GET', REPO)
+    expect((await h.call('PATCH', REPO, { body: { description: 'etag repo' }, headers: { 'if-match': repo.headers.get('etag')! } })).status).toBe(200)
+    const change = await h.call('GET', `${REPO}/changes/216`)
+    expect((await h.call('PATCH', `${REPO}/changes/216`, { body: { title: 'etag change' }, headers: { 'if-match': change.headers.get('etag')! } })).status).toBe(200)
+    await h.call('POST', '/accounts/northwind/teams', { body: { slug: 'etag' } })
+    const team = await h.call('GET', '/accounts/northwind/teams/etag')
+    expect((await h.call('PATCH', '/accounts/northwind/teams/etag', { body: { description: 'etag team' }, headers: { 'if-match': team.headers.get('etag')! } })).status).toBe(200)
   })
 })
 
@@ -454,6 +536,25 @@ describe('conditional requests', () => {
     expect(r.status).toBe(304)
     expect(performance.now() - started).toBeGreaterThan(900)
     expect(h.api.events.waiting).toBe(0)
+  })
+
+  test('?wait holds a list until its repository changes or time runs out', async () => {
+    const h = harness()
+    const etag = (await h.call('GET', `${REPO}/changes?state=all`)).headers.get('etag')!
+    const started = performance.now()
+    const r = await h.call('GET', `${REPO}/changes?state=all&wait=1`, { headers: { 'if-none-match': etag } })
+    expect(r.status).toBe(304)
+    expect(performance.now() - started).toBeGreaterThan(900)
+  })
+
+  test('fields and markdown work together, and a nested unknown field is refused', async () => {
+    const h = harness()
+    const md = await h.call('GET', `${REPO}/changes/216?fields=title`, { headers: { accept: 'text/markdown' } })
+    expect(md.status, md.text.slice(0, 200)).toBe(200)
+    expect(md.headers.get('content-type')).toContain('text/markdown')
+    expect((await h.call('GET', `${REPO}/changes/216?fields=head.tree`)).status).toBe(200)
+    expect((await h.call('GET', `${REPO}/changes/216?fields=head.nope`)).status).toBe(400)
+    expect((await h.call('GET', `${REPO}/changes/216?fields=head.tree.nope`)).status).toBe(400)
   })
 
   test('wait is refused where it makes no sense', async () => {
@@ -847,6 +948,20 @@ describe('batch', () => {
     expect(r.status).toBe(200)
     expect(r.json.results[0].body.acting_as).toBe('northwind')
   })
+
+  test('streams and raw bodies are refused inside a batch', async () => {
+    const h = harness()
+    const r = await h.call('POST', '/batch', {
+      body: {
+        requests: [
+          { id: 'stream', method: 'GET', path: '/events/stream' },
+          { id: 'upload', method: 'PUT', path: '/uploads/upl_nope/data?exp=1&sig=aaaaaaaaaa' },
+        ],
+      },
+    })
+    expect(r.json.results.map((x: { status: number }) => x.status)).toEqual([400, 400])
+    expect(r.json.results[0].body.code).toBe('invalid_request')
+  })
 })
 
 describe('OpenAPI', () => {
@@ -918,6 +1033,18 @@ describe('OpenAPI', () => {
     const required = copy()
     required.paths['/repos/{owner}/{repo}/issues'].post.requestBody.content['application/json'].schema.required.push('milestone')
     expect(findBreaking(doc, required).join()).toContain('milestone')
+
+    const requestType = copy()
+    requestType.paths['/repos'].post.requestBody.content['application/json'].schema.properties.name.type = 'object'
+    expect(findBreaking(doc, requestType).join()).toContain('request type changed')
+
+    const enumRemoved = copy()
+    enumRemoved.components.schemas.Repo.properties.visibility.enum = ['public']
+    expect(findBreaking(doc, enumRemoved).join()).toContain('enum value private removed')
+
+    const bodyBecameRequired = copy()
+    bodyBecameRequired.paths['/repos'].post.requestBody.required = false
+    expect(findBreaking(bodyBecameRequired, doc).join()).toContain('request body became required')
 
     const added = copy()
     added.paths['/new'] = { get: { operationId: 'new.thing', responses: { 200: {} } } }

@@ -80,7 +80,7 @@ Branch on `code`, never on text.
 | `insufficient_scope`                   | Do not retry. Report `required_scopes`. A person has to give the token the scope.            |
 | `rate_limited`, `concurrency_limited`  | Wait `Retry-After` seconds.                                                                  |
 | `request_in_progress`                  | Wait `Retry-After`, send the same request with the same key.                                 |
-| `backend_unavailable`, `repo_warming`  | Retry after `Retry-After` with backoff. Keyed writes are safe to repeat.                     |
+| `backend_unavailable`                  | Retry after `Retry-After` with backoff. Keyed writes are safe to repeat.                     |
 | `not_found`                            | Check the path. Private things also answer this.                                             |
 | `invalid_request`                      | Fix what `errors` lists. It names each field.                                                |
 
@@ -91,7 +91,7 @@ Branch on `code`, never on text.
 - **An agent never approves itself.** Not through the API, not through a policy.
 - **Secret values never appear** in any response, event or context. Names and kinds do.
 - **Scopes only shrink** while a bot is installed.
-- **What an agent writes is marked.** Every actor has a `class` of `human`, `agent` or `bot`. Send `Sx-Agent` to add which agent and run.
+- **What an agent writes is marked.** Every actor has a `class` of `human`, `agent` or `bot`. The `Sx-Agent` header is reserved and not recorded in this version.
 - **The same rules as people.** There is no looser path for automation.
 
 ## Keeping cost down

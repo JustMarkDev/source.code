@@ -29,23 +29,35 @@ export function convexCaller(url: string): ConvexCall {
 const refused = (e: unknown) => e instanceof Error && /not allowed/.test(e.message)
 
 export class ConvexLimitStore implements LimitStore {
+  /** The small outage allowance is per key and window, not per request. */
+  private readonly fallback = new Map<string, { start: number; used: number }>()
   constructor(
     private readonly call: ConvexCall,
     private readonly secret: string,
   ) {}
 
-  /** `now` is ignored: the window is cut by the database's clock, so every node agrees where it starts. */
-  async take(key: string, want: number, policy: Policy, _now?: number): Promise<Grant> {
+  /** `now` is ignored by the store: the window is cut by the database's clock. The outage allowance uses the caller's clock. */
+  async take(key: string, want: number, policy: Policy, now = Date.now()): Promise<Grant> {
     try {
       return (await this.call('apiStores:takeLimit', { secret: this.secret, key, want, limit: policy.limit, windowMs: policy.windowMs })) as Grant
     } catch (e) {
       // A refused secret is a mistake in the setup, not an outage. Say so loudly.
       if (refused(e)) throw e
-      // Rate limits protect the service; they must not take it down. When the
-      // shared store cannot be reached, each node admits a small block on its own
-      // (1% of the limit) until it can. That is a few units per node, not a hole.
+      const start = now - (now % policy.windowMs)
+      let block = this.fallback.get(key)
+      if (!block || block.start !== start) {
+        block = { start, used: 0 }
+        this.fallback.set(key, block)
+      }
+      const allowance = Math.max(1, Math.floor(policy.limit * 0.01))
+      const granted = Math.max(0, Math.min(want, allowance - block.used))
+      block.used += granted
+      if (this.fallback.size > 10_000) {
+        for (const [k, b] of this.fallback) if (b.start !== start) this.fallback.delete(k)
+      }
+      // Rate limits protect the service; they must not take it down. Until the
+      // store returns, each key gets one small block per window on each node.
       console.error('rate limit store unavailable, admitting a small block', e)
-      const granted = Math.min(want, Math.max(1, Math.floor(policy.limit * 0.01)))
       return { granted, remaining: 0, resetMs: Math.min(policy.windowMs, 5_000) }
     }
   }

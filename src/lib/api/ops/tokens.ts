@@ -104,7 +104,7 @@ export const createToken = defineOp({
         if (p.repos && (!body.repos || body.repos.some((r) => !p.repos!.includes(r))))
           throw apiError('forbidden', 'Your token is limited to repositories, so a token you create must be limited to some of them.')
         for (const r of body.repos ?? []) await d.getRepo(...(r.split('/') as [string, string]), p)
-        if (d.svc.auth.countActive(p.handle) >= MAX_TOKENS)
+        if (d.svc.auth.countActive(p.handle, ctx.now()) >= MAX_TOKENS)
           throw apiError('limit_reached', `You can have ${MAX_TOKENS} active tokens.`)
         if (ctx.dryRun) return present(d, { id: 'tok_dryrun', name: body.name, kind: 'personal', handle: p.handle, actingAs: p.handle, class: p.class, scopes: body.scopes, repos: body.repos ?? null, audience: ['api', 'mcp'], prefix: 'sxp_', createdAt: ctx.now(), expiresAt: ctx.now() + body.expires_in_days * 86_400_000, lastUsedAt: null, revokedAt: null }, null)
         const { record, secret } = d.svc.auth.create({

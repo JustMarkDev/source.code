@@ -216,13 +216,6 @@ export const errorCatalog = {
     exit: 1,
     hint: 'Retry after Retry-After seconds with backoff. Reads and keyed writes are safe to repeat.',
   },
-  repo_warming: {
-    status: 503,
-    title: 'The repository is waking from cold storage',
-    retryable: true,
-    exit: 1,
-    hint: 'Retry after Retry-After seconds.',
-  },
 } as const
 
 export type ErrorCode = keyof typeof errorCatalog

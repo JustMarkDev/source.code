@@ -361,7 +361,10 @@ export class SearchIndex {
     const cacheKey = `${viewer}|${JSON.stringify(q)}`
     const cached = this.cache.get(cacheKey)
     if (cached) {
-      if (cached.version === this.version) return cached.hits
+      // Access can change without a write (a team membership, a collaborator),
+      // so a cached result still has to pass the caller's current view.
+      const visible = () => cached.hits.filter((h) => canSee(h.doc.repo))
+      if (cached.version === this.version) return visible()
       // Writes happen all the time and most do not touch a given query. If the
       // changes since this result was made cannot match it, it is still right.
       const floor = this.changes.length ? this.changes[0].v : this.version + 1
@@ -376,7 +379,7 @@ export class SearchIndex {
         }
         if (!touched) {
           cached.version = this.version
-          return cached.hits
+          return visible()
         }
       }
     }

@@ -272,6 +272,7 @@ export type Event = {
   /** RFC 3339 time, UTC */
   created_at: string
   repo: string | null
+  repo_id: string | null
   actor: Actor
   subject: {
     object: string
@@ -1225,7 +1226,7 @@ export interface Operations {
       ref?: string
       path: string
     }
-    output: string
+    output: Response
   }
   /** List a directory (`GET /repos/{owner}/{repo}/git/tree`) */
   'git.tree': {
@@ -1877,7 +1878,7 @@ export interface Operations {
     input: {
       id: string
     }
-    output: string
+    output: Response
   }
   /** Announce a file you are about to upload (`POST /uploads`) */
   'uploads.create': {
@@ -1915,6 +1916,7 @@ export interface Operations {
       exp: number
       /** From the upload address */
       sig: string
+      body: BodyInit
     }
     output: Upload
   }
@@ -2434,7 +2436,7 @@ const OPERATIONS = {
     query: ['ref', 'path'],
     body: false,
     rawBody: false,
-    json: true,
+    json: false,
     idempotent: true,
     safety: 'read',
   },
@@ -2944,7 +2946,7 @@ const OPERATIONS = {
     query: [],
     body: false,
     rawBody: false,
-    json: true,
+    json: false,
     idempotent: true,
     safety: 'read',
   },
@@ -2973,7 +2975,7 @@ const OPERATIONS = {
     path: '/uploads/{id}/data',
     query: ['exp', 'sig'],
     body: false,
-    rawBody: false,
+    rawBody: true,
     json: true,
     idempotent: false,
     safety: 'write',

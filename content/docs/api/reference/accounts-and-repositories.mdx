@@ -169,7 +169,7 @@ curl "https://api.source.code/v1/accounts/northwind/teams" \
 
 ```http
 HTTP/1.1 200
-etag: W/"nG6IQn98Qntv9Yrc"
+etag: W/"q5Pul-IcmfDYNkyr"
 ratelimit: "read";r=1163;t=60
 ```
 
@@ -179,7 +179,7 @@ ratelimit: "read";r=1163;t=60
   "data": [
     {
       "object": "team",
-      "id": "tem_01m6tq6r80d2se5vge",
+      "id": "tem_01m6tq6r80vj9wx9t7",
       "org": "northwind",
       "slug": "support",
       "name": "Support",
@@ -257,7 +257,7 @@ ratelimit: "write";r=90;t=60
 ```json
 {
   "object": "team",
-  "id": "tem_01m6tq6r80d2se5vge",
+  "id": "tem_01m6tq6r80vj9wx9t7",
   "org": "northwind",
   "slug": "support",
   "name": "Support",
@@ -351,14 +351,14 @@ curl "https://api.source.code/v1/accounts/northwind/teams/support" \
 
 ```http
 HTTP/1.1 200
-etag: W/"ApF5XdObNoMojdJr"
+etag: W/"tem_01m6tq6r80vj9wx9t7.1-fL8I3yq7tREbJUSV"
 ratelimit: "read";r=1162;t=60
 ```
 
 ```json
 {
   "object": "team",
-  "id": "tem_01m6tq6r80d2se5vge",
+  "id": "tem_01m6tq6r80vj9wx9t7",
   "org": "northwind",
   "slug": "support",
   "name": "Support",
@@ -430,7 +430,7 @@ ratelimit: "write";r=89;t=60
 ```json
 {
   "object": "team",
-  "id": "tem_01m6tq6r80d2se5vge",
+  "id": "tem_01m6tq6r80vj9wx9t7",
   "org": "northwind",
   "slug": "support",
   "name": "Support",
@@ -539,7 +539,7 @@ ratelimit: "write";r=88;t=60
 ```json
 {
   "object": "team",
-  "id": "tem_01m6tq6r80d2se5vge",
+  "id": "tem_01m6tq6r80vj9wx9t7",
   "org": "northwind",
   "slug": "support",
   "name": "Support",
@@ -658,7 +658,7 @@ ratelimit: "write";r=87;t=60
 ```json
 {
   "object": "team",
-  "id": "tem_01m6tq6r80d2se5vge",
+  "id": "tem_01m6tq6r80vj9wx9t7",
   "org": "northwind",
   "slug": "support",
   "name": "Support",
@@ -819,7 +819,7 @@ ratelimit: "write";r=94;t=60
 ```json
 {
   "object": "repo",
-  "id": "rep_01m6tq6r80s0tywnf4",
+  "id": "rep_01m6tq6r80dnf32jk6",
   "owner": "dana",
   "name": "notes2",
   "full_name": "dana/notes2",
@@ -875,7 +875,7 @@ Permanent. Owners of the account and admins of the organization only. You must r
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/repos/dana/notes?confirm=dana/notes" \
+curl -X DELETE "https://api.source.code/v1/repos/dana/scratch2?confirm=dana/scratch2" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
@@ -927,7 +927,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs" \
 
 ```http
 HTTP/1.1 200
-etag: W/"1.0.6.3-fL8I3yq7tREbJUSV"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3-fL8I3yq7tREbJUSV"
 ratelimit: "read";r=1196;t=60
 ```
 
@@ -1001,25 +1001,32 @@ Owners of the account and admins of the organization only. Send `If-Match` with 
 curl -X PATCH "https://api.source.code/v1/repos/dana/notes2" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"notes","description":"Scratch space"}'
+  -d '{"name":"scratch2","description":"Scratch space"}'
 ```
 
 ```http
-HTTP/1.1 409
+HTTP/1.1 200
 ratelimit: "write";r=83;t=60
 ```
 
 ```json
 {
-  "type": "https://source.code/docs/api/errors#invalid_state",
-  "title": "The thing is not in a state that allows this",
-  "status": 409,
-  "code": "invalid_state",
-  "detail": "dana/notes already exists.",
-  "hint": "Pick another name, or delete the repository that has it.",
-  "retryable": false,
-  "exit_code": 2,
-  "request_id": "req_01m6tq6r80kvv5vp7w"
+  "object": "repo",
+  "id": "rep_01m6tq6r80dnf32jk6",
+  "owner": "dana",
+  "name": "scratch2",
+  "full_name": "dana/scratch2",
+  "description": "Scratch space",
+  "visibility": "private",
+  "default_branch": "main",
+  "stars": 0,
+  "open_changes": 0,
+  "open_issues": 0,
+  "url": "https://api.source.code/v1/repos/dana/scratch2",
+  "html_url": "https://source.code/dana/scratch2",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
 }
 ```
 
@@ -1068,7 +1075,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/context" \
 
 ```http
 HTTP/1.1 200
-etag: W/"5frfOmogULUhuklb"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3-fL8I3yq7tREbJUSV"
 ratelimit: "read";r=1195;t=60
 ```
 
@@ -1249,7 +1256,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/runs" \
 
 ```http
 HTTP/1.1 200
-etag: W/"ZDS_NYFB_w7HUkon"
+etag: W/"Zv2eXKAMgXYUsVuX"
 ratelimit: "read";r=1165;t=60
 ```
 
@@ -1259,7 +1266,7 @@ ratelimit: "read";r=1165;t=60
   "data": [
     {
       "object": "run",
-      "id": "run_01m6tq6r8062rx90ds",
+      "id": "run_01m6tq6r800rf84wtp",
       "repo": {
         "object": "repo",
         "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1277,7 +1284,7 @@ ratelimit: "read";r=1165;t=60
       "change": 216,
       "scopes": ["repo:read", "issues:read", "…and 4 more"],
       "token": null,
-      "token_id": "tok_01m6tq6r80ccvse96e",
+      "token_id": "tok_01m6tq6r804mgmtaeb",
       "notes": [
         {
           "at": "2026-11-07T10:00:00.000Z",
@@ -1285,7 +1292,7 @@ ratelimit: "read";r=1165;t=60
         }
       ],
       "summary": null,
-      "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp",
       "started_at": "2026-11-07T10:00:00.000Z",
       "expires_at": "2026-11-07T11:00:00.000Z",
       "finished_at": null,
@@ -1351,14 +1358,14 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs" \
 
 ```http
 HTTP/1.1 201
-location: https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds
+location: https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp
 ratelimit: "write";r=93;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r8062rx90ds",
+  "id": "run_01m6tq6r800rf84wtp",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1375,11 +1382,11 @@ ratelimit: "write";r=93;t=60
   },
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
-  "token": "sxr_IHivCCS8-naFZRDpN1idkO83sA6NcnRO",
-  "token_id": "tok_01m6tq6r80ccvse96e",
+  "token": "sxr_hWUQ6TdYnZDvN7AOjXJ0TkxMe5lOKcZO",
+  "token_id": "tok_01m6tq6r804mgmtaeb",
   "notes": [],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
@@ -1416,20 +1423,20 @@ ratelimit: "write";r=93;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds" \
+curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"faZuF9eYzjt4svTz"
+etag: W/"cV8J_C5yCjXY9ubC"
 ratelimit: "read";r=1164;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r8062rx90ds",
+  "id": "run_01m6tq6r800rf84wtp",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1447,7 +1454,7 @@ ratelimit: "read";r=1164;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r80ccvse96e",
+  "token_id": "tok_01m6tq6r804mgmtaeb",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1455,7 +1462,7 @@ ratelimit: "read";r=1164;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
@@ -1501,26 +1508,44 @@ The person who started it, or an admin of the account, can stop a run at any mom
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/cancel" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80vwbcd4kb/cancel" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
-HTTP/1.1 409
+HTTP/1.1 200
 ratelimit: "write";r=91;t=60
 ```
 
 ```json
 {
-  "type": "https://source.code/docs/api/errors#invalid_state",
-  "title": "The thing is not in a state that allows this",
-  "status": 409,
-  "code": "invalid_state",
-  "detail": "Run run_01m6tq6r8062rx90ds is already succeeded.",
-  "hint": "Read the object and check its actions map.",
-  "retryable": false,
-  "exit_code": 2,
-  "request_id": "req_01m6tq6r80358ze6y4"
+  "object": "run",
+  "id": "run_01m6tq6r80vwbcd4kb",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Triage new issues",
+  "state": "cancelled",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": null,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r809m2hrynq",
+  "notes": [],
+  "summary": null,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80vwbcd4kb",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
 }
 ```
 
@@ -1569,7 +1594,7 @@ The run's token stops working. Repeating it with the same outcome returns the ru
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/finish" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp/finish" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"state":"succeeded","summary":"Fixed in #217"}'
@@ -1583,7 +1608,7 @@ ratelimit: "write";r=118;t=60
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r8062rx90ds",
+  "id": "run_01m6tq6r800rf84wtp",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1601,7 +1626,7 @@ ratelimit: "write";r=118;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r80ccvse96e",
+  "token_id": "tok_01m6tq6r804mgmtaeb",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1609,7 +1634,7 @@ ratelimit: "write";r=118;t=60
     }
   ],
   "summary": "Fixed in #217",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": "2026-11-07T10:00:00.000Z",
@@ -1661,7 +1686,7 @@ A line of progress for whoever is watching. The last 50 are kept. Not idempotent
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds/notes" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp/notes" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text":"Reproduced the failure on patch set 2"}'
@@ -1675,7 +1700,7 @@ ratelimit: "write";r=119;t=60
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r8062rx90ds",
+  "id": "run_01m6tq6r800rf84wtp",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1693,7 +1718,7 @@ ratelimit: "write";r=119;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r80ccvse96e",
+  "token_id": "tok_01m6tq6r804mgmtaeb",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1701,7 +1726,7 @@ ratelimit: "write";r=119;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r8062rx90ds",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r800rf84wtp",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,

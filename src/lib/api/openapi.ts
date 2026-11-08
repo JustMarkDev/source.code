@@ -143,7 +143,14 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
               content: { 'application/json': { schema: jsonSchema(op.body, 'input', inputDefs) } },
             },
           }
-        : {}),
+        : op.rawBody
+          ? {
+              requestBody: {
+                required: true,
+                content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+              },
+            }
+          : {}),
       responses: {
         [String(op.status ?? 200)]: {
           description: 'Success',
@@ -152,7 +159,7 @@ export function buildOpenApi(ops: ReadonlyArray<Op>, base = 'https://api.source.
             ...(op.method === 'GET' ? { ETag: { schema: { type: 'string' } } } : {}),
           },
           content: {
-            [op.id === 'events.stream' ? 'text/event-stream' : 'application/json']: {
+            [op.responseContentType ?? 'application/json']: {
               schema: jsonSchema(op.response, 'output', outputDefs),
             },
             ...(op.markdown ? { 'text/markdown': { schema: { type: 'string' } } } : {}),

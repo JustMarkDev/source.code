@@ -53,6 +53,7 @@ function parses(b: Uint8Array) {
 export interface BlobStore {
   put: (id: string, bytes: Uint8Array) => void
   get: (id: string) => Uint8Array | null
+  delete?: (id: string) => void
   readonly bytes: number
   /** Total capacity, when the store has one. A store without it never fills. */
   readonly capacity?: number
@@ -68,6 +69,11 @@ export class MemoryBlobStore implements BlobStore {
   }
   get(id: string) {
     return this.blobs.get(id) ?? null
+  }
+  delete(id: string) {
+    const old = this.blobs.get(id)
+    if (old) this.total -= old.byteLength
+    this.blobs.delete(id)
   }
   get bytes() {
     return this.total
@@ -87,9 +93,12 @@ export type UploadRec = {
   created: number
   /** `owner/name` of the repository it was attached in, which decides who may read it. */
   attachedTo: string | null
+  /** The same repository's stable id, which survives a rename and a reused name. */
+  attachedRepoId: string | null
 }
 
 const TTL = 3_600_000
+const MAX_UPLOADS = 20_000
 
 export class UploadService {
   private readonly uploads = new Map<string, UploadRec>()
@@ -116,7 +125,20 @@ export class UploadService {
     return createHmac('sha256', this.secret).update(`${id}.${exp}.${type}.${size}`).digest()
   }
 
-  create(owner: string, input: { filename: string; contentType: string; size: number; purpose: Purpose }): UploadRec {
+  create(owner: string, input: { filename: string; contentType: string; size: number; purpose: Purpose }): UploadRec | null {
+    if (this.uploads.size >= MAX_UPLOADS) {
+      this.sweep()
+      // Uploaded files that were never attached cannot be reached by anyone but
+      // their owner. Dropping the oldest one bounds the metadata map.
+      for (const [id, rec] of this.uploads) {
+        if (this.uploads.size < MAX_UPLOADS) break
+        if (rec.state === 'uploaded' && rec.attachedTo === null) {
+          this.uploads.delete(id)
+          this.blobs.delete?.(id)
+        }
+      }
+      if (this.uploads.size >= MAX_UPLOADS) return null
+    }
     const t = this.now()
     const rec: UploadRec = {
       id: newId('upload', t),
@@ -130,6 +152,7 @@ export class UploadService {
       expires: t + TTL,
       created: t,
       attachedTo: null,
+      attachedRepoId: null,
     }
     this.uploads.set(rec.id, rec)
     this.waiting.push(rec)
@@ -157,6 +180,11 @@ export class UploadService {
       this.waiting = this.waiting.slice(this.waitingFrom)
       this.waitingFrom = 0
     }
+  }
+
+  /** Run the expiry sweep on the API's schedule. */
+  sweepNow() {
+    this.sweep()
   }
 
   get(id: string) {

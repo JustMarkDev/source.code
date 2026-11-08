@@ -312,7 +312,7 @@ describe('signing in with a code', () => {
         const session = await fetch(`${url}/oauth/session`, {
           method: 'POST',
           redirect: 'manual',
-          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
           body: 'handle=dana&return_to=/',
         })
         const cookie = session.headers.get('set-cookie')!.split(';')[0]

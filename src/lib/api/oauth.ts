@@ -170,8 +170,32 @@ const MAX_FORM_BYTES = 64 * 1024
 async function readText(req: Request): Promise<string | null> {
   const declared = Number(req.headers.get('content-length') ?? '0')
   if (Number.isFinite(declared) && declared > MAX_FORM_BYTES) return null
-  const text = await req.text()
-  return Buffer.byteLength(text, 'utf8') > MAX_FORM_BYTES ? null : text
+  const body = req.body
+  if (!body) return ''
+  const reader = body.getReader()
+  const chunks: Array<Uint8Array> = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > MAX_FORM_BYTES) {
+        await reader.cancel().catch(() => {})
+        return null
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return null
+  }
+  const bytes = new Uint8Array(total)
+  let at = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, at)
+    at += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
 }
 
 async function formOf(req: Request): Promise<URLSearchParams | null> {
@@ -315,9 +339,13 @@ export class OAuthServer {
     return g ? g(req, bucket, limit, windowMs) : null
   }
 
+  sweepNow() {
+    this.sweep()
+  }
+
   private sweep() {
     const t = this.now()
-    if (this.pending.size + this.codes.size + this.devices.size < 200) return
+    if (this.pending.size + this.codes.size + this.devices.size + this.refresh.size < 200) return
     for (const [k, v] of this.pending) if (v.expires < t) this.pending.delete(k)
     for (const [k, v] of this.codes) if (v.expires < t) this.codes.delete(k)
     for (const [k, v] of this.devices) if (v.expires < t) {
@@ -332,14 +360,17 @@ export class OAuthServer {
   private async register(req: Request) {
     const limited = await this.guard(req, 'oauth-register', 20, 3_600_000)
     if (limited) return limited
-    let body: Record<string, unknown>
+    let parsed: unknown
     try {
       const text = await readText(req)
       if (text === null) return oauthError('invalid_client_metadata', 'The body is too large.', 413)
-      body = JSON.parse(text) as Record<string, unknown>
+      parsed = JSON.parse(text)
     } catch {
       return oauthError('invalid_client_metadata', 'The body is not JSON.')
     }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return oauthError('invalid_client_metadata', 'Send a JSON object.')
+    const body = parsed as Record<string, unknown>
     const name = typeof body.client_name === 'string' ? body.client_name.trim() : ''
     const uris = Array.isArray(body.redirect_uris) ? (body.redirect_uris as Array<unknown>) : []
     if (!name || name.length > 100)
@@ -444,7 +475,11 @@ export class OAuthServer {
   }
 
   private async signIn(req: Request) {
-    if (!this.sameOrigin(req)) return page('Error', '<h1>Request refused</h1>', 403)
+    const limited = await this.guard(req, 'oauth-session', 30, 60_000)
+    if (limited) return limited
+    // A state-changing form must come from this origin. Browsers always send
+    // Origin on a POST; a request without one is not a browser sign-in.
+    if (req.headers.get('origin') !== this.o.issuer) return page('Error', '<h1>Request refused</h1>', 403)
     const form = await formOf(req)
     const handle = String(form?.get('handle') ?? '')
     const returnTo = String(form?.get('return_to') ?? '/')
@@ -661,7 +696,8 @@ export class OAuthServer {
     const r = this.refresh.get(hash)
     if (r) this.o.auth.revokeAuthorization(r.authorizationId)
     else {
-      const found = this.o.auth.find(hash, 'api', this.now())
+      let found = this.o.auth.find(hash, 'api', this.now())
+      if (!found.ok) found = this.o.auth.find(hash, 'mcp', this.now())
       if (found.ok && found.record.kind === 'oauth' && found.record.authorizationId)
         this.o.auth.revokeAuthorization(found.record.authorizationId)
     }

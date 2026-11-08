@@ -120,6 +120,7 @@ export const repoContext = defineOp({
   shapeable: true,
   markdown: contextMarkdown,
   waitOn: (p) => `repo:${p.owner}/${p.repo}`,
+  probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain

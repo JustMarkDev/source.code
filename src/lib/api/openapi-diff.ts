@@ -40,6 +40,13 @@ export function findBreaking(before: Json, after: Json): Array<string> {
           const tw = typeOf(resolve(after, w))
           if (tv !== tw && tv !== '"object"' && tw !== '"object"')
             out.push(`${path}.${k}: type changed from ${tv} to ${tw}`)
+          for (const e of v.enum ?? [])
+            if (w.enum && !w.enum.includes(e)) out.push(`${path}.${k}: enum value ${e} removed`)
+          if (v.anyOf && w.anyOf) {
+            const afterTypes = new Set((w.anyOf as Array<Json>).map(typeOf))
+            for (const variant of v.anyOf as Array<Json>)
+              if (!afterTypes.has(typeOf(variant))) out.push(`${path}.${k}: response variant ${typeOf(variant)} removed`)
+          }
           response(`${path}.${k}`, v, w, depth + 1)
         }
       }
@@ -64,6 +71,9 @@ export function findBreaking(before: Json, after: Json): Array<string> {
     for (const [k, v] of Object.entries<Json>(x.properties ?? {})) {
       const w = y.properties?.[k]
       if (!w) continue
+      const tv = typeOf(resolve(before, v))
+      const tw = typeOf(resolve(after, w))
+      if (tv !== tw) out.push(`${path}.${k}: request type changed from ${tv} to ${tw}`)
       for (const e of v.enum ?? [])
         if (!(w.enum ?? []).includes(e) && w.enum) out.push(`${path}.${k}: enum value ${e} removed`)
       request(`${path}.${k}`, v, w, depth + 1)
@@ -109,6 +119,8 @@ export function findBreaking(before: Json, after: Json): Array<string> {
       )
       if (!op.requestBody && next.requestBody?.required)
         out.push(`${where}: new required request body`)
+      else if (op.requestBody && !op.requestBody.required && next.requestBody?.required)
+        out.push(`${where}: request body became required`)
     }
   }
   return out

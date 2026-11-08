@@ -164,6 +164,10 @@ export type OpSpec<
   rawBody?: { maxBytes: number }
   response: TResponse
   status?: number
+  /** The response is not JSON: the media type it is served as. */
+  responseContentType?: string
+  /** The response stays open, so it cannot be run inside a batch. */
+  streaming?: boolean
   /** Codes beyond the ones every operation can return. */
   errors?: Array<ErrorCode>
   /** Honours `?fields=`. */

@@ -63,7 +63,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes?limit=2&fields=number,
 
 ```http
 HTTP/1.1 200
-etag: W/"Sqm59yUWSRG1DnUm"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3-Sav4KJza0quIEasT"
 ratelimit: "read";r=1193;t=60
 ```
 
@@ -296,7 +296,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216" \
 
 ```http
 HTTP/1.1 200
-etag: W/"1.3-fL8I3yq7tREbJUSV"
+etag: W/"chg_01m6dqs9m0g7q74420.1.3-fL8I3yq7tREbJUSV"
 ratelimit: "read";r=1192;t=60
 ```
 
@@ -1167,53 +1167,109 @@ Lands exactly the tree you name. If the change moved, it is stale_head. If polic
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/changes/216/land" \
+curl -X POST "https://api.source.code/v1/repos/dana/stacky/changes/1/land?dry_run=true" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"expected_tree":"9c4d7e1"}'
+  -d '{"expected_tree":"1111111"}'
 ```
 
 ```http
-HTTP/1.1 409
+HTTP/1.1 200
+sx-dry-run: true
 ratelimit: "write";r=119;t=60
 ```
 
 ```json
 {
-  "type": "https://source.code/docs/api/errors#policy_blocked",
-  "title": "Policy blocked this",
-  "status": 409,
-  "code": "policy_blocked",
-  "detail": "#216 cannot land: ci/test is running on tree 9c4d7e1; 1 open: F-2 from greptile.",
-  "hint": "Stop and report the failed requirements. Do not work around the policy.",
-  "retryable": false,
-  "exit_code": 5,
-  "request_id": "req_01m6tq6r80zxg82hy4",
-  "requirements": [
+  "object": "change",
+  "id": "chg_stacky100000000000",
+  "number": 1,
+  "url": "https://api.source.code/v1/repos/dana/stacky/changes/1",
+  "html_url": "https://source.code/dana/stacky/changes/1",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m6nezem0qw6cjdq0",
+    "full_name": "dana/stacky",
+    "url": "https://api.source.code/v1/repos/dana/stacky"
+  },
+  "title": "Step 1 of the migration",
+  "description": "",
+  "state": "open",
+  "author": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "base": "main",
+  "branch": "step-1",
+  "patch_set_count": 1,
+  "head": {
+    "patch_set": 1,
+    "sha": "1111111000000000000000000000000000000000",
+    "tree": "1111111"
+  },
+  "stack": {
+    "id": "stk_stacky000000000000",
+    "position": 1,
+    "size": 3,
+    "parent": null
+  },
+  "stats": {
+    "files": 1,
+    "additions": 12,
+    "deletions": 1
+  },
+  "checks": {
+    "state": "pass",
+    "passed": 1,
+    "failed": 0,
+    "pending": 0
+  },
+  "policy": {
+    "state": "met",
+    "blocking": 0
+  },
+  "reviewers": [
     {
-      "id": "core-paths",
-      "rule": "Core paths need a maintainer",
-      "state": "pass",
-      "detail": "hollis approved, and the approval holds for patch set 3.",
-      "needs": {
-        "approval": {
-          "min": 1,
-          "class": "human",
-          "from": "maintainers"
-        }
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm08gbjfr85",
+        "handle": "hollis",
+        "class": "human"
       },
-      "blocking": []
+      "state": "approved",
+      "patch_set": 1,
+      "carries_to_head": true
+    }
+  ],
+  "mirrors": [],
+  "labels": [],
+  "evidence_count": 0,
+  "findings": null,
+  "check_runs": null,
+  "actions": {
+    "land": {
+      "allowed": true,
+      "reasons": []
     },
-    {
-      "id": "agent-authored",
-      "rule": "Agent-authored changes need a human",
-      "state": "na",
-      "detail": "The author is a person.",
-      "needs": null,
-      "blocking": []
+    "abandon": {
+      "allowed": true,
+      "reasons": []
     },
-    "…and 2 more"
-  ]
+    "restore": {
+      "allowed": false,
+      "reasons": ["state:open"]
+    },
+    "mark_ready": {
+      "allowed": false,
+      "reasons": ["state:open"]
+    }
+  },
+  "landed_at": null,
+  "created_at": "2026-11-05T10:00:00.000Z",
+  "updated_at": "2026-11-06T04:00:00.000Z",
+  "version": 1
 }
 ```
 
@@ -1483,7 +1539,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/policy" \
 
 ```http
 HTTP/1.1 200
-etag: W/"u5JChGrntFwWosz7"
+etag: W/"chg_01m6dqs9m0g7q74420.1.3-fL8I3yq7tREbJUSV"
 ratelimit: "read";r=1187;t=60
 ```
 
@@ -2009,7 +2065,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/stacky/stacks/stk_stacky0000
 
 ```http
 HTTP/1.1 202
-location: https://api.source.code/v1/operations/op_01m6tq6r80zy79bt7p
+location: https://api.source.code/v1/operations/op_01m6tq6r80zk72kvyx
 retry-after: 1
 ratelimit: "write";r=75;t=60
 ```
@@ -2017,7 +2073,7 @@ ratelimit: "write";r=75;t=60
 ```json
 {
   "object": "operation",
-  "id": "op_01m6tq6r80zy79bt7p",
+  "id": "op_01m6tq6r80zk72kvyx",
   "kind": "stack.land",
   "state": "queued",
   "progress": {
@@ -2026,7 +2082,7 @@ ratelimit: "write";r=75;t=60
   },
   "result": null,
   "error": null,
-  "url": "https://api.source.code/v1/operations/op_01m6tq6r80zy79bt7p",
+  "url": "https://api.source.code/v1/operations/op_01m6tq6r80zk72kvyx",
   "created_at": "2026-11-07T10:00:00.000Z",
   "finished_at": null
 }

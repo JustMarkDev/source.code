@@ -52,7 +52,7 @@ curl "https://api.source.code/v1/events?repo=dana/gitfs&type=issue.*&limit=2" \
 
 ```http
 HTTP/1.1 200
-etag: W/"10z1bj3t5mu"
+etag: W/"12-InJkyDcxX4AijP6m"
 ratelimit: "read";r=1182;t=60
 ```
 
@@ -67,6 +67,7 @@ ratelimit: "read";r=1182;t=60
       "created_at": "2026-11-07T10:00:00.000Z",
       "type": "issue.created",
       "repo": "dana/gitfs",
+      "repo_id": "rep_01m3kkw4m0zvf3zfc9",
       "actor": {
         "object": "actor",
         "id": "acc_01m203xrm0bw4d69nd",
@@ -114,6 +115,7 @@ ratelimit: "read";r=1182;t=60
       "created_at": "2026-11-07T10:00:00.000Z",
       "type": "issue.closed",
       "repo": "dana/gitfs",
+      "repo_id": "rep_01m3kkw4m0zvf3zfc9",
       "actor": {
         "object": "actor",
         "id": "acc_01m203xrm0bw4d69nd",
@@ -223,7 +225,7 @@ Poll it, or add ?wait=20 with If-None-Match to hold the request until it changes
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/operations/op_01m6tq6r80zy79bt7p" \
+curl "https://api.source.code/v1/operations/op_01m6tq6r80zk72kvyx" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
@@ -236,7 +238,7 @@ ratelimit: "read";r=1151;t=60
 ```json
 {
   "object": "operation",
-  "id": "op_01m6tq6r80zy79bt7p",
+  "id": "op_01m6tq6r80zk72kvyx",
   "kind": "stack.land",
   "state": "succeeded",
   "progress": {
@@ -249,7 +251,7 @@ ratelimit: "read";r=1151;t=60
     "url": "https://api.source.code/v1/repos/dana/stacky/stacks/stk_stacky000000000000"
   },
   "error": null,
-  "url": "https://api.source.code/v1/operations/op_01m6tq6r80zy79bt7p",
+  "url": "https://api.source.code/v1/operations/op_01m6tq6r80zk72kvyx",
   "created_at": "2026-11-07T10:00:00.000Z",
   "finished_at": "2026-11-07T10:00:00.000Z"
 }
@@ -294,7 +296,7 @@ curl "https://api.source.code/v1/sync?repo=dana/tinyqueue" \
 
 ```http
 HTTP/1.1 200
-etag: W/"WyGJsUU8pg-tF3M9"
+etag: W/"12-f0LMWkTMiuEunzqx"
 ratelimit: "read";r=1181;t=60
 ```
 

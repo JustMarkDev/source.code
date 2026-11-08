@@ -253,6 +253,7 @@ export const Event = named('Event', obj({
   type: z.string(),
   created_at: ts,
   repo: z.string().nullable(),
+  repo_id: z.string().nullable(),
   actor: Actor,
   subject: obj({
     object: z.string(),

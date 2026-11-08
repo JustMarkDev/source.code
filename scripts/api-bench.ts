@@ -510,7 +510,7 @@ else {
     const sess = await fetch(`${BASE}/oauth/session`, {
       method: 'POST',
       redirect: 'manual',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://source.code' },
       body: 'handle=dana&return_to=/',
     })
     const cookie = sess.headers.get('set-cookie')!.split(';')[0]

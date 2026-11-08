@@ -176,6 +176,8 @@ export type IssueRec = {
 export type OperationRec = {
   id: string
   kind: string
+  /** The repository this operation belongs to, checked when it is read. */
+  repoId: string
   state: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
   done: number
   total: number
@@ -358,7 +360,7 @@ export class MemoryDomain {
     owner: string,
     name: string,
     init: Partial<
-      Pick<RepoRec, 'description' | 'visibility' | 'stars' | 'created' | 'env'>
+      Pick<RepoRec, 'id' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>
     > & {
       collaborators?: Array<string>
       installs?: Array<string>
@@ -374,7 +376,7 @@ export class MemoryDomain {
   private makeRepo(
     owner: string,
     name: string,
-    init: Partial<Pick<RepoRec, 'description' | 'visibility' | 'stars' | 'created' | 'env'>> & {
+    init: Partial<Pick<RepoRec, 'id' | 'description' | 'visibility' | 'stars' | 'created' | 'env'>> & {
       collaborators?: Array<string>
       installs?: Array<string>
       maintainers?: Array<string>
@@ -382,7 +384,7 @@ export class MemoryDomain {
   ): RepoRec {
     const at = init.created ?? this.now()
     const rec: RepoRec = {
-      id: seededId('repo', at, `${owner}/${name}`),
+      id: init.id ?? seededId('repo', at, `${owner}/${name}`),
       owner,
       name,
       description: init.description ?? '',
@@ -805,20 +807,27 @@ export class MemoryDomain {
    * stale, only replaced. A list of fifty unchanged changes is fifty lookups.
    */
   private readonly shown = new Map<string, Pre>()
+  private shownChars = 0
   static readonly SHOWN_MAX = 8000
+  static readonly SHOWN_CHARS_MAX = 24_000_000
 
   shownChange(repo: RepoRec, c: ChangeRec, viewer: Viewer | 'event', expand: ReadonlyArray<string> = []): Pre {
-    const who = viewer === 'event' ? 'e' : viewer ? viewer.capId : 'a'
+    const who = viewer === 'event' ? 'event' : viewer ? viewer.capId : 'anonymous'
     const ex = expand.length ? expand.join(',') : ''
-    const key = `${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${ex}|${who}|${repo.version}${expand.includes('repo') ? `|${repo.rev}` : ''}`
+    const key = `${repo.id}|${c.id}|${c.version}|${c.stackId ? this.stackRev(repo, c) : 0}|${ex}|${who}|${repo.version}${expand.includes('repo') ? `|${repo.rev}` : ''}`
     const hit = this.shown.get(key)
     if (hit) return hit
     const obj = this.presentChange(repo, c, viewer, expand)
     const pre = new Pre(JSON.stringify(obj), obj, key)
     this.shown.set(key, pre)
+    this.shownChars += pre.json.length
     // First in, first out. Dropping an entry that is still wanted costs one rebuild;
     // reordering on every hit costs more than that across a busy list.
-    if (this.shown.size > MemoryDomain.SHOWN_MAX) this.shown.delete(this.shown.keys().next().value as string)
+    while ((this.shown.size > MemoryDomain.SHOWN_MAX || this.shownChars > MemoryDomain.SHOWN_CHARS_MAX) && this.shown.size > 1) {
+      const gone = this.shown.keys().next().value as string
+      this.shownChars -= this.shown.get(gone)!.json.length
+      this.shown.delete(gone)
+    }
     return pre
   }
 
@@ -899,16 +908,23 @@ export class MemoryDomain {
 
   /** An issue already serialized, kept by version like `shownChange`. The object is rebuilt from the text only if someone asks for it. */
   private readonly shownIssues = new Map<string, Pre>()
+  private shownIssueChars = 0
   static readonly SHOWN_ISSUES_MAX = 6000
+  static readonly SHOWN_ISSUES_CHARS_MAX = 12_000_000
 
   shownIssue(repo: RepoRec, i: IssueRec): Pre {
-    const key = `${i.id}|${i.version}|${repo.version}`
+    const key = `${repo.id}|${i.id}|${i.version}|${repo.version}`
     const hit = this.shownIssues.get(key)
     if (hit) return hit
     const json = JSON.stringify(this.presentIssue(repo, i))
     const pre = new Pre(json, () => JSON.parse(json), key)
     this.shownIssues.set(key, pre)
-    if (this.shownIssues.size > MemoryDomain.SHOWN_ISSUES_MAX) this.shownIssues.delete(this.shownIssues.keys().next().value as string)
+    this.shownIssueChars += json.length
+    while ((this.shownIssues.size > MemoryDomain.SHOWN_ISSUES_MAX || this.shownIssueChars > MemoryDomain.SHOWN_ISSUES_CHARS_MAX) && this.shownIssues.size > 1) {
+      const gone = this.shownIssues.keys().next().value as string
+      this.shownIssueChars -= this.shownIssues.get(gone)!.json.length
+      this.shownIssues.delete(gone)
+    }
     return pre
   }
 
@@ -962,6 +978,7 @@ export class MemoryDomain {
     return this.events.append({
       type,
       repo: `${repo.owner}/${repo.name}`,
+      repo_id: repo.id,
       actor: this.actor(by),
       subject,
       changes,
@@ -1039,6 +1056,7 @@ export class MemoryDomain {
     }
     if (!dry) {
       input.upload.attachedTo = `${repo.owner}/${repo.name}`
+      input.upload.attachedRepoId = repo.id
       this.touchChange(repo, c, () => (c.evidence ??= []).push(rec))
       this.changeEvent(repo, c, 'change.updated', by, ['evidence_count'])
     }
@@ -1107,7 +1125,7 @@ export class MemoryDomain {
         repo: this.presentRepo(this.makeRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now() })),
         created: true,
       }
-    const rec = this.seedRepo(owner, input.name, { description: input.description ?? '', visibility: input.visibility, created: this.now() })
+    const rec = this.seedRepo(owner, input.name, { id: newId('repo', this.now()), description: input.description ?? '', visibility: input.visibility, created: this.now() })
     this.svc.search?.upsertIfBuilt?.({ key: `repo:${rec.id}`, type: 'repo', id: rec.id, repo: `${owner}/${input.name}`, number: null, title: `${owner}/${input.name}`, text: rec.description, state: rec.visibility, author: owner, labels: [], updated: rec.updated, url: this.repoUrl(rec) })
     return { repo: this.presentRepo(rec), created: true }
   }
@@ -1314,6 +1332,11 @@ export class MemoryDomain {
     return this.presentTeam(this.teamRec(org, slug))
   }
 
+  async teamVersion(org: string, slug: string) {
+    const t = this.teamRec(org, slug)
+    return `${t.id}.${t.version}`
+  }
+
   async createTeam(org: string, p: Principal, input: { slug: string; name?: string; description?: string }, dry: boolean) {
     this.orgFor(org, p, 'admin')
     const key = `${org}/${input.slug}`
@@ -1338,7 +1361,7 @@ export class MemoryDomain {
   async updateTeam(org: string, slug: string, p: Principal, body: { name?: string; description?: string }, ifMatch: string | null, dry: boolean) {
     this.orgFor(org, p, 'admin')
     const t = this.teamRec(org, slug)
-    this.assertMatch(ifMatch, `${t.version}`, () => this.presentTeam(t))
+    this.assertMatch(ifMatch, `${t.id}.${t.version}`, () => this.presentTeam(t))
     if (!dry) {
       if (body.name !== undefined) t.name = body.name
       if (body.description !== undefined) t.description = body.description
@@ -1442,7 +1465,7 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     this.assertAdmin(repo, p)
-    this.assertMatch(ifMatch, `${repo.version}`, () => this.presentRepo(repo))
+    this.assertMatch(ifMatch, this.repoKey(repo), () => this.presentRepo(repo))
     const renaming = body.name !== undefined && body.name !== repo.name
     if (renaming && p.repos)
       throw apiError('forbidden', 'A token limited to repositories cannot rename one.', {
@@ -1487,13 +1510,15 @@ export class MemoryDomain {
         if (t.repos.has(from)) {
           t.repos.set(to, t.repos.get(from)!)
           t.repos.delete(from)
+          t.updated = this.now()
+          t.version++
         }
       changed.push('name')
     }
     if (changed.length) {
       repo.version++
-      // Search keeps the repository's name and visibility in every document.
-      if (renaming || changed.includes('visibility')) this.svc.search?.reset()
+      // Search keeps the repository's name, description and visibility in every document.
+      if (renaming || changed.includes('visibility') || changed.includes('description')) this.svc.search?.reset()
       this.emit(repo, 'repo.updated', this.asActor(p), { object: 'repo', id: repo.id, number: null }, changed, this.presentRepo(repo))
     }
     return this.presentRepo(repo)
@@ -1514,10 +1539,15 @@ export class MemoryDomain {
     this.emit(repo, 'repo.deleted', this.asActor(p), { object: 'repo', id: repo.id, number: null }, ['deleted'], null)
     this.repos.delete(full)
     this.deleted.set(full, repo.owner)
+    this.deletedRepos.set(repo.id, { full, owner: repo.owner })
     this.reposById.delete(repo.id)
     this.svc.hooks?.dropRepo(full)
     this.svc.extras?.drop(full)
-    for (const t of this.teams.values()) t.repos.delete(full)
+    for (const t of this.teams.values())
+      if (t.repos.delete(full)) {
+        t.updated = this.now()
+        t.version++
+      }
     // Its runs end with it, and their tokens stop working.
     for (const r of this.runsByRepo.get(full) ?? []) {
       if (r.state === 'running') this.svc.auth.revoke(r.tokenId)
@@ -1587,8 +1617,28 @@ export class MemoryDomain {
   }
 
   async repoVersion(owner: string, name: string, p: Viewer) {
-    const r = this.resolve(owner, name, p)
-    return `${r.version}.${r.rev}.${r.changes.size}.${r.issues.size}`
+    return this.repoKey(this.resolve(owner, name, p))
+  }
+
+  private repoKey(r: RepoRec) {
+    return `${r.id}.${r.version}.${r.rev}.${r.changes.size}.${r.issues.size}`
+  }
+
+  /** The event log's position, for conditional reads of the log itself. */
+  eventVersion() {
+    return String(this.events.head)
+  }
+
+  /** The repository id behind an address, after checking the caller may read it. */
+  async repoIdOf(owner: string, name: string, p: Viewer) {
+    return this.resolve(owner, name, p).id
+  }
+
+  /** Whether the caller may read the repository with this stable id. */
+  mayReadId(id: string | null, p: Viewer) {
+    if (!id) return false
+    const r = this.reposById.get(id)
+    return r ? this.canRead(r, p) : false
   }
 
   async numberRef(owner: string, name: string, n: number, p: Viewer) {
@@ -1638,9 +1688,11 @@ export class MemoryDomain {
         labels: i.labels,
       })),
       policy: { rules: 4, mode: 'enforce' },
-      env: this.svc.extras
-        ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({ name: v.name, kind: v.kind, set: [...v.set] }))
-        : r.env,
+      env: p?.scopes.has('secrets:schema')
+        ? this.svc.extras
+          ? this.svc.extras.for(`${r.owner}/${r.name}`).env.map((v) => ({ name: v.name, kind: v.kind, set: [...v.set] }))
+          : r.env
+        : [],
       cursor: `e_${this.events.head}`,
     }
   }
@@ -1718,7 +1770,12 @@ export class MemoryDomain {
     const c = this.getChangeRec(repo, ref)
     // The change's own version covers everything in its representation.
     // The repository version covers the `repo` stub and the stack's other members.
-    return `${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}${expand.includes('repo') ? `.${repo.rev}` : ''}`
+    // The id keeps a deleted change's cached body from matching a new one.
+    return this.changeKey(repo, c, expand)
+  }
+
+  private changeKey(repo: RepoRec, c: ChangeRec, expand: ReadonlyArray<string> = []) {
+    return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}${expand.includes('repo') ? `.${repo.rev}` : ''}`
   }
 
   private stackRev(repo: RepoRec, c: ChangeRec) {
@@ -1847,7 +1904,7 @@ export class MemoryDomain {
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
-    this.assertMatch(ifMatch, `${c.version}`, () => this.presentChange(repo, c, p))
+    this.assertMatch(ifMatch, this.changeKey(repo, c), () => this.presentChange(repo, c, p))
     if (!dry) {
       const by = this.asActor(p!)
       const changed = Object.keys(body)
@@ -1869,7 +1926,7 @@ export class MemoryDomain {
   ) {
     if (ifMatch === null) return
     const tags = ifMatch.split(',').map((t) => t.trim().replace(/^W\//, '').replace(/"/g, ''))
-    if (tags.includes('*') || tags.some((t) => t === version || t.startsWith(`${version}-`)))
+    if (tags.includes('*') || tags.some((t) => t === version || t.startsWith(`${version}-`) || t.startsWith(`${version}.`)))
       return
     throw apiError('version_mismatch', 'The object changed since you read it.', {
       extra: { current: current() },
@@ -2289,6 +2346,7 @@ export class MemoryDomain {
     const op: OperationRec = {
       id: newId('operation', this.now()),
       kind: 'stack.land',
+      repoId: repo.id,
       state: 'queued',
       done: 0,
       total: open.length,
@@ -2328,7 +2386,7 @@ export class MemoryDomain {
 
   async getOperation(id: string, p: Viewer) {
     const op = this.operations.get(id)
-    if (!op || !p) throw apiError('not_found', `No operation ${id}.`)
+    if (!op || !p || !this.mayReadId(op.repoId, p)) throw apiError('not_found', `No operation ${id}.`)
     return this.presentOp(op)
   }
 
@@ -2369,7 +2427,7 @@ export class MemoryDomain {
   async issueVersion(owner: string, name: string, n: number, p: Viewer) {
     const repo = this.resolve(owner, name, p)
     const i = repo.issues.get(n)
-    return i ? `${i.version}` : null
+    return i ? `${i.id}.${i.version}` : null
   }
 
   async createIssue(
@@ -2419,7 +2477,7 @@ export class MemoryDomain {
     const repo = this.resolve(owner, name, p, 'write')
     const i = repo.issues.get(n)
     if (!i) throw apiError('not_found', `No issue #${n} in ${owner}/${name}.`)
-    this.assertMatch(ifMatch, `${i.version}`, () => this.presentIssue(repo, i))
+    this.assertMatch(ifMatch, `${i.id}.${i.version}`, () => this.presentIssue(repo, i))
     if (!dry) {
       if (repo.openIssueByTitle.get(i.title) === i) repo.openIssueByTitle.delete(i.title)
       if (body.title !== undefined) i.title = body.title
@@ -2449,6 +2507,7 @@ export class MemoryDomain {
 
   /** Names of deleted repositories, with the account that owned each. */
   private readonly deleted = new Map<string, string>()
+  private readonly deletedRepos = new Map<string, { full: string; owner: string }>()
 
   private administered(full: string, p: Viewer): boolean {
     if (!p) return false
@@ -2473,11 +2532,34 @@ export class MemoryDomain {
     }
   }
 
+  private readableRepoIds(p: Viewer) {
+    const cache = new Map<string, boolean>()
+    return (id: string | null) => {
+      if (!id) return !!p
+      let ok = cache.get(id)
+      if (ok === undefined) {
+        const r = this.reposById.get(id)
+        if (r) ok = this.canRead(r, p)
+        else {
+          // The history of a deleted repository stays readable by those who administered it.
+          const d = this.deletedRepos.get(id)
+          ok = d ? this.administered(d.full, p) : false
+        }
+        cache.set(id, ok)
+      }
+      return ok
+    }
+  }
+
+  canSeeId(p: Viewer) {
+    return this.readableRepoIds(p)
+  }
+
   async listEvents(
     p: Viewer,
     q: { repo?: string; type?: string; after: CursorPosition | null; limit: number },
   ) {
-    const can = this.readableRepos(p)
+    const can = this.readableRepoIds(p)
     const types = q.type ? q.type.split(',') : null
     const typeOk = (t: string) =>
       !types || types.some((x) => (x.endsWith('.*') ? t.startsWith(x.slice(0, -1)) : x === t))
@@ -2489,7 +2571,7 @@ export class MemoryDomain {
       after: q.after,
       desc: false,
       stored: 'asc',
-      match: (e) => typeOk(e.type) && can(e.repo),
+      match: (e) => typeOk(e.type) && can(e.repoId),
     })
     // An event never changes, so its text is its own version.
     return {
@@ -2531,8 +2613,7 @@ export class MemoryDomain {
     })
     const after = Number(ev[1])
     if (after + 1 < this.events.oldest) return snapshot(0, this.events.head, true)
-    const full = `${repo.owner}/${repo.name}`
-    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repo === full)
+    const { events: stored, exhausted, scannedTo } = this.events.since(after, q.limit, (e) => e.repoId === repo.id)
     // Keep only the newest state of each object, and remember what was deleted
     // after the cursor so a local copy can remove it.
     const latest = new Map<string, Record<string, unknown>>()
