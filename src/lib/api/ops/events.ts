@@ -163,7 +163,7 @@ export const streamEvents = defineOp({
             if (batch.length === 0) after = Math.max(after, events.head)
             if (batch.length === 100) continue
             const before = events.head
-            await events.wait(repo ? `repo:${repo}` : '*', 15_000, ctx.signal)
+            await events.wait(repo ? `repo:${repo.toLowerCase()}` : '*', 15_000, ctx.signal)
             if (events.head === before && open && !ctx.signal.aborted) send(': keepalive\n\n', controller)
           }
           try {

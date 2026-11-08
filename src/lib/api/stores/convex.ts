@@ -54,6 +54,7 @@ export class ConvexLimitStore implements LimitStore {
       block.used += granted
       if (this.fallback.size > 10_000) {
         for (const [k, b] of this.fallback) if (b.start !== start) this.fallback.delete(k)
+        while (this.fallback.size > 10_000) this.fallback.delete(this.fallback.keys().next().value as string)
       }
       // Rate limits protect the service; they must not take it down. Until the
       // store returns, each key gets one small block per window on each node.

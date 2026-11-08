@@ -95,7 +95,7 @@ export const getRepo = defineOp({
   response: S.Repo,
   errors: ['not_found', 'moved'],
   shapeable: true,
-  waitOn: (p) => `repo:${p.owner}/${p.repo}`,
+  waitOn: (p) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
   probe: (ctx, d) =>
       d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
@@ -119,7 +119,7 @@ export const repoContext = defineOp({
   errors: ['not_found', 'moved'],
   shapeable: true,
   markdown: contextMarkdown,
-  waitOn: (p) => `repo:${p.owner}/${p.repo}`,
+  waitOn: (p) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`,
   probe: (ctx, d) => d.repoVersion(ctx.params.owner, ctx.params.repo, ctx.principal),
   handler: (ctx) =>
     Effect.gen(function* () {

@@ -29,7 +29,7 @@ const read = {
 
 const expandChange = ['repo', 'findings', 'check_runs']
 const states = ['draft', 'open', 'landed', 'abandoned', 'all']
-const topic = (p: { owner: string; repo: string }) => `repo:${p.owner}/${p.repo}`
+const topic = (p: { owner: string; repo: string }) => `repo:${p.owner.toLowerCase()}/${p.repo.toLowerCase()}`
 
 const list = <T extends z.ZodType>(item: T) => S.listOf(item)
 

@@ -405,6 +405,12 @@ describe('generations and reuse', () => {
     expect((await h.call('GET', '/events?repo=northwind/vault', { token })).status).toBe(404)
   })
 
+  test('a repository-limited token matches names without regard to case', async () => {
+    const h = harness()
+    const token = (await h.call('POST', '/tokens', { body: { name: 'scoped', scopes: ['repo:read'], repos: ['DANA/Notes'] } })).json.secret as string
+    expect((await h.call('GET', '/repos/dana/notes', { token })).status).toBe(200)
+  })
+
   test('a repository-limited token follows a rename but not a reused name', async () => {
     const h = harness()
     await h.call('POST', '/repos', { body: { owner: 'dana', name: 'w-a', visibility: 'private' } })
@@ -682,6 +688,18 @@ describe('conditional requests', () => {
     expect(r.status).toBe(200)
     expect(r.headers.get('etag')).not.toBe(etag)
     expect(performance.now() - started).toBeLessThan(1000)
+  })
+
+  test('?wait wakes for a mixed-case repository address', async () => {
+    const h = harness()
+    const upper = '/repos/DANA/GITFS/changes/216'
+    const etag = (await h.call('GET', upper)).headers.get('etag')!
+    const started = performance.now()
+    const waiting = h.call('GET', `${upper}?wait=5`, { headers: { 'if-none-match': etag } })
+    setTimeout(() => void h.call('POST', `${REPO}/changes/216/reviews`, { token: T(h).hollis, body: { state: 'commented' } }), 50)
+    const r = await waiting
+    expect(r.status).toBe(200)
+    expect(performance.now() - started).toBeLessThan(2000)
   })
 
   test('?wait answers 304 when time runs out', async () => {

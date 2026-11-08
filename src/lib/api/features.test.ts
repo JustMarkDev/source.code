@@ -458,6 +458,20 @@ describe('uploads', () => {
     expect((await put(h, made.upload_url, PNG)).status).toBe(400)
   })
 
+  test('an idempotency key covers the bytes, so different bytes are refused', async () => {
+    const h = harness()
+    const made = (await start(h)).json
+    const sendBytes = (bytes: Uint8Array) => h.api.fetch(new Request(made.upload_url.replace('https://api.source.code/v1', 'https://api.test/v1'), {
+      method: 'PUT',
+      headers: { 'content-type': 'image/png', 'idempotency-key': 'bytes-key', 'x-forwarded-for': '1.1.1.1' },
+      body: bytes as unknown as BodyInit,
+    }))
+    expect((await sendBytes(PNG)).status).toBe(200)
+    const changed = new Uint8Array(PNG)
+    changed[changed.length - 1] = 7
+    expect((await sendBytes(changed)).status).toBe(422)
+  })
+
   test('an anonymous idempotency key belongs to one caller, not everyone', async () => {
     const h = harness()
     const a = (await start(h)).json

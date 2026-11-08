@@ -454,8 +454,8 @@ export class MemoryDomain {
   }
 
   private canRead(repo: RepoRec, p: Viewer) {
-    if (p?.repos && !p.repos.includes(`${repo.owner}/${repo.name}`))
-      return repo.visibility === 'public'
+    const full = `${repo.owner}/${repo.name}`.toLowerCase()
+    if (p?.repos && !p.repos.includes(full)) return repo.visibility === 'public'
     if (repo.visibility === 'public') return true
     return !!p && (this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) !== null)
   }
@@ -484,7 +484,7 @@ export class MemoryDomain {
 
   private canWrite(repo: RepoRec, p: Viewer): p is Principal {
     if (!p) return false
-    if (p.repos && !p.repos.includes(`${repo.owner}/${repo.name}`)) return false
+    if (p.repos && !p.repos.includes(`${repo.owner}/${repo.name}`.toLowerCase())) return false
     return this.hasAccess(repo, p) || this.teamLevel(repo, p.handle) === 'write'
   }
 
@@ -2572,7 +2572,7 @@ export class MemoryDomain {
 
   private administered(full: string, p: Viewer): boolean {
     if (!p) return false
-    if (p.repos && !p.repos.includes(full)) return false
+    if (p.repos && !p.repos.includes(full.toLowerCase())) return false
     const owner = this.deleted.get(full)
     if (!owner) return false
     const role = owner === p.handle ? 'owner' : this.accounts.get(owner)?.members.get(p.handle)

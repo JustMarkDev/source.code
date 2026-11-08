@@ -120,7 +120,7 @@ export class EventLog {
     for (const l of this.listeners) l(record)
     if (this.events.length > this.keep * 1.1 || this.held > this.maxChars * 1.1) this.trim()
     this.wake('*')
-    if (record.repo) this.wake(`repo:${record.repo}`)
+    if (record.repo) this.wake(`repo:${record.repo.toLowerCase()}`)
     return record
   }
 

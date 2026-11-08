@@ -199,7 +199,7 @@ export class AuthStore implements TokenStore {
       actingAs: input.actingAs ?? input.handle,
       class: input.class,
       scopes: [...input.scopes],
-      repos: input.repos ? [...input.repos] : null,
+      repos: input.repos ? input.repos.map((r) => r.toLowerCase()) : null,
       audience: input.audience ?? ['api', 'mcp'],
       prefix: secret.slice(0, 8),
       createdAt: at,
@@ -353,19 +353,22 @@ export class AuthStore implements TokenStore {
 
   /** A renamed repository keeps its name in every limited token. */
   renameRepo(from: string, to: string) {
+    const oldName = from.toLowerCase()
+    const newName = to.toLowerCase()
     for (const t of this.byId.values()) {
       if (!t.repos) continue
-      if (t.repos.includes(from)) t.repos = t.repos.map((r) => (r === from ? to : r))
+      if (t.repos.includes(oldName)) t.repos = t.repos.map((r) => (r === oldName ? newName : r))
       // A different repository moving into a name this token holds is not the
       // repository the token was granted, so remove the name it collides with.
-      else if (t.repos.includes(to)) t.repos = t.repos.filter((r) => r !== to)
+      else if (t.repos.includes(newName)) t.repos = t.repos.filter((r) => r !== newName)
     }
   }
 
   /** A deleted repository stops being reachable through any limited token. */
   dropRepo(full: string) {
+    const name = full.toLowerCase()
     for (const t of this.byId.values())
-      if (t.repos?.includes(full)) t.repos = t.repos.filter((r) => r !== full)
+      if (t.repos?.includes(name)) t.repos = t.repos.filter((r) => r !== name)
   }
 
   /** Drop expired and long-revoked tokens, and authorizations revoked long ago. */

@@ -662,7 +662,8 @@ export function createApi(options: ApiOptions) {
       if (key.length > 64)
         return fail(apiError('invalid_request', 'Idempotency-Key is over 64 characters.'))
       scope = principal ? `${principal.tokenId}@${principal.actingAs}` : `ip:${clientAddress(req)}`
-      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, bodyText))
+      const fingerprintBody = bytes ? createHash('sha256').update(bytes).digest('base64url') : bodyText
+      const begun = await idem.begin(scope, key, requestFingerprint(op.method, path, url.search, fingerprintBody))
       if (begun.state === 'conflict')
         return fail(apiError('idempotency_key_reused', 'This key was used for a different request.'))
       if (begun.state === 'in_progress')
