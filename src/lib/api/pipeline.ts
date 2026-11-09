@@ -482,13 +482,15 @@ export function createApi(options: ApiOptions) {
       : op.pool === 'none'
         ? 'none'
         : 'anonymous'
-    const limitKey = principal ? principal.limitKey : `ip:${clientAddress(req)}`
+    const budgetKey = principal
+      ? principal.budgetKey
+      : `ip:${clientAddress(req)}`
     const cost = op.cost ?? 1
     let rate: { header: string; policy: string } | null = null
     let refund: (() => void) | null = null
     if (poolName !== 'none') {
       const policy = pools[poolName] ?? defaultPools[poolName]
-      const lk = `${poolName}:${limitKey}`
+      const lk = `${poolName}:${budgetKey}`
       // Almost always the node already holds units for this token: no promise, no store.
       const d =
         limiter.tryLocal(lk, policy, cost) ??
@@ -511,9 +513,9 @@ export function createApi(options: ApiOptions) {
           }),
           { ratelimit: rate.header, 'ratelimit-policy': rate.policy },
         )
-      refund = () => limiter.refund(`${poolName}:${limitKey}`, policy, cost)
+      refund = () => limiter.refund(`${poolName}:${budgetKey}`, policy, cost)
     }
-    if (!concurrency.enter(limitKey))
+    if (!concurrency.enter(budgetKey))
       return fail(
         apiError(
           'concurrency_limited',
@@ -555,7 +557,7 @@ export function createApi(options: ApiOptions) {
         const release = () => {
           if (released) return
           released = true
-          concurrency.leave(limitKey)
+          concurrency.leave(budgetKey)
         }
         const stream = new ReadableStream<Uint8Array>({
           async pull(controller) {
@@ -588,7 +590,7 @@ export function createApi(options: ApiOptions) {
         rate ? { ratelimit: rate.header, 'ratelimit-policy': rate.policy } : {},
       )
     } finally {
-      if (!held) concurrency.leave(limitKey)
+      if (!held) concurrency.leave(budgetKey)
     }
   }
 

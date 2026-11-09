@@ -215,7 +215,7 @@ The API process holds no state that correctness depends on. The pieces that must
 | Reads              | Version-keyed body cache per node                                                                                              | Built.                                                                                                                                                                                      |
 | Public reads       | Anonymous reads carry `Cache-Control: public, must-revalidate` and an `ETag`, so a CDN can revalidate them cheaply             | Headers set; no CDN in front yet. Git data addressed by a full commit id is `immutable` but `private`, so a shared cache will not keep it.                                                  |
 
-Concurrency per token is a per-node guard. It limits one client opening hundreds of connections, and it is the only limit that is not shared.
+Concurrency per login is a per-node guard. It limits one client opening hundreds of connections, and it is the only limit that is not shared.
 
 ## Scaling the preview honestly
 

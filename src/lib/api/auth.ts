@@ -62,6 +62,13 @@ export type TokenRecord = {
 export type Principal = {
   tokenId: string
   limitKey: string
+  /**
+   * Whose budget a request draws from. A person's tokens (personal, OAuth and
+   * the MCP bridge) all share one budget per login, so minting more tokens or
+   * acting as an organization never buys more requests. Agents, bots and runs
+   * keep a budget of their own, so a runaway loop cannot starve its owner.
+   */
+  budgetKey: string
   handle: string
   actingAs: string
   class: ActorClass
@@ -133,6 +140,10 @@ export function principalOf(record: TokenRecord): Principal {
     p = {
       tokenId: record.id,
       limitKey: record.limitKey ?? record.id,
+      budgetKey:
+        record.class === 'human'
+          ? `acct:${record.handle}`
+          : (record.limitKey ?? record.id),
       handle: record.handle,
       actingAs: record.actingAs,
       class: record.class,

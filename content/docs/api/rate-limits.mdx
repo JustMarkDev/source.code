@@ -10,7 +10,9 @@ There is one system, and it is written down. A request is never refused for a re
 
 A request draws from one pool. Pools are separate so that a heavy loop cannot starve ordinary calls.
 
-| Pool        | Covers                                          | Starting limit, per token |
+The budget belongs to the **login**, not to the token. Your personal tokens, your OAuth sign-ins (the CLI, MCP clients) and the MCP bridge all draw from the same counters, and acting as an organization with `Sx-Account` does not give you another. Creating more tokens never buys more requests. Agent, bot and run tokens are the exception: each has a budget of its own, so a runaway loop cannot use up what its owner needs.
+
+| Pool        | Covers                                          | Starting limit, per login |
 | ----------- | ----------------------------------------------- | ------------------------- |
 | `read`      | Objects, lists, events, sync                    | 1,200 per minute          |
 | `write`     | Anything that changes state                     | 120 per minute            |
@@ -73,7 +75,7 @@ An agent's token draws from its own budget, inside the organization's total, so 
 
 The limiter is built to run on many API nodes at once.
 
-1. A shared store holds one counter per token, pool and window. It never grants more than the limit, so the total admitted across all nodes can not pass it.
+1. A shared store holds one counter per login (or per agent token), pool and window. It never grants more than the limit, so the total admitted across all nodes can not pass it.
 2. A node does not ask the store on every request. It **leases** a block of units (a twentieth of the limit, at most 50), spends them locally, and asks again when they run out. The store sees one write per block, not one per request.
 3. The cost is that units leased and not spent are lost until the window ends. A token spread over N nodes can be under-served by at most N times the block.
 4. When the store has nothing left for a node, the node denies locally until the window resets. A flood of denied requests does not become a flood of writes.

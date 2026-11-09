@@ -194,7 +194,7 @@ export class Limiter {
 }
 
 /**
- * Requests in flight, per token, on this node. Exact global concurrency would
+ * Requests in flight, per budget key (a login, or an agent token), on this node. Exact global concurrency would
  * cost a shared write on every request and every response, so it is a node-local
  * guard against a client that opens hundreds of connections at once. The pools
  * above bound the total work across nodes.

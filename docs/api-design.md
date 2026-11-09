@@ -107,7 +107,7 @@ node. The built design:
 
 - The API process holds no state correctness depends on. Rate limits,
   idempotency keys and the event log sit behind interfaces.
-- **Leased counters.** A shared store holds one counter per token, pool and
+- **Leased counters.** A shared store holds one counter per login (agent, bot and run tokens: per token), pool and
   window and never grants more than is left. A node leases a block (a
   twentieth of the limit, at most 50), spends it locally and asks again. The
   store sees one write per block. Unspent units are lost until the window ends,
@@ -115,7 +115,7 @@ node. The built design:
   has nothing left, the node denies locally, so abuse does not become a write
   flood. Tested: 4 nodes, limit 1,000, 3,000 requests, 1,000 admitted, under
   60 store calls; 20,000 requests against a limit of 100, under 40 calls.
-- **Concurrency per token is per node**, the one limit that is not shared,
+- **Concurrency per login is per node**, the one limit that is not shared,
   because exact global concurrency costs a write per request and per
   response.
 - **Anonymous limits key on the address our proxy appended**, not the start of

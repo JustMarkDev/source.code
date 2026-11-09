@@ -113,6 +113,37 @@ describe('rate limits across many nodes', () => {
     ).toBe(200)
   })
 
+  test('one login has one budget, however many tokens it holds', async () => {
+    const pool = { limit: 3, windowMs: 60_000 }
+    const h = harness({
+      pools: {
+        read: pool,
+        write: pool,
+        heavy: pool,
+        search: pool,
+        anonymous: pool,
+      },
+    })
+    // A second token for the same login, as a script or an OAuth sign-in would hold.
+    const other = h.api.domain.svc.auth.create({
+      name: 'second',
+      kind: 'personal',
+      handle: 'dana',
+      class: 'human',
+      scopes: ['repo:read'],
+      ttlMs: 3_600_000,
+    })
+    for (let i = 0; i < 3; i++)
+      expect((await h.call('GET', '/repos')).status).toBe(200)
+    // Minting a token does not buy requests.
+    const denied = await h.call('GET', '/repos', { token: other.secret })
+    expect(denied.status).toBe(429)
+    // Another person still has their own.
+    expect(
+      (await h.call('GET', '/repos', { token: h.tokens.hollis })).status,
+    ).toBe(200)
+  })
+
   test('an anonymous caller cannot get a fresh budget by lying about their address', async () => {
     const pool = { limit: 2, windowMs: 60_000 }
     const h = harness({
