@@ -13,9 +13,9 @@ node_modules
 /build/
 /api/
 /server/build
-/public/build
-/dist/
-/dist-ssr/
+dist/
+dist-ssr/
+.source
 
 # Sentry Config File
 .env.sentry-build-plugin
@@ -28,3 +28,6 @@ app.config.timestamp_*.js
 
 # Private planning, pricing and tax notes: never commit
 /internal/
+
+# Uploaded files in development (`packages/api/src/stores/blobs.ts`)
+.data/

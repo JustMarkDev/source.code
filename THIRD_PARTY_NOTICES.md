@@ -4,10 +4,10 @@ source.code includes or depends on the components below. Each keeps its own lice
 
 ## Vendored code
 
-| Component          | Where                        | License                                    | Notes                                                                                                                                                                                                                                                                                                                   |
-| ------------------ | ---------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dither Kit         | `src/components/dither-kit/` | MIT (declared in its npm package metadata) | Copied from the Dither Kit shadcn registry (https://github.com/Boring-Software-Inc/dither-kit). The repository and the npm tarball contain no license file, only the `license: MIT` field and the author name (ripgrim). We have asked for a LICENSE file to be added. Heavily inspired by Evil Charts, per its README. |
-| shadcn/ui patterns | `src/components/ui/`         | MIT                                        | Components were generated with the shadcn CLI and then restyled.                                                                                                                                                                                                                                                        |
+| Component          | Where                                 | License                                    | Notes                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dither Kit         | `apps/web/src/components/dither-kit/` | MIT (declared in its npm package metadata) | Copied from the Dither Kit shadcn registry (https://github.com/Boring-Software-Inc/dither-kit). The repository and the npm tarball contain no license file, only the `license: MIT` field and the author name (ripgrim). We have asked for a LICENSE file to be added. Heavily inspired by Evil Charts, per its README. |
+| shadcn/ui patterns | `apps/web/src/components/ui/`         | MIT                                        | Components were generated with the shadcn CLI and then restyled.                                                                                                                                                                                                                                                        |
 
 ## Notices carried by dependencies
 
@@ -19,18 +19,20 @@ source.code includes or depends on the components below. Each keeps its own lice
 
 ## Brand names and logos
 
-Names and logos of other companies and products (for example CodeRabbit, Greptile, Blacksmith, T3 Code) are trademarks of their owners. They appear only to identify integrations and imply no endorsement or partnership. Logo files in `public/logos/` were taken from the vendors' own websites and have not been licensed to us; replace them with official press-kit assets or get written permission before launch.
+Names and logos of other companies and products (for example CodeRabbit, Greptile, Blacksmith, T3 Code) are trademarks of their owners. They appear only to identify integrations and imply no endorsement or partnership. Logo files in `apps/web/public/logos/` were taken from the vendors' own websites and have not been licensed to us; replace them with official press-kit assets or get written permission before launch.
 
 ## Direct dependencies
 
 | Package                          | Used at runtime | License      |
 | -------------------------------- | --------------- | ------------ |
 | @base-ui/react                   | yes             | MIT          |
+| @convex-dev/better-auth          | yes             | Apache-2.0   |
 | @convex-dev/react-query          | yes             | Apache-2.0   |
 | @fontsource-variable/geist       | yes             | OFL-1.1      |
 | @fontsource-variable/geist-mono  | yes             | OFL-1.1      |
 | @heroicons/react                 | yes             | MIT          |
-| @modelcontextprotocol/sdk        | yes             | MIT          |
+| @modelcontextprotocol/server     | yes             | Apache-2.0   |
+| @noble/hashes                    | yes             | MIT          |
 | @pierre/diffs                    | yes             | apache-2.0   |
 | @pierre/storage                  | yes             | MIT          |
 | @pierre/trees                    | yes             | apache-2.0   |
@@ -38,6 +40,7 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 | @tanstack/react-router           | yes             | MIT          |
 | @tanstack/react-router-ssr-query | yes             | MIT          |
 | @tanstack/react-start            | yes             | MIT          |
+| better-auth                      | yes             | MIT          |
 | class-variance-authority         | yes             | Apache-2.0   |
 | clsx                             | yes             | MIT          |
 | cn                               | yes             | MIT          |
@@ -49,6 +52,7 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 | fumadocs-core                    | yes             | MIT          |
 | fumadocs-mdx                     | yes             | MIT          |
 | fumadocs-ui                      | yes             | MIT          |
+| jose                             | yes             | MIT          |
 | lucide-react                     | yes             | ISC          |
 | motion                           | yes             | MIT          |
 | react                            | yes             | MIT          |
@@ -59,6 +63,7 @@ Names and logos of other companies and products (for example CodeRabbit, Greptil
 | tw-animate-css                   | yes             | MIT          |
 | zod                              | yes             | MIT          |
 | @convex-dev/eslint-plugin        | build only      | Apache-2.0   |
+| @modelcontextprotocol/client     | build only      | Apache-2.0   |
 | @tailwindcss/vite                | build only      | MIT          |
 | @types/bun                       | build only      | MIT          |
 | @types/d3-scale                  | build only      | MIT          |

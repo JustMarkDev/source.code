@@ -1,0 +1,178 @@
+---
+icon: KeyIcon
+title: OAuth
+description: Sign in applications, agents and the CLI with the authorization code flow, PKCE and the device flow.
+---
+
+Applications that act for a person sign in with OAuth. The server implements the **OAuth 2.1 profile**: OAuth 2.0 ([RFC 6749](https://www.rfc-editor.org/rfc/rfc6749), [6750](https://www.rfc-editor.org/rfc/rfc6750)) with the practices that have since become mandatory. Any 2.0 client that does PKCE works. (OAuth 2.1 is still an IETF draft; this is the part of it that is settled.)
+
+<Callout type="warn" title="Preview">
+  The flows work and are tested. The consent page asks the app who is signed in,
+  and sends a signed-out visitor to sign in first. The accounts are real; the
+  repositories behind the API are still sample data, so a new account can read
+  the public samples and has none of its own.
+</Callout>
+
+## What it refuses
+
+These are the rules, each covered by a test.
+
+| It does not allow                                  | Instead                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| The implicit flow, the password grant              | Authorization code with PKCE, or the device flow                           |
+| A request without PKCE, or with `plain` PKCE       | `S256` on every request                                                    |
+| A redirect URI that is not an exact match          | Register it; a prefix, a query or another host is refused                  |
+| A redirect that is not `https` or loopback `http`  | A native app's reverse-DNS scheme (`com.example.app:/cb`) is allowed       |
+| Redirecting on a bad `client_id` or `redirect_uri` | An error page. It never redirects until both are known to be good          |
+| Reusing an authorization code                      | The second use fails **and revokes what the first produced**               |
+| Replaying a refresh token                          | The whole grant is revoked, thief and owner both                           |
+| Asking for more than you may delegate              | `invalid_scope`. `tokens:manage` and `secrets:decrypt` are never grantable |
+| A client secret                                    | Clients are public: `token_endpoint_auth_method` must be `none`            |
+
+## Discovery
+
+A client needs only the address of the server.
+
+| Document                                    | Is                                        |
+| ------------------------------------------- | ----------------------------------------- |
+| `/.well-known/oauth-authorization-server`   | Endpoints, scopes, grant types (RFC 8414) |
+| `/.well-known/oauth-protected-resource`     | What protects the API (RFC 9728)          |
+| `/.well-known/oauth-protected-resource/mcp` | What protects the [MCP server](/docs/mcp) |
+
+A `401` from the API or from MCP carries `WWW-Authenticate: Bearer resource_metadata="…"` pointing at the right one, so a client that has never heard of source.code can find the way in.
+
+## 1. Register
+
+```bash
+curl -X POST "$SX/oauth/register" -H "Content-Type: application/json" \
+  -d '{"client_name":"My agent","redirect_uris":["http://127.0.0.1:8123/callback"]}'
+```
+
+```json
+{
+  "client_id": "cl_5mT0kX9v2QfH1sYbN8cD",
+  "client_name": "My agent",
+  "redirect_uris": ["http://127.0.0.1:8123/callback"],
+  "grant_types": [
+    "authorization_code",
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+Dynamic registration (RFC 7591), open to anyone, limited to 20 per hour per address. One to five redirect URIs, `https` or loopback.
+
+## 2. Send the person to authorize
+
+Make a random `code_verifier` (43 to 128 characters from `A-Z a-z 0-9 - . _ ~`) and its challenge, `base64url(sha256(verifier))`.
+
+```
+GET $SX/oauth/authorize
+  ?response_type=code
+  &client_id=cl_5mT0kX9v2QfH1sYbN8cD
+  &redirect_uri=http://127.0.0.1:8123/callback
+  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+  &code_challenge_method=S256
+  &scope=repo:read pulls:read
+  &state=af0ifjsldkj
+  &resource=https://source.code/api/v1
+```
+
+The person signs in, sees which application is asking and what it may do, and approves or denies. Either way they are sent back to your redirect URI with `state` and `iss` (RFC 9207, so a client can tell which server answered):
+
+```
+http://127.0.0.1:8123/callback?code=oac_…&state=af0ifjsldkj&iss=https://source.code
+```
+
+- **`scope`** is a space-separated list. Leave it out and you get read-only: `repo:read issues:read pulls:read`.
+- **`resource`** (RFC 8707) says which service the token is for: the API (`https://source.code/api/v1`) or MCP (`https://source.code/mcp`). Leave it out and one token works for both.
+- A **denied** request comes back as `error=access_denied` with no code.
+- The code lasts **one minute** and works once.
+
+## 3. Exchange the code
+
+```bash
+curl -X POST "$SX/oauth/token" -H "Content-Type: application/x-www-form-urlencoded" \
+  -d grant_type=authorization_code -d code=oac_… -d client_id=cl_5mT0kX9v2QfH1sYbN8cD \
+  -d redirect_uri=http://127.0.0.1:8123/callback -d code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+```
+
+```json
+{
+  "access_token": "sxo_…",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "sxf_…",
+  "scope": "repo:read pulls:read"
+}
+```
+
+Responses carry `Cache-Control: no-store`. The access token lasts an hour. Use it like any other token: `Authorization: Bearer sxo_…`.
+
+## 4. Refresh
+
+```bash
+curl -X POST "$SX/oauth/token" -d grant_type=refresh_token -d refresh_token=sxf_… -d client_id=cl_…
+```
+
+Every refresh returns a **new** refresh token and retires the old one. Save the new one before you use the new access token. If a refresh token is ever used twice, the server assumes it was copied and revokes the whole grant. A refresh may ask for fewer scopes with `scope`, never more. Refresh tokens last 30 days from last use and at most 180 days from the first sign-in.
+
+## The device flow, for the CLI and for machines with no browser
+
+[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628). The device shows a code; the person approves it on any other screen.
+
+```bash
+curl -X POST "$SX/oauth/device_authorization" -d client_id=cl_… -d "scope=repo:read pulls:read"
+```
+
+```json
+{
+  "device_code": "sxd_…",
+  "user_code": "BCDF-GHJK",
+  "verification_uri": "https://source.code/api/v1/oauth/device",
+  "verification_uri_complete": "https://source.code/api/v1/oauth/device?user_code=BCDF-GHJK",
+  "expires_in": 900,
+  "interval": 5
+}
+```
+
+Show `verification_uri_complete` and `user_code`. Poll the token endpoint every `interval` seconds:
+
+```bash
+curl -X POST "$SX/oauth/token" \
+  -d grant_type=urn:ietf:params:oauth:grant-type:device_code -d device_code=sxd_… -d client_id=cl_…
+```
+
+| `error`                 | Means                                              |
+| ----------------------- | -------------------------------------------------- |
+| `authorization_pending` | Not yet. Wait `interval` and ask again             |
+| `slow_down`             | You asked too soon. Add 5 seconds to your interval |
+| `access_denied`         | The person said no                                 |
+| `expired_token`         | 15 minutes passed. Start again                     |
+
+The user code uses only consonants, so it cannot spell a word, and guesses are limited to 10 per address per 15 minutes. `sx auth login` does all of this for you.
+
+## Revoke
+
+```bash
+curl -X POST "$SX/oauth/revoke" -d token=sxf_…
+```
+
+Always answers `200`, so the caller learns nothing about which tokens exist. Revoking a refresh token revokes the grant. People can see and revoke what they have authorized with [`GET /v1/authorizations`](/docs/api/reference/tokens) and `DELETE /v1/authorizations/{id}`. Revocation takes effect at once, on the next request.
+
+## Errors
+
+Token-endpoint errors follow RFC 6749, not the API's problem format, because OAuth clients expect them: `{"error": "invalid_grant", "error_description": "…"}` with `400` (or `401` for `invalid_client`, `429` for the rate limit).
+
+| Endpoint                      | Limit, per client address |
+| ----------------------------- | ------------------------- |
+| `/oauth/register`             | 20 per hour               |
+| `/oauth/token`                | 120 per minute            |
+| `/oauth/device_authorization` | 30 per minute             |
+| Entering a user code          | 10 per 15 minutes         |
+
+## Scopes
+
+The scopes you can ask for are in [Authentication](/docs/api/authentication#scopes). You can delegate only what you hold: a member of an organization cannot hand an application `repo:write` for it. What the application gets is the intersection of what it asked for, what you approved, and what you hold.

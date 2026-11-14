@@ -1,5 +1,6 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "public/script*.js"],
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["**/node_modules", "**/dist"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
@@ -21,7 +22,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./apps/web/src/*"]
     },
 
     "esModuleInterop": true,

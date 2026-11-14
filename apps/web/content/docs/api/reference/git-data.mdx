@@ -1,0 +1,399 @@
+---
+icon: CodeBracketIcon
+title: Git data
+description: Directories, files, history and diffs, read from the repository itself.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `git.blob`
+
+`GET /repos/{owner}/{repo}/git/blob`
+
+**Read a file**
+
+The contents as text, or base64 when the file is not valid UTF-8. Files over 1 MiB answer `413`; use `git.raw` for those.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `blob`                            |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name   | Type                                       | Notes                                                 |
+| ------ | ------------------------------------------ | ----------------------------------------------------- |
+| `ref`  | string (up to 200 characters)              | A branch, or a commit id. Default: the default branch |
+| `path` | string (up to 1000 characters, at least 1) | Required.                                             |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/blob?path=README.md" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"gKybwHFpZbxOwRsK"
+ratelimit: "read";r=1133;t=60
+```
+
+```json
+{
+  "object": "blob",
+  "path": "README.md",
+  "ref": "default",
+  "size": 34,
+  "encoding": "utf-8",
+  "content": "# gitfs\n\nGit over object storage.\n"
+}
+```
+
+### `git.commits`
+
+`GET /repos/{owner}/{repo}/git/commits`
+
+**The history of the default branch, newest first**
+
+Follows a cursor through the newest 1,000 commits.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `commit`                  |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                              |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/commits?limit=1" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"8X-tK_zat7Az2Ptx"
+ratelimit: "read";r=1131;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "commit",
+      "sha": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/git/commits/1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+      "parents": ["bce63d66c1910577f78deb23221f6494c69b3015"],
+      "message": "Cache negative ref lookups",
+      "author": {
+        "name": "Dana Okafor",
+        "email": "dana@users.source.code"
+      },
+      "committer": {
+        "name": "Dana Okafor",
+        "email": "dana@users.source.code"
+      },
+      "date": "2026-10-20T16:45:00.000Z",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "change": null,
+      "checks": "pass"
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "c_WzEsIjFiNzg4MGQwMjhmOTBhM2VhYWM5ZTQxYmIzYzI4MDg2NjkxZTI5YmEiLCIxdWU3ODYiXQ"
+}
+```
+
+### `git.commit`
+
+`GET /repos/{owner}/{repo}/git/commits/{sha}`
+
+**One commit**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `commit`                          |
+
+**Path parameters**
+
+| Name    | Type             | Notes |
+| ------- | ---------------- | ----- |
+| `owner` | string           |       |
+| `repo`  | string           |       |
+| `sha`   | string (pattern) |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/commits/1b7880d028f90a3eaac9e41bb3c28086691e29ba" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"C8YsMCDTMBJnEn_t"
+ratelimit: "read";r=1130;t=60
+```
+
+```json
+{
+  "object": "commit",
+  "sha": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/git/commits/1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+  "parents": ["bce63d66c1910577f78deb23221f6494c69b3015"],
+  "message": "Cache negative ref lookups",
+  "author": {
+    "name": "Dana Okafor",
+    "email": "dana@users.source.code"
+  },
+  "committer": {
+    "name": "Dana Okafor",
+    "email": "dana@users.source.code"
+  },
+  "date": "2026-10-20T16:45:00.000Z",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "change": null,
+  "checks": "pass"
+}
+```
+
+### `git.diff`
+
+`GET /repos/{owner}/{repo}/git/commits/{sha}/diff`
+
+**What a commit changed**
+
+Per file: state, counts and the unified diff, each cut at 64 KB (`truncated` says so; read the file with `git.raw` for the rest).
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `heavy` pool, 2 units                      |
+| Success    | `200`, a `commit_diff`                     |
+
+**Path parameters**
+
+| Name    | Type             | Notes |
+| ------- | ---------------- | ----- |
+| `owner` | string           |       |
+| `repo`  | string           |       |
+| `sha`   | string (pattern) |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/commits/1b7880d028f90a3eaac9e41bb3c28086691e29ba/diff" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"InAP69JlpoVzhd2v"
+ratelimit: "heavy";r=112;t=60
+```
+
+```json
+{
+  "object": "commit_diff",
+  "sha": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+  "base_sha": "bce63d66c1910577f78deb23221f6494c69b3015",
+  "stats": {
+    "files": 1,
+    "additions": 5,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "path": "src/refs.rs",
+      "state": "modified",
+      "additions": 5,
+      "deletions": 1,
+      "patch": "diff --git a/src/refs.rs b/src/refs.rs\n--- a/src/refs.rs\n+++ b/src/refs.rs\n@@ -1,9 +1,13 @@\n pub struct Refs {\n     disk: Disk,\n+    neg: NegCache,\n }\n \n imp…",
+      "truncated": false
+    }
+  ]
+}
+```
+
+### `git.raw`
+
+`GET /repos/{owner}/{repo}/git/raw`
+
+**Download a file as it is**
+
+The bytes, with no JSON around them. Served as an attachment with `nosniff` and a sandboxing Content-Security-Policy, so a file in a repository cannot run in the page that opens it.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, binary data                         |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name   | Type                                       | Notes                                                 |
+| ------ | ------------------------------------------ | ----------------------------------------------------- |
+| `ref`  | string (up to 200 characters)              | A branch, or a commit id. Default: the default branch |
+| `path` | string (up to 1000 characters, at least 1) | Required.                                             |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/raw?path=README.md" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "read";r=1132;t=60
+```
+
+### `git.tree`
+
+`GET /repos/{owner}/{repo}/git/tree`
+
+**List a directory**
+
+The files and directories directly under `path`, directories first. With `recursive=true`, every file under `path` at any depth, by path, and no directories. Up to 2000 entries.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `tree`                            |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name          | Type                           | Notes                                                                                  |
+| ------------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| `ref`         | string (up to 200 characters)  | A branch, or a commit id. Default: the default branch                                  |
+| `path`        | string (up to 1000 characters) | Default `""`. A directory, without a leading or trailing slash. Default: the root      |
+| `last_commit` | `true` or `false`              | Default `"false"`. Name the newest commit that touched each entry, from the newest 200 |
+| `recursive`   | `true` or `false`              | Default `"false"`. List every file under the directory, not only its direct children   |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/git/tree" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"LzpT4t5tig8CcrcN"
+ratelimit: "read";r=1134;t=60
+```
+
+```json
+{
+  "object": "tree",
+  "ref": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+  "path": "",
+  "entries": [
+    {
+      "name": ".github",
+      "path": ".github",
+      "type": "tree",
+      "last_commit": null
+    },
+    {
+      "name": ".source",
+      "path": ".source",
+      "type": "tree",
+      "last_commit": null
+    },
+    "…and 10 more"
+  ],
+  "has_more": false
+}
+```

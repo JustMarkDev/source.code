@@ -1,0 +1,138 @@
+---
+icon: ServerIcon
+title: MCP server
+description: Connect any agent to source.code over MCP. Same tools as the CLI, same answers as the web page.
+---
+
+source.code ships a Model Context Protocol server (and an [HTTP API](/docs/api) for everything else), so agents that speak MCP can read changes, check policy and open issues without a shell. Every tool runs the matching [`sx`](/docs/cli) command, so what an agent gets is exactly what a person sees: the same blockers, the same error codes and the same hints.
+
+<Callout type="warn" title="Preview">
+  The tools answer from sample data today. Tokens, scopes and sign-in are real:
+  the same token works here and on the [HTTP API](/docs/api), and every tool is
+  checked against that token's scopes.
+</Callout>
+
+## Connect
+
+There are two ways in. Both expose the same tools.
+
+### Hosted endpoint
+
+Streamable HTTP at `https://source.code/mcp`. Sign in with OAuth, which MCP clients do on their own, or send a token in the `Authorization` header.
+
+```bash
+claude mcp add --transport http source-code https://source.code/mcp \
+  --header "Authorization: Bearer $SX_TOKEN"
+```
+
+For clients that read a JSON config:
+
+```json
+{
+  "mcpServers": {
+    "source-code": {
+      "type": "http",
+      "url": "https://source.code/mcp",
+      "headers": { "Authorization": "Bearer ${SX_TOKEN}" }
+    }
+  }
+}
+```
+
+### Signing in with OAuth
+
+A client that supports MCP authorization finds everything it needs from the server. An unauthenticated request answers `401` with `WWW-Authenticate: Bearer resource_metadata="https://source.code/.well-known/oauth-protected-resource/mcp"`, which names the authorization server. The client registers itself, sends you to a consent page, and gets a token that refreshes. See [OAuth](/docs/api/oauth).
+
+The token is the same kind the API accepts. One sign-in covers both, unless the client asked for one with the `resource` parameter.
+
+### Local command
+
+If the agent starts a local command instead, run `sx` as the server over stdio:
+
+```bash
+claude mcp add sx -- sx mcp
+```
+
+The local server uses your git remote to know which repository you mean. Over HTTP, pass `repo` on each call.
+
+## Tools
+
+Read-only tools never change anything. Tools that change state accept `dry_run`.
+
+| Tool            | Does                                                                           | Changes state    |
+| --------------- | ------------------------------------------------------------------------------ | ---------------- |
+| `list_accounts` | Every account you can act as, with your role in each                           | No               |
+| `get_context`   | Start here. Open changes and what blocks each, open issues, policy, env schema | No               |
+| `list_changes`  | Open changes, or all                                                           | No               |
+| `get_change`    | One change, by number, and every requirement blocking it                       | No               |
+| `create_change` | Create a change from a branch. Again for the same branch adds a patch set      | Yes, repeat-safe |
+| `land_change`   | Land a change if policy allows                                                 | Yes              |
+| `check_policy`  | Whether a change meets every policy, and which rule asks for what              | No               |
+| `list_issues`   | Issues, open by default                                                        | No               |
+| `create_issue`  | Open an issue. The same open title returns the existing one                    | Yes, repeat-safe |
+| `close_issue`   | Close an issue                                                                 | Yes, repeat-safe |
+| `list_env`      | Variable names, kinds and whether each environment has a value. Never values   | No               |
+| `list_mirrors`  | Copies on other hosts and their state                                          | No               |
+| `sync_mirror`   | Sync one mirror now                                                            | Yes, repeat-safe |
+| `start_agent`   | Build the prompt and the command that starts an agent on an issue or change    | No               |
+
+### Every other operation
+
+The named tools cover the daily work. Two more reach the rest of the [HTTP API](/docs/api), every operation it has:
+
+| Tool                | Does                                                                                                  | Changes state |
+| ------------------- | ----------------------------------------------------------------------------------------------------- | ------------- |
+| `search_operations` | Finds operations by what they do (`"label delete"`). With `id`, one in full: parameters, body, scopes | No            |
+| `call_operation`    | Runs one by id. Path and query parameters go in `params`, the request in `body`                       | It depends    |
+
+```json
+{
+  "id": "labels.create",
+  "params": { "owner": "dana", "repo": "gitfs" },
+  "body": { "name": "perf" }
+}
+```
+
+The answer is `{ "status": 201, "data": { … } }`, and a refusal is the same error object the API returns. Three rules hold here that the API leaves to you:
+
+- A destructive operation (deleting, landing, revoking) needs `confirm: true`, unless `dry_run` is set. Run it dry first.
+- An operation whose answer carries a secret, such as creating a token or a webhook, is listed but not callable: MCP never returns a secret value. Use `sx` or the API.
+- An operation that takes raw bytes, such as an upload, is listed but not callable.
+
+Each tool carries MCP annotations: `readOnlyHint`, `idempotentHint` and `destructiveHint`, so a client can decide what to confirm.
+
+## Resources
+
+| URI             | Contents                                            |
+| --------------- | --------------------------------------------------- |
+| `sx://skill`    | The agent skill: rules, exit codes and the workflow |
+| `sx://commands` | The whole CLI as JSON                               |
+
+## Errors
+
+A failed call sets `isError` and returns the same object the CLI prints:
+
+```json
+{
+  "error": {
+    "code": "policy_blocked",
+    "message": "#216 cannot land: ci/test is running; 1 high finding unresolved.",
+    "hint": "sx change view shows each requirement. sx policy explain says which rule asked for it."
+  }
+}
+```
+
+Branch on `code`. A `policy_blocked` landing is a stop, not a retry: an agent cannot approve its own change.
+
+## What the token limits
+
+A tool calls the API as the token that connected, so it can do what that token's scopes allow and nothing more. A bot installed for issues only can `create_issue` and gets `insufficient_scope` from `land_change`, with the same error object the API returns.
+
+## What an agent never gets
+
+- **Secret values.** `get_context` and `list_env` return names and kinds only. Decrypting is a separate, expiring grant for one environment.
+- **Scopes it was not given.** A token belongs to a bot. A bot's scopes can shrink while it is installed and never grow. See [Agents](/docs/concepts/agents).
+
+## How it works
+
+Both transports speak the 2026-07-28 revision of MCP and still answer clients on a 2025 revision. On 2026-07-28 there is no session: every request carries the protocol version in `_meta` and its method in the `Mcp-Method` header, so any server can answer any request. A 2025 client is served without a session too. Each HTTP request gets its own server instance, so there is nothing to lose and nothing to clean up. The server instructions tell the agent to call `get_context` first and to read the `hint` on any error.

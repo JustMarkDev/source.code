@@ -1,0 +1,22 @@
+{
+  "name": "@source-code/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "sx: the source.code command line. It never asks questions and every command speaks JSON.",
+  "type": "module",
+  "bin": {
+    "sx": "./src/main.ts"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@source-code/api": "workspace:*"
+  },
+  "exports": {
+    "./*": "./src/*.ts"
+  }
+}

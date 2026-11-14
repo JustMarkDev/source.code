@@ -16,7 +16,7 @@
  */
 import { spawn } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { sampleTokens } from '../src/lib/api/sample'
+import { sampleTokens } from '@source-code/api/sample'
 import { Histogram } from './bench/histogram'
 import { byId, scenarios } from './bench/scenarios'
 import { buildWorld } from './bench/world'
