@@ -7,11 +7,14 @@
  *   bun scripts/api-snapshot.ts --allow-breaking   (a new major version only)
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { allOperations } from '../src/lib/api'
-import { buildOpenApi } from '../src/lib/api/openapi'
-import { findBreaking } from '../src/lib/api/openapi-diff'
+import { allOperations } from '@source-code/api'
+import { buildOpenApi } from '@source-code/api/openapi'
+import { findBreaking } from '@source-code/api/openapi-diff'
 
-const file = new URL('../src/lib/api/openapi.snapshot.json', import.meta.url)
+const file = new URL(
+  '../packages/api/src/openapi.snapshot.json',
+  import.meta.url,
+)
 const next = buildOpenApi(allOperations())
 if (existsSync(file) && !process.argv.includes('--allow-breaking')) {
   const breaking = findBreaking(JSON.parse(readFileSync(file, 'utf8')), next)

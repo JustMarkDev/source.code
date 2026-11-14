@@ -90,6 +90,31 @@ export const takeLimit = mutation({
 // ----- idempotency -----------------------------------------------------------
 
 /** First sight of a key claims it; later sights learn what became of it. */
+/**
+ * How long a request may hold its key before another one may look at what it
+ * did. Longer than any request runs.
+ */
+const LEASE_MS = 10 * 60_000
+
+/** The answer for a request that changed something and then lost its reply. */
+const lost = {
+  status: 409,
+  headers: JSON.stringify({ 'content-type': 'application/problem+json' }),
+  // The same problem the API answers for `request_outcome_unknown`.
+  body: JSON.stringify({
+    type: 'https://source.code/docs/api/errors#request_outcome_unknown',
+    title:
+      'The first request with this Idempotency-Key changed something, then lost its answer',
+    status: 409,
+    code: 'request_outcome_unknown',
+    detail:
+      'The first request with this Idempotency-Key made a change, then stopped before it answered. It will not run again.',
+    hint: 'Read the object to see where it stands. Use a new key only for a new request.',
+    retryable: false,
+    exit_code: 1,
+  }),
+}
+
 export const beginIdempotency = mutation({
   args: {
     secret: v.string(),
@@ -111,9 +136,20 @@ export const beginIdempotency = mutation({
     if (row && row.expires > now) {
       if (row.fingerprint !== args.fingerprint)
         return { state: 'conflict' as const }
-      return row.response
-        ? { state: 'replay' as const, response: row.response }
-        : { state: 'in_progress' as const }
+      if (row.response)
+        return { state: 'replay' as const, response: row.response }
+      // The request that held the key went quiet. If it wrote nothing, it is
+      // safe to run again; if it wrote, it must not run twice, and its answer
+      // is gone.
+      if (now - (row.started ?? now) > LEASE_MS) {
+        if (row.effect === undefined) {
+          await ctx.db.patch('apiIdempotency', row._id, { started: now })
+          return { state: 'new' as const }
+        }
+        await ctx.db.patch('apiIdempotency', row._id, { response: lost })
+        return { state: 'replay' as const, response: lost }
+      }
+      return { state: 'in_progress' as const }
     }
     if (row) await ctx.db.delete('apiIdempotency', row._id)
     await ctx.db.insert('apiIdempotency', {
@@ -121,6 +157,7 @@ export const beginIdempotency = mutation({
       key: args.key,
       fingerprint: args.fingerprint,
       expires: now + args.ttlMs,
+      started: now,
     })
     return { state: 'new' as const }
   },
@@ -181,7 +218,12 @@ export const abortIdempotency = mutation({
         q.eq('scope', args.scope).eq('key', args.key),
       )
       .unique()
-    if (row) await ctx.db.delete('apiIdempotency', row._id)
+    if (!row) return null
+    // A request that failed after one of its writes committed must not run
+    // again: its key keeps an answer that says so.
+    if (row.effect !== undefined)
+      await ctx.db.patch('apiIdempotency', row._id, { response: lost })
+    else await ctx.db.delete('apiIdempotency', row._id)
     return null
   },
 })

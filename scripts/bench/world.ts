@@ -1,10 +1,10 @@
-import { createSampleApi } from '../../src/lib/api'
-import { AuthStore } from '../../src/lib/api/auth'
+import { createSampleApi } from '@source-code/api'
+import { AuthStore } from '@source-code/api/auth'
 import {
   sampleTokenStore,
   sampleTokens,
   seedBulk,
-} from '../../src/lib/api/sample'
+} from '@source-code/api/sample'
 
 /** The server under test: sample data, a 10,000-change repository, 1,000 tokens. */
 export const HUGE = 'dana/huge'

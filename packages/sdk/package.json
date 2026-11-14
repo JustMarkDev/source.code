@@ -1,0 +1,12 @@
+{
+  "name": "@source-code/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "The generated, dependency-free TypeScript client for the source.code API.",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  }
+}

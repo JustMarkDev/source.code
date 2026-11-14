@@ -55,10 +55,10 @@ Read the README of the area you touch first.
 
 | Area                   | Read                                 |
 | ---------------------- | ------------------------------------ |
-| HTTP API (`/api/v1`)   | `src/lib/api/README.md`              |
-| Server-side async code | `src/lib/effect/README.md`           |
+| HTTP API (`/api/v1`)   | `packages/api/README.md`             |
+| Server-side async code | `apps/web/src/lib/effect/README.md`  |
 | Convex (`convex/`)     | `convex/_generated/ai/guidelines.md` |
-| The `sx` CLI           | `cli/`, with `bun test`              |
+| The `sx` CLI           | `packages/cli/`, with `bun test`     |
 
 ## Code
 
@@ -66,7 +66,7 @@ Read the README of the area you touch first.
   comment; if a rule is wrong for a whole area, say why in `vite.config.ts`.
 - Type the honest case. If a lookup can miss, its type says so.
 - Do not silence a build warning without a comment that says why it is safe.
-- Vendored code (`src/components/dither-kit/`) stays as shipped.
+- Vendored code (`apps/web/src/components/dither-kit/`) stays as shipped.
 - Add or update tests with the change.
 
 ## Pull requests
@@ -79,6 +79,6 @@ Read the README of the area you touch first.
 
 ## License of your contribution
 
-The server and web app are BSL-1.1. `cli/` and `sdk/typescript/` are
+The server and web app are BSL-1.1. `packages/cli/` and `packages/sdk/` are
 Apache-2.0. Your contribution goes under the license of the directory it lands
 in, as `CLA.md` describes.

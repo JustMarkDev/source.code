@@ -1,0 +1,2980 @@
+---
+icon: UsersIcon
+title: Accounts
+description: Who you can act as, profiles, organizations, members, invitations and teams, follows and the directory of people, your preferences, inbox and dashboard, connected services, linked accounts and bots.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `accounts.list`
+
+`GET /accounts`
+
+**Every account you can act as**
+
+Yourself and each organization you belong to, with your role in each. Send Sx-Account to act as one of them.
+
+| About      |                            |
+| ---------- | -------------------------- |
+| Safety     | `read`, safe to repeat     |
+| Needs      | a token                    |
+| Scopes     | none                       |
+| Rate limit | `read` pool, 1 unit        |
+| Success    | `200`, a list of `account` |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"l1i8XfUKXL8zx1HT"
+ratelimit: "read";r=1199;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "account",
+      "id": "acc_01m203xrm0bw4d69nd",
+      "handle": "dana",
+      "name": "Dana Okafor",
+      "kind": "person",
+      "bio": "",
+      "role": "owner",
+      "url": "https://api.source.code/v1/accounts/dana",
+      "html_url": "https://source.code/dana",
+      "created_at": "2026-09-08T09:00:00.000Z",
+      "updated_at": "2026-09-08T09:00:00.000Z",
+      "version": 1
+    },
+    {
+      "object": "account",
+      "id": "acc_01m2svwym0ahjabzx5",
+      "handle": "northwind",
+      "name": "Northwind Labs",
+      "kind": "organization",
+      "bio": "",
+      "role": "owner",
+      "url": "https://api.source.code/v1/accounts/northwind",
+      "html_url": "https://source.code/northwind",
+      "created_at": "2026-09-18T09:00:00.000Z",
+      "updated_at": "2026-09-18T09:00:00.000Z",
+      "version": 1
+    },
+    "…and 1 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `accounts.create`
+
+`POST /accounts`
+
+**Create an organization**
+
+You become its first owner. People and organizations share one namespace, so the handle must be free: one that a person, another organization or a page of the site has answers `invalid_state`. Naturally idempotent on the handle: asking for an organization you already own returns it with `Sx-Outcome: unchanged`. Only a person can create one, not an agent or a bot. A person is not created here; a person signs up.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `account`      |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member   | Type                                      | Notes     |
+| -------- | ----------------------------------------- | --------- |
+| `handle` | string (pattern)                          | Required. |
+| `name`   | string (up to 100 characters, at least 1) |           |
+| `bio`    | string (up to 300 characters)             |           |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`human_required`](/docs/api/errors#human_required), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/accounts" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"handle":"harbor-tools","name":"Harbor Tools","bio":"Build tooling for small teams"}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/accounts/harbor-tools
+sx-outcome: created
+ratelimit: "write";r=42;t=60
+```
+
+```json
+{
+  "object": "account",
+  "id": "acc_01m6tq6r80xfyz652f",
+  "handle": "harbor-tools",
+  "name": "Harbor Tools",
+  "kind": "organization",
+  "bio": "Build tooling for small teams",
+  "role": "owner",
+  "url": "https://api.source.code/v1/accounts/harbor-tools",
+  "html_url": "https://source.code/harbor-tools",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `accounts.get`
+
+`GET /accounts/{handle}`
+
+**One account**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Fields     | `?fields=a,b.c`                            |
+| Success    | `200`, a `account`                         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name     | Type   | Notes                                                                             |
+| -------- | ------ | --------------------------------------------------------------------------------- |
+| `fields` | string | Comma list of fields to return, dotted for nested. `object` and `id` always stay. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"acc_01m203xrm0bw4d69nd.1.0-D3Lrc5m2y9MlPj1a"
+ratelimit: "read";r=1198;t=60
+```
+
+```json
+{
+  "object": "account",
+  "id": "acc_01m203xrm0bw4d69nd",
+  "handle": "dana",
+  "name": "Dana Okafor",
+  "kind": "person",
+  "bio": "",
+  "role": "owner",
+  "url": "https://api.source.code/v1/accounts/dana",
+  "html_url": "https://source.code/dana",
+  "created_at": "2026-09-08T09:00:00.000Z",
+  "updated_at": "2026-09-08T09:00:00.000Z",
+  "version": 1
+}
+```
+
+### `accounts.update`
+
+`PATCH /accounts/{handle}`
+
+**Change the name or the bio of an account**
+
+Your own account, or an organization you own or administer. Send If-Match with the ETag you read. The handle is not changed here.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `account`      |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member | Type                                      | Notes |
+| ------ | ----------------------------------------- | ----- |
+| `name` | string (up to 100 characters, at least 1) |       |
+| `bio`  | string (up to 300 characters)             |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version), [`version_mismatch`](/docs/api/errors#version_mismatch)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/accounts/harbor-tools" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"bio":"Build tooling for small teams. Est. 2026."}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=41;t=60
+```
+
+```json
+{
+  "object": "account",
+  "id": "acc_01m6tq6r80xfyz652f",
+  "handle": "harbor-tools",
+  "name": "Harbor Tools",
+  "kind": "organization",
+  "bio": "Build tooling for small teams. Est. 2026.",
+  "role": "owner",
+  "url": "https://api.source.code/v1/accounts/harbor-tools",
+  "html_url": "https://source.code/harbor-tools",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
+}
+```
+
+### `bots.list`
+
+`GET /accounts/{handle}/bots`
+
+**Bots an account owns**
+
+Yours, or an organization you own or administer.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | none                   |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a list of `bot` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/bots" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"7kK8bpXdqp4YYktk"
+ratelimit: "read";r=1146;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "bot",
+      "slug": "triage-bot",
+      "name": "Triage bot",
+      "description": "Labels and answers new issues.",
+      "owner": "dana",
+      "class": "bot",
+      "scopes": ["repo:read", "issues:read", "…and 2 more"],
+      "installs": ["dana/gitfs", "dana/tinyqueue"],
+      "tokens": 1,
+      "created_at": "2026-09-28T09:00:00.000Z"
+    },
+    {
+      "object": "bot",
+      "slug": "release-bot",
+      "name": "Release bot",
+      "description": "Cuts release notes and tags builds.",
+      "owner": "dana",
+      "class": "bot",
+      "scopes": ["repo:read", "repo:write", "…and 1 more"],
+      "installs": ["dana/gitfs"],
+      "tokens": 0,
+      "created_at": "2026-09-28T09:00:00.000Z"
+    },
+    "…and 1 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `bots.create`
+
+`POST /accounts/{handle}/bots`
+
+**Make a bot**
+
+Its slug is its handle everywhere it acts. Naturally idempotent: making one that is yours again returns it.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `bot`          |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                                                                                                                                                                                                                                                                   | Notes            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `slug`        | string (pattern)                                                                                                                                                                                                                                                                       | Required.        |
+| `name`        | string (up to 100 characters, at least 1)                                                                                                                                                                                                                                              | Required.        |
+| `description` | string (up to 300 characters)                                                                                                                                                                                                                                                          |                  |
+| `class`       | `bot` or `agent`                                                                                                                                                                                                                                                                       | Default `"bot"`. |
+| `scopes`      | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` | Required.        |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/accounts/dana/bots" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"docs-bot","name":"Docs bot","description":"Comments on documentation changes.","scopes":["repo:read","pulls:read","pulls:comment"]}'
+```
+
+```http
+HTTP/1.1 201
+ratelimit: "write";r=56;t=60
+```
+
+```json
+{
+  "object": "bot",
+  "slug": "docs-bot",
+  "name": "Docs bot",
+  "description": "Comments on documentation changes.",
+  "owner": "dana",
+  "class": "bot",
+  "scopes": ["repo:read", "pulls:read", "…and 1 more"],
+  "installs": [],
+  "tokens": 0,
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `follows.followers`
+
+`GET /accounts/{handle}/followers`
+
+**Who follows an account**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `account_ref`             |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                              |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/followers" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ppl2.1.6-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1156;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "account_ref",
+      "handle": "hollis",
+      "name": "Hollis Reyes",
+      "kind": "person",
+      "html_url": "https://source.code/hollis"
+    },
+    {
+      "object": "account_ref",
+      "handle": "ines",
+      "name": "Inês Barbosa",
+      "kind": "person",
+      "html_url": "https://source.code/ines"
+    },
+    "…and 1 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `follows.following`
+
+`GET /accounts/{handle}/following`
+
+**Who an account follows**
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `account_ref`             |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                              |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/following" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ppl2.1.6-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1155;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "account_ref",
+      "handle": "hollis",
+      "name": "Hollis Reyes",
+      "kind": "person",
+      "html_url": "https://source.code/hollis"
+    },
+    {
+      "object": "account_ref",
+      "handle": "ines",
+      "name": "Inês Barbosa",
+      "kind": "person",
+      "html_url": "https://source.code/ines"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `integrations.list`
+
+`GET /accounts/{handle}/integrations`
+
+**Services connected to an account**
+
+Yours, or an organization you own or administer.
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `read`, safe to repeat                    |
+| Needs      | a token                                   |
+| Scopes     | none                                      |
+| Rate limit | `read` pool, 1 unit                       |
+| Success    | `200`, a list of `integration_connection` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/integrations" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"dana.int0-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1148;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "integration_connection",
+      "integration": "coderabbit",
+      "account": "dana",
+      "key_hint": null,
+      "connected_by": "dana",
+      "connected_at": "2026-09-28T09:00:00.000Z"
+    },
+    {
+      "object": "integration_connection",
+      "integration": "t3code",
+      "account": "dana",
+      "key_hint": null,
+      "connected_by": "dana",
+      "connected_at": "2026-09-28T09:00:00.000Z"
+    },
+    "…and 2 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `integrations.disconnect`
+
+`DELETE /accounts/{handle}/integrations/{integration}`
+
+**Disconnect a service**
+
+It is turned off in every repository of the account too.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | none                          |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name          | Type   | Notes |
+| ------------- | ------ | ----- |
+| `handle`      | string |       |
+| `integration` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/dana/integrations/boat" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=57;t=60
+```
+
+### `integrations.connect`
+
+`PUT /accounts/{handle}/integrations/{integration}`
+
+**Connect a service to an account**
+
+A service that takes a key needs `key`; it is kept as a hash and shown again only as its last four characters. Connecting again with the same key changes nothing; a new key replaces the old one.
+
+| About      |                                   |
+| ---------- | --------------------------------- |
+| Safety     | `write`, safe to repeat           |
+| Needs      | a token                           |
+| Scopes     | none                              |
+| Rate limit | `write` pool, 1 unit              |
+| Dry run    | `?dry_run=true`                   |
+| Success    | `201`, a `integration_connection` |
+
+**Path parameters**
+
+| Name          | Type   | Notes |
+| ------------- | ------ | ----- |
+| `handle`      | string |       |
+| `integration` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member | Type                                      | Notes |
+| ------ | ----------------------------------------- | ----- |
+| `key`  | string (up to 500 characters, at least 3) |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/dana/integrations/boat" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"boat_live_k2v8q4"}'
+```
+
+```http
+HTTP/1.1 201
+ratelimit: "write";r=59;t=60
+```
+
+```json
+{
+  "object": "integration_connection",
+  "integration": "boat",
+  "account": "dana",
+  "key_hint": "v8q4",
+  "connected_by": "dana",
+  "connected_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `invitations.list`
+
+`GET /accounts/{handle}/invitations`
+
+**Invitations that were not accepted yet**
+
+Owners and admins only. Newest first. An invitation that expired is not listed.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `read`, safe to repeat        |
+| Needs      | a token                       |
+| Scopes     | `repo:read`                   |
+| Rate limit | `read` pool, 1 unit           |
+| Success    | `200`, a list of `invitation` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/harbor-tools/invitations" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"acc_01m6tq6r80xfyz652f.4-bWbSjQIyyaAxtq0R"
+ratelimit: "read";r=1137;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "invitation",
+      "id": "inv_01m6tq6r80pr251w3d",
+      "account": "harbor-tools",
+      "email": "yuki@example.com",
+      "role": "member",
+      "invited_by": "dana",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "expires_at": "2026-11-14T10:00:00.000Z",
+      "url": "https://api.source.code/v1/accounts/harbor-tools/invitations/inv_01m6tq6r80pr251w3d"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `invitations.create`
+
+`POST /accounts/{handle}/invitations`
+
+**Invite someone to an organization by email**
+
+Owners and admins only; only an owner invites an owner. They get an email with a link that works for 7 days. Opening it signed in makes them a member; until then they have no access. Inviting the same email again sends a new link and ends the old one (`Sx-Outcome: updated`). To add someone who already has an account, `members.set` needs no email.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `invitation`   |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member  | Type                                          | Notes     |
+| ------- | --------------------------------------------- | --------- |
+| `email` | string (up to 254 characters, email, pattern) | Required. |
+| `role`  | `owner` or `admin` or `member`                | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/accounts/harbor-tools/invitations" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"yuki@example.com","role":"member"}'
+```
+
+```http
+HTTP/1.1 201
+sx-outcome: created
+ratelimit: "write";r=39;t=60
+```
+
+```json
+{
+  "object": "invitation",
+  "id": "inv_01m6tq6r80pr251w3d",
+  "account": "harbor-tools",
+  "email": "yuki@example.com",
+  "role": "member",
+  "invited_by": "dana",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-14T10:00:00.000Z",
+  "url": "https://api.source.code/v1/accounts/harbor-tools/invitations/inv_01m6tq6r80pr251w3d"
+}
+```
+
+### `invitations.revoke`
+
+`DELETE /accounts/{handle}/invitations/{invitation}`
+
+**Revoke an invitation**
+
+Owners and admins only. Its link stops working. Revoking one that is gone changes nothing.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `repo:write`                  |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name         | Type   | Notes |
+| ------------ | ------ | ----- |
+| `handle`     | string |       |
+| `invitation` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/harbor-tools/invitations/inv_01m6tq6r80pr251w3d" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=37;t=60
+```
+
+### `links.list`
+
+`GET /accounts/{handle}/links`
+
+**Your accounts on other hosts**
+
+| About      |                                   |
+| ---------- | --------------------------------- |
+| Safety     | `read`, safe to repeat            |
+| Needs      | a token                           |
+| Scopes     | none                              |
+| Rate limit | `read` pool, 1 unit               |
+| Success    | `200`, a list of `linked_account` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/links" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"uAT56aSLO6vqD0Ud"
+ratelimit: "read";r=1144;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "linked_account",
+      "account": "dana",
+      "host": "github",
+      "login": "dana-okafor",
+      "instance": null,
+      "verified": false,
+      "linked_at": "2026-09-18T09:00:00.000Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `links.remove`
+
+`DELETE /accounts/{handle}/links/{host}`
+
+**Forget an account on another host**
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | none                          |
+| Rate limit | `write` pool, 1 unit          |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name     | Type                                          | Notes |
+| -------- | --------------------------------------------- | ----- |
+| `handle` | string                                        |       |
+| `host`   | `github` or `gitlab` or `codeberg` or `gitea` |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/dana/links/gitlab" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=47;t=60
+```
+
+### `links.set`
+
+`PUT /accounts/{handle}/links/{host}`
+
+**Say who you are on another host**
+
+One per host; linking again replaces it. Recorded as given and unverified until signing in with that host is built.
+
+| About      |                           |
+| ---------- | ------------------------- |
+| Safety     | `write`, safe to repeat   |
+| Needs      | a token                   |
+| Scopes     | none                      |
+| Rate limit | `write` pool, 1 unit      |
+| Success    | `200`, a `linked_account` |
+
+**Path parameters**
+
+| Name     | Type                                          | Notes |
+| -------- | --------------------------------------------- | ----- |
+| `handle` | string                                        |       |
+| `host`   | `github` or `gitlab` or `codeberg` or `gitea` |       |
+
+**Request body**
+
+| Member     | Type                                      | Notes     |
+| ---------- | ----------------------------------------- | --------- |
+| `login`    | string (up to 100 characters, at least 1) | Required. |
+| `instance` | string (uri)                              |           |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/dana/links/gitlab" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"login":"dana.okafor"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=48;t=60
+```
+
+```json
+{
+  "object": "linked_account",
+  "account": "dana",
+  "host": "gitlab",
+  "login": "dana.okafor",
+  "instance": null,
+  "verified": false,
+  "linked_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `members.list`
+
+`GET /accounts/{handle}/members`
+
+**An organization's members**
+
+Who is in an organization, and as what, is public, like the organization itself. Invitations are not: see `invitations.list`.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `member`                  |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/harbor-tools/members" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"acc_01m6tq6r80xfyz652f.3-bWbSjQIyyaAxtq0R"
+ratelimit: "read";r=1138;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "member",
+      "account": "harbor-tools",
+      "handle": "dana",
+      "name": "Dana Okafor",
+      "role": "owner",
+      "url": "https://api.source.code/v1/accounts/harbor-tools/members/dana"
+    },
+    {
+      "object": "member",
+      "account": "harbor-tools",
+      "handle": "hollis",
+      "name": "Hollis Reyes",
+      "role": "admin",
+      "url": "https://api.source.code/v1/accounts/harbor-tools/members/hollis"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `members.remove`
+
+`DELETE /accounts/{handle}/members/{login}`
+
+**Remove a person from an organization**
+
+Owners and admins, or the person themself to leave. They also leave its teams. Only an owner removes an owner, and the last owner cannot be removed. Removing someone who is not a member changes nothing.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `repo:write`                  |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/harbor-tools/members/hollis" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=36;t=60
+```
+
+### `members.set`
+
+`PUT /accounts/{handle}/members/{login}`
+
+**Add a person to an organization, or change their role**
+
+Owners and admins only. Only an owner can make someone an owner or change an owner. An organization always keeps one owner: changing the last one answers `invalid_state`. Setting the role someone already has changes nothing (`Sx-Outcome: unchanged`).
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `member`       |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member | Type                           | Notes     |
+| ------ | ------------------------------ | --------- |
+| `role` | `owner` or `admin` or `member` | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/harbor-tools/members/hollis" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"admin"}'
+```
+
+```http
+HTTP/1.1 201
+sx-outcome: created
+ratelimit: "write";r=40;t=60
+```
+
+```json
+{
+  "object": "member",
+  "account": "harbor-tools",
+  "handle": "hollis",
+  "name": "Hollis Reyes",
+  "role": "admin",
+  "url": "https://api.source.code/v1/accounts/harbor-tools/members/hollis"
+}
+```
+
+### `accounts.profile`
+
+`GET /accounts/{handle}/profile`
+
+**An account's profile: what they did, counted**
+
+Worked out from commits, reviews, changes, issues and releases in the past year, in the repositories you can see. Work in private repositories adds to the totals as a number only, if the person allows it. What a person hides in their preferences is empty or null.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `profile`                         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/dana/profile" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"acc_01m203xrm0bw4d69nd.1.26.3.1.20764.dana-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1154;t=60
+```
+
+```json
+{
+  "object": "profile",
+  "handle": "dana",
+  "name": "Dana Okafor",
+  "kind": "person",
+  "bio": "",
+  "followers": 3,
+  "following": 1,
+  "viewer_follows": null,
+  "contributions": {
+    "total": 131,
+    "private": 0,
+    "by_month": [
+      {
+        "month": "2025-12",
+        "count": 0
+      },
+      {
+        "month": "2026-01",
+        "count": 0
+      },
+      "…and 10 more"
+    ],
+    "by_day": [0, 0, "…and 180 more"],
+    "by_weekday": [
+      {
+        "day": "Mon",
+        "commits": 18,
+        "reviews": 0
+      },
+      {
+        "day": "Tue",
+        "commits": 13,
+        "reviews": 0
+      },
+      "…and 5 more"
+    ]
+  },
+  "work": [
+    {
+      "axis": "Commits",
+      "value": 91
+    },
+    {
+      "axis": "Reviews",
+      "value": 2
+    },
+    "…and 3 more"
+  ],
+  "languages": [
+    {
+      "name": "Rust",
+      "percent": 30
+    },
+    {
+      "name": "Go",
+      "percent": 26
+    },
+    "…and 3 more"
+  ],
+  "repositories": 5,
+  "releases": 3,
+  "downloads": 60950,
+  "agent_share": 0,
+  "activity": [
+    {
+      "kind": "issue",
+      "title": "Opened issue #220 Crash on empty repo",
+      "repo": "dana/gitfs",
+      "at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "kind": "issue",
+      "title": "Opened issue #221 A webhook will carry this",
+      "repo": "dana/gitfs",
+      "at": "2026-11-07T10:00:00.000Z"
+    },
+    "…and 28 more"
+  ],
+  "activity_hidden": false
+}
+```
+
+### `teams.list`
+
+`GET /accounts/{handle}/teams`
+
+**An organization's teams**
+
+Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `read`, safe to repeat  |
+| Needs      | a token                 |
+| Scopes     | `repo:read`             |
+| Rate limit | `read` pool, 1 unit     |
+| Success    | `200`, a list of `team` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/northwind/teams" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"38qxEJYJEtMa4qVe"
+ratelimit: "read";r=1136;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "team",
+      "id": "tem_01m6tq6r80w4h3aqvs",
+      "org": "northwind",
+      "slug": "support",
+      "name": "Support",
+      "description": "Reads private repositories to answer questions",
+      "members": [],
+      "repos": [],
+      "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+      "created_at": "2026-11-07T10:00:00.000Z",
+      "updated_at": "2026-11-07T10:00:00.000Z",
+      "version": 1
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `teams.create`
+
+`POST /accounts/{handle}/teams`
+
+**Create a team**
+
+Owners and admins only. A team is a named group of people. Give it repositories of the organization and its members can read or write them, whether or not they belong to the organization. Naturally idempotent on the slug: asking for one that exists returns it with `Sx-Outcome: unchanged`.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                      | Notes     |
+| ------------- | ----------------------------------------- | --------- |
+| `slug`        | string (pattern)                          | Required. |
+| `name`        | string (up to 100 characters, at least 1) |           |
+| `description` | string (up to 500 characters)             |           |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/accounts/northwind/teams" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"support","name":"Support","description":"Reads private repositories to answer questions"}'
+```
+
+```http
+HTTP/1.1 201
+location: https://api.source.code/v1/accounts/northwind/teams/support
+sx-outcome: created
+ratelimit: "write";r=35;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80w4h3aqvs",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer questions",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `teams.delete`
+
+`DELETE /accounts/{handle}/teams/{slug}`
+
+**Delete a team**
+
+Its members lose the access it gave them. Repositories are not touched.
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=29;t=60
+```
+
+### `teams.get`
+
+`GET /accounts/{handle}/teams/{slug}`
+
+**One team, with its members and repositories**
+
+Members of the organization only. Everyone else gets 404. A token limited to repositories gets 403.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `repo:read`            |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `team`        |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"tem_01m6tq6r80w4h3aqvs.1-9C4LE7XGoUtGF4Cn"
+ratelimit: "read";r=1135;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80w4h3aqvs",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer questions",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 1
+}
+```
+
+### `teams.update`
+
+`PATCH /accounts/{handle}/teams/{slug}`
+
+**Rename a team or change its description**
+
+Send If-Match with the ETag you read.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                      | Notes |
+| ------------- | ----------------------------------------- | ----- |
+| `name`        | string (up to 100 characters, at least 1) |       |
+| `description` | string (up to 500 characters)             |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version), [`version_mismatch`](/docs/api/errors#version_mismatch)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/accounts/northwind/teams/support" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Reads private repositories to answer customers"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=34;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80w4h3aqvs",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": [],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 2
+}
+```
+
+### `teams.members.remove`
+
+`DELETE /accounts/{handle}/teams/{slug}/members/{login}`
+
+**Remove a person from a team**
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support/members/stranger" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=30;t=60
+```
+
+### `teams.members.add`
+
+`PUT /accounts/{handle}/teams/{slug}/members/{login}`
+
+**Add a person to a team**
+
+Adding someone who is already in the team changes nothing. A team has at most 500 members.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `login`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/northwind/teams/support/members/stranger" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=33;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80w4h3aqvs",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": ["stranger"],
+  "repos": [],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 3
+}
+```
+
+### `teams.repos.remove`
+
+`DELETE /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`
+
+**Take a repository away from a team**
+
+| About      |                                           |
+| ---------- | ----------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly |
+| Needs      | a token                                   |
+| Scopes     | `repo:write`                              |
+| Rate limit | `write` pool, 1 unit                      |
+| Dry run    | `?dry_run=true`                           |
+| Success    | `204`, no body                            |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `owner`  | string |       |
+| `repo`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/accounts/northwind/teams/support/repos/northwind/relay" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=31;t=60
+```
+
+### `teams.repos.set`
+
+`PUT /accounts/{handle}/teams/{slug}/repos/{owner}/{repo}`
+
+**Give a team a repository**
+
+`read` lets members read it, including a private one; `write` lets them change it. Only repositories of the team's own organization. Setting it again changes the permission.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `team`         |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+| `slug`   | string |       |
+| `owner`  | string |       |
+| `repo`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member       | Type              | Notes     |
+| ------------ | ----------------- | --------- |
+| `permission` | `read` or `write` | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/accounts/northwind/teams/support/repos/northwind/relay" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"permission":"read"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=32;t=60
+```
+
+```json
+{
+  "object": "team",
+  "id": "tem_01m6tq6r80w4h3aqvs",
+  "org": "northwind",
+  "slug": "support",
+  "name": "Support",
+  "description": "Reads private repositories to answer customers",
+  "members": ["stranger"],
+  "repos": [
+    {
+      "full_name": "northwind/relay",
+      "permission": "read"
+    }
+  ],
+  "url": "https://api.source.code/v1/accounts/northwind/teams/support",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 4
+}
+```
+
+### `bots.update`
+
+`PATCH /bots/{bot}`
+
+**Rename a bot or change what it may do**
+
+While it is installed anywhere, its scopes can shrink but not grow: a repository approved it with the scopes it had.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `bot`          |
+
+**Path parameters**
+
+| Name  | Type   | Notes |
+| ----- | ------ | ----- |
+| `bot` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member        | Type                                                                                                                                                                                                                                                                                   | Notes |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `name`        | string (up to 100 characters, at least 1)                                                                                                                                                                                                                                              |       |
+| `description` | string (up to 300 characters)                                                                                                                                                                                                                                                          |       |
+| `scopes`      | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/bots/docs-bot" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"scopes":["repo:read","pulls:read"]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=54;t=60
+```
+
+```json
+{
+  "object": "bot",
+  "slug": "docs-bot",
+  "name": "Docs bot",
+  "description": "Comments on documentation changes.",
+  "owner": "dana",
+  "class": "bot",
+  "scopes": ["repo:read", "pulls:read"],
+  "installs": ["dana/gitfs"],
+  "tokens": 0,
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `bots.token`
+
+`POST /bots/{bot}/tokens`
+
+**Make a token for a bot**
+
+With the bot's scopes, limited to the repositories it is installed on. Shown once.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `tokens:manage`                     |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `201`, a `bot_token`                |
+
+**Path parameters**
+
+| Name  | Type   | Notes |
+| ----- | ------ | ----- |
+| `bot` | string |       |
+
+**Request body**
+
+| Member | Type                     | Notes         |
+| ------ | ------------------------ | ------------- |
+| `days` | integer (min 1, max 365) | Default `90`. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/bots/docs-bot/tokens" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"days":30}'
+```
+
+```http
+HTTP/1.1 201
+ratelimit: "write";r=53;t=60
+```
+
+```json
+{
+  "object": "bot_token",
+  "id": "tok_01m6tq6r8039wrvvh4",
+  "bot": "docs-bot",
+  "token": "sxb_…",
+  "scopes": ["repo:read", "pulls:read"],
+  "repos": ["dana/gitfs"],
+  "expires_at": "2026-12-07T10:00:00.000Z"
+}
+```
+
+### `dashboard.get`
+
+`GET /dashboard`
+
+**Your dashboard**
+
+For the account you act as: what needs you, what is moving without you, recent activity, repository health, mirrors, storage, downloads, your contributions and stars.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | none                   |
+| Rate limit | `heavy` pool, 1 unit   |
+| Success    | `200`, a `dashboard`   |
+
+**Query parameters**
+
+| Name      | Type   | Notes                                                          |
+| --------- | ------ | -------------------------------------------------------------- |
+| `account` | string | An organization you belong to. Default: the account you act as |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/dashboard" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"Rio-yJVIIfMk03cU"
+ratelimit: "heavy";r=115;t=60
+```
+
+```json
+{
+  "object": "dashboard",
+  "account": "dana",
+  "empty": false,
+  "needs_you": [
+    {
+      "severity": "stopped",
+      "title": "Mirror to gitlab stopped",
+      "repo": "dana/gitfs",
+      "note": "Authentication failed. Reconnect GitLab.",
+      "at": "2026-11-04T09:00:00.000Z",
+      "action": "Reconnect",
+      "path": "/dana/gitfs/settings?section=mirrors"
+    },
+    {
+      "severity": "review",
+      "title": "Review #212 Normalize Windows and UNC path separators",
+      "repo": "dana/gitfs",
+      "note": "ines opened it.",
+      "at": "2026-11-07T10:00:00.002Z",
+      "action": "Review",
+      "path": "/dana/gitfs/changes?n=212"
+    },
+    "…and 2 more"
+  ],
+  "in_progress": [
+    {
+      "kind": "agent",
+      "title": "Bump object-store client to 2.4",
+      "repo": "dana/gitfs · #215",
+      "status": "Waiting on review",
+      "detail": "dep-bot, patch set 1",
+      "path": "/dana/gitfs/changes?n=215"
+    },
+    {
+      "kind": "agent",
+      "title": "Bound the negative cache and evict LRU",
+      "repo": "dana/gitfs · #217",
+      "status": "Agent working",
+      "detail": "claude-t3, patch set 1",
+      "path": "/dana/gitfs/changes?n=217"
+    },
+    "…and 3 more"
+  ],
+  "activity": [
+    {
+      "who": "fix-agent",
+      "class": "agent",
+      "type": "run.started",
+      "repo": "dana/gitfs",
+      "subject": null,
+      "at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "who": "hollis",
+      "class": "human",
+      "type": "finding.raised",
+      "repo": "dana/gitfs",
+      "subject": 216,
+      "at": "2026-11-07T10:00:00.000Z"
+    },
+    "…and 4 more"
+  ],
+  "repos": [
+    {
+      "repo": "dana/gitfs",
+      "checks": "passing",
+      "open_changes": 6,
+      "open_issues": 3,
+      "updated_at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "repo": "dana/notes2",
+      "checks": "passing",
+      "open_changes": 0,
+      "open_issues": 0,
+      "updated_at": "2026-11-07T10:00:00.000Z"
+    },
+    "…and 3 more"
+  ],
+  "mirrors": [
+    {
+      "host": "github",
+      "state": "synced",
+      "repos": 1
+    },
+    {
+      "host": "gitlab",
+      "state": "stopped",
+      "repos": 1
+    }
+  ],
+  "storage": {
+    "used_bytes": 224604978,
+    "limit_bytes": 5368709120
+  },
+  "imported": 1,
+  "downloads": {
+    "total": 60950,
+    "daily": [53, 42, "…and 28 more"],
+    "change": -4
+  },
+  "contributions": {
+    "daily": [0, 0, "…and 26 more"],
+    "total": 8,
+    "change": 300,
+    "commits": 1,
+    "reviews": 2,
+    "changes": 5
+  },
+  "stars": {
+    "total": 2780,
+    "today": 93
+  }
+}
+```
+
+### `invitations.accept`
+
+`POST /invitations/accept`
+
+**Join an organization with an invitation**
+
+Send the token from the link in the email. You join with the role the invitation names, as the person you are signed in as, and the link stops working. If you are already a member with a higher role you keep it. A token that is unknown, revoked or older than 7 days answers `not_found`.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:read`                         |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `200`, a `member`                   |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member  | Type                                      | Notes     |
+| ------- | ----------------------------------------- | --------- |
+| `token` | string (up to 200 characters, at least 8) | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`human_required`](/docs/api/errors#human_required), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`limit_reached`](/docs/api/errors#limit_reached), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/invitations/accept" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"sxi_Yap3ZfZgyo_2MMoehDFgHkm7n3voIgst"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=117;t=60
+```
+
+```json
+{
+  "object": "member",
+  "account": "harbor-tools",
+  "handle": "hollis",
+  "name": "Hollis Reyes",
+  "role": "admin",
+  "url": "https://api.source.code/v1/accounts/harbor-tools/members/hollis"
+}
+```
+
+### `notifications.list`
+
+`GET /notifications`
+
+**Your inbox**
+
+Newest first. What reaches it follows your preferences, and something about a repository you can no longer read drops out.
+
+| About      |                                 |
+| ---------- | ------------------------------- |
+| Safety     | `read`, safe to repeat          |
+| Needs      | a token                         |
+| Scopes     | none                            |
+| Rate limit | `read` pool, 1 unit             |
+| Success    | `200`, a list of `notification` |
+
+**Query parameters**
+
+| Name     | Type                                                              | Notes                                                              |
+| -------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200)                                          | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                                                            | `next_cursor` from the previous page, exactly as returned          |
+| `unread` | `true` or `false`                                                 | Only unread ones                                                   |
+| `kind`   | `review` or `mention` or `release` or `ci` or `issue` or `import` |                                                                    |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/notifications?limit=2" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"dana.8.3-8zA8wzrYnE8aZ3ud"
+ratelimit: "read";r=1142;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "notification",
+      "id": "ntf_01m6tq6r80bykjac1w",
+      "kind": "review",
+      "title": "hollis raised a finding on #216 Cache negative ref lookups",
+      "repo": "dana/gitfs",
+      "html_url": "https://source.code/dana/gitfs/changes?n=216",
+      "unread": true,
+      "created_at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "object": "notification",
+      "id": "ntf_01m6tk2xg0e4861wc0",
+      "kind": "import",
+      "title": "Finished linking your GitHub history: 2,410 contributions added to your profile",
+      "repo": "Linked accounts",
+      "html_url": "https://source.code/settings/accounts",
+      "unread": true,
+      "created_at": "2026-11-07T08:48:00.000Z"
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "c_WzIsIm50Zl8wMW02dGsyeGcwZTQ4NjF3YzAiLCJra28xMzEiXQ"
+}
+```
+
+### `notifications.read`
+
+`POST /notifications/{notification}/read`
+
+**Mark one as read**
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `204`, no body          |
+
+**Path parameters**
+
+| Name           | Type   | Notes |
+| -------------- | ------ | ----- |
+| `notification` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/notifications/ntf_01m6tq6r80bykjac1w/read" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=45;t=60
+```
+
+### `notifications.count`
+
+`GET /notifications/count`
+
+**How many are unread**
+
+For a badge. Cheap, and answers `304` until it changes.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `read`, safe to repeat        |
+| Needs      | a token                       |
+| Scopes     | none                          |
+| Rate limit | `read` pool, 1 unit           |
+| Success    | `200`, a `notification_count` |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/notifications/count" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"dana.8.3-RF4gnNZJRhohvVqW"
+ratelimit: "read";r=1141;t=60
+```
+
+```json
+{
+  "object": "notification_count",
+  "unread": 4
+}
+```
+
+### `notifications.preferences`
+
+`GET /notifications/preferences`
+
+**What reaches your inbox**
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `read`, safe to repeat              |
+| Needs      | a token                             |
+| Scopes     | none                                |
+| Rate limit | `read` pool, 1 unit                 |
+| Success    | `200`, a `notification_preferences` |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/notifications/preferences" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"Bju-rRirgHUpJAq-"
+ratelimit: "read";r=1139;t=60
+```
+
+```json
+{
+  "object": "notification_preferences",
+  "review": true,
+  "mention": true,
+  "release": true,
+  "ci": true,
+  "issue": true,
+  "import": true,
+  "digest": false
+}
+```
+
+### `notifications.update_preferences`
+
+`PATCH /notifications/preferences`
+
+**Choose what reaches your inbox**
+
+Send only what changes. Turning a kind off stops new ones; what is already in the inbox stays.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, safe to repeat             |
+| Needs      | a token                             |
+| Scopes     | none                                |
+| Rate limit | `write` pool, 1 unit                |
+| Success    | `200`, a `notification_preferences` |
+
+**Request body**
+
+| Member    | Type    | Notes |
+| --------- | ------- | ----- |
+| `review`  | boolean |       |
+| `mention` | boolean |       |
+| `release` | boolean |       |
+| `ci`      | boolean |       |
+| `issue`   | boolean |       |
+| `import`  | boolean |       |
+| `digest`  | boolean |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/notifications/preferences" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"release":false,"digest":true}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=43;t=60
+```
+
+```json
+{
+  "object": "notification_preferences",
+  "review": true,
+  "mention": true,
+  "release": false,
+  "ci": true,
+  "issue": true,
+  "import": true,
+  "digest": true
+}
+```
+
+### `notifications.read_all`
+
+`POST /notifications/read`
+
+**Mark every one as read**
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `204`, no body          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/notifications/read" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=44;t=60
+```
+
+### `people.list`
+
+`GET /people`
+
+**The directory of people**
+
+People who chose to be listed, most followed first. `q` matches the handle, the name or the bio.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | none                                       |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `person`                  |
+
+**Query parameters**
+
+| Name     | Type                          | Notes                                                              |
+| -------- | ----------------------------- | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200)      | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                        | `next_cursor` from the previous page, exactly as returned          |
+| `q`      | string (up to 100 characters) | Words to match                                                     |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`invalid_request`](/docs/api/errors#invalid_request), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/people?limit=2"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"ppl3.1.6-L7VeknOsMYj6bnJ1"
+ratelimit: "anonymous";r=55;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "person",
+      "handle": "dana",
+      "name": "Dana Okafor",
+      "bio": "",
+      "followers": 3,
+      "repositories": 3,
+      "stars": 2780,
+      "languages": ["Rust", "TypeScript", "…and 1 more"],
+      "html_url": "https://source.code/dana",
+      "viewer_follows": null
+    },
+    {
+      "object": "person",
+      "handle": "ines",
+      "name": "Inês Barbosa",
+      "bio": "",
+      "followers": 2,
+      "repositories": 2,
+      "stars": 11790,
+      "languages": ["Go", "Python", "…and 1 more"],
+      "html_url": "https://source.code/ines",
+      "viewer_follows": null
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "c_WzIsImluZXMiLCJvMmpjb2EiXQ"
+}
+```
+
+### `bots.install`
+
+`PUT /repos/{owner}/{repo}/bots/{bot}`
+
+**Install a bot on a repository, or remove it**
+
+Installed, it can act in the repository with its scopes. Tokens made after this include the repository.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `bot`          |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `bot`   | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member      | Type    | Notes     |
+| ----------- | ------- | --------- |
+| `installed` | boolean | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/bots/docs-bot" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"installed":true}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=55;t=60
+```
+
+```json
+{
+  "object": "bot",
+  "slug": "docs-bot",
+  "name": "Docs bot",
+  "description": "Comments on documentation changes.",
+  "owner": "dana",
+  "class": "bot",
+  "scopes": ["repo:read", "pulls:read", "…and 1 more"],
+  "installs": ["dana/gitfs"],
+  "tokens": 0,
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `integrations.repo`
+
+`GET /repos/{owner}/{repo}/integrations`
+
+**Which connected services a repository uses**
+
+Every service connected to the repository's owner, on or off here.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `repo_integration`        |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/integrations" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"rep_01m3kkw4m0zvf3zfc9.int1.1-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1147;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "repo_integration",
+      "integration": "coderabbit",
+      "enabled": true
+    },
+    {
+      "object": "repo_integration",
+      "integration": "t3code",
+      "enabled": true
+    },
+    "…and 3 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```
+
+### `integrations.set`
+
+`PUT /repos/{owner}/{repo}/integrations/{integration}`
+
+**Turn a connected service on or off for a repository**
+
+| About      |                             |
+| ---------- | --------------------------- |
+| Safety     | `write`, safe to repeat     |
+| Needs      | a token                     |
+| Scopes     | `repo:write`                |
+| Rate limit | `write` pool, 1 unit        |
+| Dry run    | `?dry_run=true`             |
+| Success    | `200`, a `repo_integration` |
+
+**Path parameters**
+
+| Name          | Type   | Notes |
+| ------------- | ------ | ----- |
+| `owner`       | string |       |
+| `repo`        | string |       |
+| `integration` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member    | Type    | Notes     |
+| --------- | ------- | --------- |
+| `enabled` | boolean | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/integrations/boat" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=58;t=60
+```
+
+```json
+{
+  "object": "repo_integration",
+  "integration": "boat",
+  "enabled": true
+}
+```
+
+### `follows.remove`
+
+`DELETE /user/following/{handle}`
+
+**Stop following an account**
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `204`, no body          |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/user/following/hollis" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=73;t=60
+```
+
+### `follows.add`
+
+`PUT /user/following/{handle}`
+
+**Follow an account**
+
+People only. Following someone you already follow changes nothing.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | none                    |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `204`, no body          |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `handle` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/user/following/hollis" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=74;t=60
+```
+
+### `preferences.get`
+
+`GET /user/preferences`
+
+**What your profile shows, and how downloads pick a file**
+
+| About      |                                |
+| ---------- | ------------------------------ |
+| Safety     | `read`, safe to repeat         |
+| Needs      | a token                        |
+| Scopes     | none                           |
+| Rate limit | `read` pool, 1 unit            |
+| Success    | `200`, a `account_preferences` |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/user/preferences" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"qDv7yTBnNXffhQu7"
+ratelimit: "read";r=1157;t=60
+```
+
+```json
+{
+  "object": "account_preferences",
+  "combined_total": true,
+  "private_totals": true,
+  "show_activity": true,
+  "show_agents": true,
+  "searchable": true,
+  "download_target": null
+}
+```
+
+### `preferences.update`
+
+`PATCH /user/preferences`
+
+**Change what your profile shows**
+
+Send only what changes. Hiding activity hides the daily graph and the list of what you did from everyone else; turning `searchable` off takes you out of the people directory and search.
+
+| About      |                                |
+| ---------- | ------------------------------ |
+| Safety     | `write`, safe to repeat        |
+| Needs      | a token                        |
+| Scopes     | none                           |
+| Rate limit | `write` pool, 1 unit           |
+| Success    | `200`, a `account_preferences` |
+
+**Request body**
+
+| Member            | Type           | Notes |
+| ----------------- | -------------- | ----- |
+| `combined_total`  | boolean        |       |
+| `private_totals`  | boolean        |       |
+| `show_activity`   | boolean        |       |
+| `show_agents`     | boolean        |       |
+| `searchable`      | boolean        |       |
+| `download_target` | object or null |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`invalid_request`](/docs/api/errors#invalid_request), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/user/preferences" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"show_agents":false}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=75;t=60
+```
+
+```json
+{
+  "object": "account_preferences",
+  "combined_total": true,
+  "private_totals": true,
+  "show_activity": true,
+  "show_agents": false,
+  "searchable": true,
+  "download_target": null
+}
+```

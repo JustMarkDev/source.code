@@ -1,0 +1,19 @@
+{
+  "title": "Reference",
+  "pages": [
+    "meta",
+    "accounts",
+    "repositories",
+    "runs-and-automations",
+    "git-data",
+    "changes",
+    "policy",
+    "issues",
+    "events",
+    "tokens",
+    "webhooks",
+    "search",
+    "uploads",
+    "secrets-and-mirrors"
+  ]
+}

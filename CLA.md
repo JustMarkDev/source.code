@@ -29,7 +29,7 @@ This includes licensing it under:
 
 - the Business Source License 1.1 that covers the server and web app, and the
   Apache License 2.0 that it converts to on its Change Date;
-- the Apache License 2.0 for the `cli/` and `sdk/typescript/` directories;
+- the Apache License 2.0 for the `packages/cli/` and `packages/sdk/` directories;
 - any other license, including a commercial license, that the Maintainer
   offers for source.code.
 

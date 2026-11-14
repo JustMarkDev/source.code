@@ -1,0 +1,17 @@
+diff --git a/dist/index.js b/dist/index.js
+index e21fc6cbc53ef63a9144d68ab941b4f62ca7c45f..42767d80b13a1cb2c5d5b92c852b06171ca211d0 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2114,9 +2114,9 @@ class TransactionManager {
+             while (this._waitOnCurrentFunction !== null) {
+                 await this._waitOnCurrentFunction;
+             }
+-            // Round up in bigint arithmetic so a one-nanosecond commit clock tick
+-            // cannot disappear when converted to milliseconds.
+-            this._udfTime = Math.max(frameworkNow(), Number((this._lastCommitTs + 999999n) / 1000000n));
++            // source.code: round down, so commits in the same millisecond under a
++            // frozen test clock do not move the clock on by one each time.
++            this._udfTime = Math.max(frameworkNow(), Number(this._lastCommitTs / 1000000n));
+             this._waitOnCurrentFunction = new Promise((resolve) => {
+                 this._markTransactionDone = resolve;
+             });

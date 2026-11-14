@@ -11,10 +11,10 @@ Licensed Work:        source.code
                       The Licensed Work is (c) 2026 Marco Procopio. Third-party
                       components listed in THIRD_PARTY_NOTICES.md are not part
                       of the Licensed Work and remain under their own licenses.
-                      The directories `cli/` and `sdk/typescript/` are also
+                      The directories `packages/cli/` and `packages/sdk/` are also
                       not part of the Licensed Work; each is licensed
                       separately under the Apache License, Version 2.0 (see
-                      `cli/LICENSE` and `sdk/typescript/LICENSE`).
+                      `packages/cli/LICENSE` and `packages/sdk/LICENSE`).
 
 Additional Use Grant: This grant covers only (1) running the command line tool,
                       client libraries and documentation included in the

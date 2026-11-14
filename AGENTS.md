@@ -12,17 +12,26 @@ Convex agent skills for common tasks can be installed by running
 
 <!-- convex-ai-end -->
 
+## Workspace
+
+A Bun workspace: `apps/web` (the web app), `packages/api` (the HTTP API),
+`packages/git` (git access), `packages/cli` (`sx` and the MCP server) and
+`packages/sdk` (the generated client). `convex/` and `scripts/` are at the
+root. Import another package by name (`@source-code/api/auth`), never by a
+relative path. Run `bun run check`, `bun run build` and `bun test` from the
+root.
+
 ## Effect
 
 Server-side async code (server functions, anything that calls Convex or the git
 store) is written with [Effect](https://effect.website) (v4). **Read
-`src/lib/effect/README.md` first**: it has the layout, how to add a service and
+`apps/web/src/lib/effect/README.md` first**: it has the layout, how to add a service and
 the rules. Components and `convex/` do not use Effect.
 
 ## HTTP API
 
-The public API lives in `src/lib/api/`. **Read `src/lib/api/README.md` first.** It
+The public API lives in `packages/api/src/`. **Read `packages/api/README.md` first.** It
 says how to add an operation and which rules are tested. v1 only adds: the
 OpenAPI snapshot and the generated reference pages are committed, so an API
 change includes `bun scripts/api-snapshot.ts`, `bun scripts/api-docs.ts` and
-`bun scripts/api-sdk.ts` (the committed TypeScript client in `sdk/typescript/`).
+`bun scripts/api-sdk.ts` (the committed TypeScript client in `packages/sdk/`).

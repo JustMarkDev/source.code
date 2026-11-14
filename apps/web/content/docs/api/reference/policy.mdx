@@ -1,0 +1,576 @@
+---
+icon: ShieldCheckIcon
+title: Policy
+description: The rules a change must meet to land, the exceptions to them, and checking a change against them.
+---
+
+{/* Generated from the API definitions by scripts/api-docs.ts. Do not edit by hand. */}
+
+<Callout type="warn" title="Preview">
+  Examples are real responses from the sample data the preview serves.
+</Callout>
+
+### `policy.get`
+
+`GET /repos/{owner}/{repo}/changes/{number}/policy`
+
+**Each policy requirement for a change**
+
+Every requirement, its state, and what would satisfy it. The same answer as `sx policy explain`.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `pulls:read`                               |
+| Rate limit | `read` pool, 1 unit                        |
+| Wait       | `?wait=20` with `If-None-Match`            |
+| Success    | `200`, a `policy_evaluation`               |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Query parameters**
+
+| Name   | Type                    | Notes                                                                                              |
+| ------ | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `wait` | integer (min 0, max 30) | With If-None-Match: hold the request up to this many seconds until the ETag would change. 0 to 30. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/policy" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"chg_01m6dqs9m0g7q74420.1.3.chg_01m6dqs9m0g7q74420.1.0-D3Lrc5m2y9MlPj1a"
+ratelimit: "read";r=1187;t=60
+```
+
+```json
+{
+  "object": "policy_evaluation",
+  "change": 216,
+  "tree": "9c4d7e1",
+  "state": "blocked",
+  "requirements": [
+    {
+      "id": "core-paths",
+      "rule": "Core paths need a maintainer",
+      "state": "pass",
+      "detail": "hollis approved, and the approval holds for patch set 3.",
+      "needs": {
+        "approval": {
+          "min": 1,
+          "class": "human",
+          "from": "maintainers"
+        }
+      },
+      "blocking": []
+    },
+    {
+      "id": "agent-authored",
+      "rule": "Agent-authored changes need a human",
+      "state": "na",
+      "detail": "The author is a person.",
+      "needs": null,
+      "blocking": []
+    },
+    "…and 3 more"
+  ],
+  "assumed": []
+}
+```
+
+### `policy.simulate`
+
+`POST /repos/{owner}/{repo}/changes/{number}/policy/simulate`
+
+**Ask what policy would say if something were true**
+
+Plan before acting: “if hollis approves and ci/test passes, can this land?” Nothing is written. `assumed` in the answer repeats what was assumed.
+
+| About      |                              |
+| ---------- | ---------------------------- |
+| Safety     | `read`, safe to repeat       |
+| Needs      | a token                      |
+| Scopes     | `pulls:read`                 |
+| Rate limit | `read` pool, 1 unit          |
+| Success    | `200`, a `policy_evaluation` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Request body**
+
+| Member    | Type                                    | Notes |
+| --------- | --------------------------------------- | ----- |
+| `approve` | array of string                         |       |
+| `checks`  | object of `pending` or `pass` or `fail` |       |
+| `resolve` | array of string                         |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/changes/216/policy/simulate" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"checks":{"ci/test":"pass"},"resolve":["F-2"]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "read";r=1186;t=60
+```
+
+```json
+{
+  "object": "policy_evaluation",
+  "change": 216,
+  "tree": "9c4d7e1",
+  "state": "met",
+  "requirements": [
+    {
+      "id": "core-paths",
+      "rule": "Core paths need a maintainer",
+      "state": "pass",
+      "detail": "hollis approved, and the approval holds for patch set 3.",
+      "needs": {
+        "approval": {
+          "min": 1,
+          "class": "human",
+          "from": "maintainers"
+        }
+      },
+      "blocking": []
+    },
+    {
+      "id": "agent-authored",
+      "rule": "Agent-authored changes need a human",
+      "state": "na",
+      "detail": "The author is a person.",
+      "needs": null,
+      "blocking": []
+    },
+    "…and 3 more"
+  ],
+  "assumed": ["check:ci/test=pass", "resolve:F-2"]
+}
+```
+
+### `policy.rules`
+
+`GET /repos/{owner}/{repo}/policy`
+
+**A repository's policy**
+
+Its rules with their modes, what each applied to and held back, what a rule in dry run would block now, live exceptions, and the policy file they make.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `policy_set`                      |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/policy" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"rep_01m3kkw4m0zvf3zfc9.pol0.16.1-UK0uOr-AnFY_ukOY"
+ratelimit: "read";r=1153;t=60
+```
+
+```json
+{
+  "object": "policy_set",
+  "repo": "dana/gitfs",
+  "file": ".source/policy/main.yml",
+  "yaml": "# .source/policy/main.yml\n# Written by source.code from the repository settings.\nrules:\n  - id: core-paths\n    mode: enforce\n    when: \"paths src/**\"\n    req…",
+  "rules": [
+    {
+      "id": "core-paths",
+      "name": "Core paths need a maintainer",
+      "mode": "enforce",
+      "when": "paths src/**",
+      "requires": ["1 approval, human, a maintainer"],
+      "evaluated": 7,
+      "blocked": 5,
+      "custom": false,
+      "would_block": []
+    },
+    {
+      "id": "agent-authored",
+      "name": "Agent-authored changes need a human",
+      "mode": "enforce",
+      "when": "author class is agent or bot",
+      "requires": ["1 approval, human", "approver is not the author"],
+      "evaluated": 3,
+      "blocked": 3,
+      "custom": false,
+      "would_block": []
+    },
+    "…and 3 more"
+  ],
+  "exceptions": [
+    {
+      "object": "policy_exception",
+      "id": "pex_01m6nezem00mc3ms9c",
+      "rule": "core-paths",
+      "who": "ines",
+      "reason": "Release week, covering for hollis",
+      "created_by": "dana",
+      "created_at": "2026-11-05T09:00:00.000Z",
+      "expires_at": "2026-12-07T09:00:00.000Z"
+    }
+  ],
+  "large_change_lines": 400,
+  "version": 0
+}
+```
+
+### `policy.add_exception`
+
+`POST /repos/{owner}/{repo}/policy/exceptions`
+
+**Let a rule bend for one person, for a while**
+
+Up to 90 days. For core-paths the person counts as a maintainer; for the other rules their own changes pass it. Send an `Idempotency-Key` to retry safely.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:write`                        |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `201`, a `policy_exception`         |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member       | Type                                      | Notes     |
+| ------------ | ----------------------------------------- | --------- |
+| `rule`       | string                                    | Required. |
+| `who`        | string                                    | Required. |
+| `reason`     | string (up to 500 characters, at least 1) | Required. |
+| `expires_at` | string (date-time, pattern)               | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/policy/exceptions" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "idempotency-key: 3c9d1f6e-8b2a-4e7c-a1d5-6f0b9e2c4a77" \
+  -H "Content-Type: application/json" \
+  -d '{"rule":"core-paths","who":"hollis","reason":"On call this week","expires_at":"2026-11-14T09:00:00Z"}'
+```
+
+```http
+HTTP/1.1 201
+ratelimit: "write";r=69;t=60
+```
+
+```json
+{
+  "object": "policy_exception",
+  "id": "pex_01m6tq6r80hzfs747y",
+  "rule": "core-paths",
+  "who": "hollis",
+  "reason": "On call this week",
+  "created_by": "dana",
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-14T09:00:00.000Z"
+}
+```
+
+### `policy.remove_exception`
+
+`DELETE /repos/{owner}/{repo}/policy/exceptions/{exception}`
+
+**End an exception now**
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `repo:write`                  |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name        | Type   | Notes |
+| ----------- | ------ | ----- |
+| `owner`     | string |       |
+| `repo`      | string |       |
+| `exception` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/policy/exceptions/pex_01m6tq6r80hzfs747y" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=68;t=60
+```
+
+### `policy.create_rule`
+
+`POST /repos/{owner}/{repo}/policy/rules`
+
+**Write a rule of the repository's own**
+
+Three kinds. `required_check`: `check` has to pass on the tree that lands. `path_approval`: a change touching `paths` (globs, `**` crosses folders) needs `approvals` human approvals, from the people in `from` if given. `max_lines`: a change may add and remove at most `max_lines`. Sending the same `id` again replaces the rule. Every open change's requirements are worked out again.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `201`, a JSON document  |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member      | Type                                               | Notes     |
+| ----------- | -------------------------------------------------- | --------- |
+| `id`        | string (pattern)                                   | Required. |
+| `name`      | string (up to 100 characters, at least 1)          | Required. |
+| `kind`      | `required_check` or `path_approval` or `max_lines` | Required. |
+| `check`     | string (up to 100 characters, at least 1)          |           |
+| `paths`     | array of string (up to 200 characters, at least 1) |           |
+| `approvals` | integer (min 1, max 5)                             |           |
+| `from`      | array of string                                    |           |
+| `max_lines` | integer (min 1, max 100000)                        |           |
+| `mode`      | `enforce` or `dry-run` or `off`                    |           |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/policy/rules" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"docs-owners","name":"Docs need a docs owner","kind":"path_approval","paths":["docs/**"],"approvals":1,"from":["hollis"]}'
+```
+
+```http
+HTTP/1.1 201
+sx-outcome: created
+ratelimit: "write";r=71;t=60
+```
+
+```json
+{
+  "id": "docs-owners",
+  "name": "Docs need a docs owner",
+  "mode": "enforce",
+  "when": "paths docs/**",
+  "requires": ["1 approval, human, from hollis"],
+  "evaluated": 1,
+  "blocked": 1,
+  "custom": true,
+  "would_block": []
+}
+```
+
+### `policy.delete_rule`
+
+`DELETE /repos/{owner}/{repo}/policy/rules/{rule}`
+
+**Delete a rule the repository wrote**
+
+Its exceptions go with it. A built-in rule cannot be deleted; turn it off instead.
+
+| About      |                               |
+| ---------- | ----------------------------- |
+| Safety     | `destructive`, safe to repeat |
+| Needs      | a token                       |
+| Scopes     | `repo:write`                  |
+| Rate limit | `write` pool, 1 unit          |
+| Dry run    | `?dry_run=true`               |
+| Success    | `204`, no body                |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `rule`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/policy/rules/docs-owners" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 204
+ratelimit: "write";r=70;t=60
+```
+
+### `policy.update_rule`
+
+`PATCH /repos/{owner}/{repo}/policy/rules/{rule}`
+
+**Enforce a rule, dry-run it, or turn it off**
+
+Every open change's requirements are worked out again, so a change can become landable, or stop being.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:write`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a JSON document  |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `rule`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member | Type                            | Notes     |
+| ------ | ------------------------------- | --------- |
+| `mode` | `enforce` or `dry-run` or `off` | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/policy/rules/big-change" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"enforce"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=72;t=60
+```
+
+```json
+{
+  "id": "big-change",
+  "name": "Large changes need two reviewers",
+  "mode": "enforce",
+  "when": "additions + deletions > 400",
+  "requires": ["2 approvals, at least 1 human"],
+  "evaluated": 0,
+  "blocked": 0,
+  "custom": false,
+  "would_block": []
+}
+```

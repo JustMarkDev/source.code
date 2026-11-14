@@ -4,8 +4,8 @@
  *
  *   bun install && bun scripts/third-party.ts
  */
-import { readFileSync, writeFileSync } from 'node:fs'
-import { formatSource } from '../src/lib/api/format'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { formatSource } from '@source-code/api/format'
 
 const root = new URL('../', import.meta.url)
 const read = (path: string): unknown =>
@@ -17,9 +17,14 @@ type Manifest = {
 }
 type License = string | { type?: string } | undefined
 
-function licenseOf(name: string): string {
+/** Where a package is installed: beside the workspace package that declares it, or at the root. */
+function licenseOf(name: string, dirs: ReadonlyArray<string>): string {
   // Aliases such as `vite: npm:@voidzero-dev/vite-plus-core` install under the alias.
-  const pkg = read(`node_modules/${name}/package.json`) as {
+  const at = [...dirs, '']
+    .map((dir) => `${dir}node_modules/${name}/package.json`)
+    .find((path) => existsSync(new URL(path, root)))
+  if (!at) throw new Error(`${name} is not installed; run bun install`)
+  const pkg = read(at) as {
     license?: License
     licenses?: Array<{ type?: string }>
   }
@@ -29,15 +34,40 @@ function licenseOf(name: string): string {
   return id
 }
 
-const manifest = read('package.json') as Manifest
-const rows = (names: Array<string>, runtime: boolean) =>
-  names
+// Every workspace package declares its own dependencies. A package that is a
+// runtime dependency anywhere is listed as one; our own packages are left out.
+const manifests = [
+  '',
+  'apps/web/',
+  'packages/api/',
+  'packages/cli/',
+  'packages/git/',
+  'packages/sdk/',
+].map((dir) => ({ dir, ...(read(`${dir}package.json`) as Manifest) }))
+const external = (deps: Record<string, string> | undefined) =>
+  Object.keys(deps ?? {}).filter((name) => !name.startsWith('@source-code/'))
+const declaredIn = (name: string) =>
+  manifests
+    .filter(
+      (m) =>
+        name in (m.dependencies ?? {}) || name in (m.devDependencies ?? {}),
+    )
+    .map((m) => m.dir)
+const runtime = new Set(manifests.flatMap((m) => external(m.dependencies)))
+const build = new Set(
+  manifests
+    .flatMap((m) => external(m.devDependencies))
+    .filter((name) => !runtime.has(name)),
+)
+const rows = (names: Set<string>, atRuntime: boolean) =>
+  [...names]
     .sort((a, b) => a.localeCompare(b))
-    .map((name) => ({ name, runtime, license: licenseOf(name) }))
-const all = [
-  ...rows(Object.keys(manifest.dependencies ?? {}), true),
-  ...rows(Object.keys(manifest.devDependencies ?? {}), false),
-]
+    .map((name) => ({
+      name,
+      runtime: atRuntime,
+      license: licenseOf(name, declaredIn(name)),
+    }))
+const all = [...rows(runtime, true), ...rows(build, false)]
 
 const table = [
   '| Package | Used at runtime | License |',

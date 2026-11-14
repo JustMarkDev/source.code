@@ -1,0 +1,133 @@
+---
+icon: ArrowPathIcon
+title: 'Writes: retries, edits and long work'
+description: Idempotency keys, If-Match, landing only what was checked, dry runs, operations and batch.
+---
+
+Networks fail halfway. Every write here is either naturally repeatable or made repeat-safe with a key; secret-bearing responses are the exception and must not be retried blindly. Each write says which it is.
+
+## Idempotency keys
+
+Send `Idempotency-Key` on any write except operations whose response contains a secret; those answer `400` rather than storing the key. The first request runs. A repeat with the same key and the same request returns the first answer, with `Sx-Replayed: true`, and does nothing.
+
+```bash
+curl -X POST "$SX/repos/dana/gitfs/issues" \
+  -H "Authorization: Bearer $SX_TOKEN" -H "Content-Type: application/json" \
+  -H "Idempotency-Key: c1f0e7a2-5b1d-4f3a-9a7c-2d6e8b0f4a11" \
+  -d '{"title":"Crash on empty repo"}'
+```
+
+| Situation                                                              | Result                                                                            |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Same key, same request                                                 | The stored response, `Sx-Replayed: true`                                          |
+| Same key, the same conditional update with `If-Match`                  | Re-checked against the current ETag; a stale one gets `412 version_mismatch`      |
+| Same key, the same update with `If-Match: *`                           | Replayed with `Sx-Replayed: true`; a wildcard is not a concrete precondition      |
+| Same key, a different request                                          | `422 idempotency_key_reused`                                                      |
+| Same key while the first is still running                              | `409 request_in_progress` with `Retry-After`. Send it again.                      |
+| The first request failed and changed nothing                           | The key is free again. A corrected retry runs.                                    |
+| The first request changed something, then failed or its server stopped | `409 request_outcome_unknown` (on Convex). It does not run again; read the object |
+| The first request's server stopped before it changed anything          | `409 request_in_progress` for up to 10 minutes (on Convex), then the retry runs   |
+
+Keys are scoped to the account the request acts as and to the token; a repository-limited token keeps its key across a rename. They are up to 64 characters and kept 24 hours. Use a UUID per intended action, and keep it across retries of that action.
+
+In the preview the keys are held in memory, bounded to 100,000 keys or 24 MB of responses, oldest first. With `CONVEX_URL` and `API_STORE_SECRET` set they are kept in Convex instead, shared by every API node, so a retry may land on a different node: the first request claims the key in one transaction, a repeat while it runs answers `409 request_in_progress` and should be sent again, and a repeat after it finishes gets the stored response. If that store cannot be reached a write that carries a key is refused with `backend_unavailable` rather than risked. Each write made under the key also marks it, in the write's own transaction, so a crash cannot leave a change without its key: a request whose server stopped after it wrote never runs again, and one that stopped before writing runs again once its 10-minute lease ends. The store is an interface (`IdempotencyStore`).
+
+### Some writes are idempotent by nature
+
+These need no key. `Sx-Outcome` says what happened.
+
+| Write                              | Repeating it                                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `POST …/changes` for a branch      | Adds a patch set if the branch moved (`patch_set_added`), otherwise returns the same change (`unchanged`) |
+| `POST …/issues` with an open title | Returns the existing issue (`unchanged`)                                                                  |
+| `POST …/changes/{n}/checks`        | The same `key` on the same `tree` updates one run: `created`, `updated`, `unchanged`                      |
+| Resolving or dismissing a finding  | Already in that state: returns it                                                                         |
+
+## Editing without overwriting someone else
+
+Every editable object has a `version` and an `ETag` like `W/"17-…"`. Send it as `If-Match` on `PATCH`:
+
+```bash
+curl -X PATCH "$SX/repos/dana/gitfs/issues/4" -H "If-Match: W/\"1-…\"" -d '{"title":"…"}' …
+```
+
+If it changed since you read it, you get `412 version_mismatch` and the **current object** in `current`, so you can merge and send again. It is optional for low-risk fields and standard HTTP, so any client library already knows it.
+
+## Landing exactly what was reviewed
+
+A policy decision is about one tree. `POST …/land` requires `expected_tree`, the tree you checked. If the change has moved:
+
+```json
+{
+  "code": "stale_head",
+  "detail": "#216 is now at 9c4d7e1, not 5d02b8f.",
+  "current": { "patch_set": 3, "tree": "9c4d7e1", "sha": "9c4d7e1000…" }
+}
+```
+
+Nothing lands. Read the change again, check the new tree, and send that one. This is what protects an agent that read a change a minute ago.
+
+Approvals and evidence follow a rewrite only when the code did not change. A patch set added with `kind: rebase` keeps them. One added with `kind: update` does not count earlier approvals for the new head, and CI has to report on the new tree. A check for an older tree is stored and ignored.
+
+## Dry run
+
+Add `?dry_run=true` to a write that supports it (the reference marks them). The request runs through every check, validation, scopes, policy and conflicts, then stops before changing anything.
+
+- It succeeds with what the real call would return and `Sx-Dry-Run: true`, or
+- it fails with the exact error the real call would give.
+
+```bash
+curl -X POST "$SX/repos/dana/gitfs/changes/216/land?dry_run=true" -d '{"expected_tree":"9c4d7e1"}' …
+```
+
+Because it is the same code path, a dry run that passes is a good reason to expect the real call to pass. It cannot promise it: something can change between the two. That is what `expected_tree` and `If-Match` are for.
+
+## Long-running work
+
+Anything that can take more than a few seconds returns `202` with a `Location` and an operation, instead of holding the connection.
+
+```json
+{
+  "object": "operation",
+  "id": "op_01m6…",
+  "kind": "stack.land",
+  "state": "running",
+  "progress": { "done": 1, "total": 3 },
+  "result": null,
+  "error": null,
+  "url": "https://api.source.code/v1/operations/op_01m6…"
+}
+```
+
+`state` is `queued`, `running`, `succeeded`, `failed` or `canceled`. When it finishes, `result` is a stub of what it made and `error` is a full [error](/docs/api/errors) object. Landing a stack is the first one: it lands bottom first, rebases the changes above onto each result, and stops at the first one policy refuses.
+
+Don't poll in a loop. Hold the request until it changes:
+
+```bash
+curl -H "If-None-Match: <etag from the last read>" "$SX/operations/op_01m6…?wait=20" …
+```
+
+A finished operation also produces an `operation.finished` [event](/docs/api/events-and-sync).
+
+## Several requests in one
+
+`POST /v1/batch` takes up to 25 requests, runs them in parallel and returns each answer with its own status. Each request is authorised and rate limited as if it had been sent alone. Batches do not nest.
+
+```json
+{
+  "requests": [
+    {
+      "id": "change",
+      "method": "GET",
+      "path": "/repos/dana/gitfs/changes/216?fields=number,title,policy"
+    },
+    {
+      "id": "checks",
+      "method": "GET",
+      "path": "/repos/dana/gitfs/changes/216/checks"
+    }
+  ]
+}
+```
+
+It exists to cut round trips: a change, its policy and its checks in one. Writes in a batch are separate writes. An all-or-nothing batch is on the [roadmap](/docs/api/roadmap).

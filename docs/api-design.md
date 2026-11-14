@@ -1,18 +1,17 @@
 # API design record
 
 2026-11-07. This is the reasoning behind the API, the evidence it rests on and
-what is still open. The contract itself is in `content/docs/api/`; this file
-says why it is that way. The code is `src/lib/api/` (read its README to change
+what is still open. The contract itself is in `apps/web/content/docs/api/`; this file
+says why it is that way. The code is `packages/api/src/` (read its README to change
 it).
 
-Status: built and tested on sample data. 102 operations: OAuth 2.1, tokens,
+Status: built and tested on sample data. 192 operations: OAuth 2.1, tokens,
 webhooks, search, uploads and evidence, repository rename/edit/delete, teams,
-agent runs, git data, `Accept: text/markdown`, a generated TypeScript client.
+agent runs, git data, labels and issue comments, `Accept: text/markdown`, a generated TypeScript client.
 `sx` and the MCP server are clients of the API. Rate limits and idempotency
 keys also exist on Convex, tested against Convex's in-memory runtime. Types,
 lint (`--max-warnings 0`) and the whole test suite are green. Not built: the
-domain on Convex, a shared event log, shared token and OAuth state, and a real
-sign-in (the app's own is still a mock). See `content/docs/api/roadmap.mdx`.
+domain on Convex, a shared event log, and shared token and OAuth state. See `apps/web/content/docs/api/roadmap.mdx`.
 
 ## Goal
 
@@ -23,7 +22,7 @@ two goals conflict, stable beats clever, and readable beats terse.
 ## Evidence
 
 Read in the vendors' own documentation on 6 and 7 November 2026; each fact with
-its link is in `content/docs/api/compared.mdx`. What shaped the design:
+its link is in `apps/web/content/docs/api/compared.mdx`. What shaped the design:
 
 - **GitHub** publishes its secondary limits (100 concurrent requests, 900
   points a minute) but also says some endpoint costs are "not shared
@@ -121,7 +120,7 @@ node. The built design:
 - **Anonymous limits key on the address our proxy appended**, not the start of
   `X-Forwarded-For`, which a client controls. Tested.
 - **Built, on Convex:** the rate-limit store and the idempotency store
-  (`convex/apiStores.ts`, `src/lib/api/stores/convex.ts`). One mutation per
+  (`convex/apiStores.ts`, `packages/api/src/stores/convex.ts`). One mutation per
   lease or per key, so the database orders nodes. Verified with convex-test:
   never over the limit, twenty simultaneous asks for fifty units grant exactly
   fifty, two nodes racing for one key yield one `new`. Failure rules: an
@@ -136,7 +135,7 @@ node. The built design:
 
 ## Measured
 
-Three kinds of evidence, all in `content/docs/api/performance.mdx` with their
+Three kinds of evidence, all in `apps/web/content/docs/api/performance.mdx` with their
 method and caveats.
 
 **Our code, in process** (`bun scripts/api-bench.ts`, Apple M5, one server
@@ -197,11 +196,11 @@ above.
 
 ## Open
 
-- The domain on Convex, and the other shared stores (event log with waiters,
-  tokens, OAuth state). Idempotency's "in the same transaction as the write"
-  holds only once the domain is on Convex.
-- Real sign-in for the consent page. The app's auth is a localStorage mock
-  until Better Auth lands; the OAuth server needs one `SessionProvider`.
+- Sign-in is real (Better Auth on Convex, `convex/auth.ts`), and the consent
+  page uses the same session (`apps/web/src/lib/api/sessions.ts`). Open: email
+  verification and reset by email, other providers, and accounts in the
+  domain. Until then a signed-in person is added to the sample domain when
+  first seen, and a changed address is a new person there.
 - Bots and installs management, git branches/tags/compare/blame/archive and
   history beyond 1,000 commits, transfers, labels, releases, notifications.
 - A multi-node benchmark against a live Convex deployment.
