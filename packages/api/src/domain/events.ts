@@ -1,7 +1,14 @@
 import { seededId } from '../ids'
+import { runIdOf } from '../trailers'
 import type { EventRecord } from '../events'
 import type { Principal } from '../auth'
-import type { ActorClass, ActorRec, ChangeRec, RepoRec } from './records'
+import type {
+  ActorClass,
+  ActorRec,
+  ChangeRec,
+  RepoRec,
+  ViaRec,
+} from './records'
 import { DomainPresent } from './present'
 
 /** Every mutation writes one event; these build and emit it. */
@@ -29,6 +36,36 @@ export abstract class DomainEvents extends DomainPresent {
 
   protected asActor(p: Principal): ActorRec {
     return this.actorFor(p.handle, p.class)
+  }
+
+  /**
+   * Which run a write comes from, and the kind of token it used. A run token
+   * carries its run, so a client sends nothing for this.
+   */
+  protected viaOf(p: Principal): ViaRec {
+    const kind = this.memAuth.get(p.tokenId)?.kind ?? 'session'
+    if (kind !== 'run') return { run: null, tokenKind: kind }
+    for (const r of this.runs.values())
+      if (r.tokenId === p.tokenId) return { run: r.id, tokenKind: 'run' }
+    return { run: null, tokenKind: 'run' }
+  }
+
+  /**
+   * The same, for a commit: a run token's run wins; otherwise a `Run-Id:`
+   * trailer counts when it names a run of the caller's in this repository.
+   */
+  protected viaOfCommit(
+    repo: RepoRec,
+    p: Principal,
+    message: string | undefined,
+  ): ViaRec {
+    const via = this.viaOf(p)
+    const named = via.run ? null : runIdOf(message ?? '')
+    if (!named) return via
+    const r = this.runs.get(named)
+    return r && r.repo === `${repo.owner}/${repo.name}` && r.handle === p.handle
+      ? { ...via, run: r.id }
+      : via
   }
 
   /**
@@ -73,6 +110,7 @@ export abstract class DomainEvents extends DomainPresent {
     type: string,
     by: ActorRec,
     changes: Array<string>,
+    extra?: Record<string, unknown>,
   ) {
     repo.changeRev++
     this.emit(
@@ -81,7 +119,7 @@ export abstract class DomainEvents extends DomainPresent {
       by,
       { object: 'change', id: c.id, number: c.number },
       changes,
-      this.presentChange(repo, c, 'event'),
+      { ...this.presentChange(repo, c, 'event'), ...extra },
     )
   }
 }

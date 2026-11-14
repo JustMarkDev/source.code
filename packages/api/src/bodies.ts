@@ -59,6 +59,61 @@ export const bodies = {
       .describe(
         'A comment to answer; `file`, `line` and `patch_set` follow it',
       ),
+    quote: z
+      .string()
+      .min(1)
+      .max(4000)
+      .optional()
+      .describe(
+        'The text the comment is about, starting on `line`. Without it, the line itself. The comment follows this text into newer patch sets',
+      ),
+  }),
+  'changes.guide.put': z.strictObject({
+    summary: z.string().trim().min(1).max(4000),
+    order: z
+      .array(
+        z.strictObject({
+          path: z.string().min(1).max(1000),
+          why: z.string().max(1000).default(''),
+          risk: z.enum(['low', 'medium', 'high']).default('low'),
+        }),
+      )
+      .min(1)
+      .max(500)
+      .describe('Files of the newest patch set, each once, in reading order'),
+    patch_set: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe('The patch set it is for. Default: the newest'),
+  }),
+  'presence.put': z.strictObject({
+    session: z
+      .string()
+      .min(8)
+      .max(128)
+      .describe(
+        'One per open tab or agent process, so two of yours count once and leaving one leaves only it',
+      ),
+    path: z
+      .string()
+      .min(1)
+      .max(1000)
+      .nullable()
+      .default(null)
+      .describe('The file you have open'),
+    leave: z
+      .boolean()
+      .default(false)
+      .describe('Leave now instead of once the heartbeats stop'),
+  }),
+  'changes.seen.put': z.strictObject({
+    paths: z.array(z.string().min(1).max(1000)).min(1).max(500),
+    seen: z
+      .boolean()
+      .default(true)
+      .describe('False takes the mark off, so the files read as unseen'),
   }),
   'change_comments.update': z.strictObject({
     body: z.string().trim().min(1).max(65536).optional(),
@@ -89,6 +144,71 @@ export const bodies = {
     from: z.array(z.string()).max(20).optional(),
     max_lines: z.number().int().min(1).max(100000).optional(),
     mode: mode.optional(),
+  }),
+  'policy.proposals.create': z.strictObject({
+    edits: z
+      .array(
+        z.discriminatedUnion('op', [
+          z.strictObject({
+            op: z.literal('set_mode'),
+            rule: z.string(),
+            mode,
+          }),
+          z.strictObject({
+            op: z.literal('create_rule'),
+            id: z
+              .string()
+              .regex(
+                /^[a-z0-9][a-z0-9-]{1,39}$/,
+                'Lowercase letters, digits and dashes',
+              ),
+            name: z.string().trim().min(1).max(100),
+            kind: z.enum(['required_check', 'path_approval', 'max_lines']),
+            check: z.string().min(1).max(100).optional(),
+            paths: z
+              .array(z.string().min(1).max(200))
+              .min(1)
+              .max(20)
+              .optional(),
+            approvals: z.number().int().min(1).max(5).optional(),
+            from: z.array(z.string()).max(20).optional(),
+            max_lines: z.number().int().min(1).max(100000).optional(),
+            mode: mode.optional(),
+          }),
+          z.strictObject({ op: z.literal('delete_rule'), rule: z.string() }),
+          z.strictObject({
+            op: z.literal('add_exception'),
+            rule: z.string(),
+            who: z.string(),
+            reason: z.string().min(1).max(500),
+            expires_at: z.iso.datetime(),
+          }),
+          z.strictObject({
+            op: z.literal('remove_exception'),
+            exception: z.string(),
+          }),
+          z.strictObject({
+            op: z.literal('set_landing'),
+            strategy: z.enum(['squash', 'rebase', 'merge']).optional(),
+            fresh_approvals: z.boolean().optional(),
+            resolve: z.enum(['author', 'any_reviewer']).optional(),
+            steps: z
+              .array(
+                z.union([
+                  z.strictObject({
+                    wait_checks: z.array(z.string().min(1).max(100)).min(1),
+                  }),
+                  z.strictObject({ run_pipeline: z.string().min(1).max(100) }),
+                  z.strictObject({ webhook: z.url().startsWith('https://') }),
+                ]),
+              )
+              .max(20)
+              .optional(),
+          }),
+        ]),
+      )
+      .min(1)
+      .max(50),
   }),
   'policy.add_exception': z.strictObject({
     rule: z.string(),

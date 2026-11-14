@@ -2,6 +2,7 @@ import { Effect } from 'effect'
 import { z } from 'zod'
 import { bodies } from '../bodies'
 import { Domain, defineOp, reply } from '../registry'
+import type { Reply } from '../registry'
 import * as S from '../schemas'
 import { changeMarkdown } from '../markdown'
 import {
@@ -182,10 +183,29 @@ export const createChange = defineOp({
       .string()
       .regex(/^[0-9a-f]{7,40}$/)
       .optional(),
+    message: z
+      .string()
+      .max(65536)
+      .optional()
+      .describe(
+        "The head commit's message. A `Run-Id:` trailer in it names the run that made the commit, when the token is not that run's own",
+      ),
+    addresses: z
+      .array(
+        z.strictObject({
+          comment: z.string().describe('The `cmt_` id that starts a thread'),
+          note: z.string().max(2000).optional(),
+        }),
+      )
+      .max(100)
+      .optional()
+      .describe(
+        'When this adds a patch set: the review threads it answers, marked in the same write',
+      ),
   }),
   response: S.Change,
   status: 201,
-  errors: ['not_found', 'forbidden', 'moved'],
+  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
@@ -323,6 +343,18 @@ export const createPatchSet = defineOp({
       .optional()
       .describe(
         'Edited files, whole, by path; null deletes. Only files the change already touches. The patch set is the head with these on top, and its commit id is a hash of the result',
+      ),
+    addresses: z
+      .array(
+        z.strictObject({
+          comment: z.string().describe('The `cmt_` id that starts a thread'),
+          note: z.string().max(2000).optional().describe('What changed'),
+        }),
+      )
+      .max(100)
+      .optional()
+      .describe(
+        'Review threads this patch set answers. They are marked addressed in the same write and their authors are told; they stay open until someone resolves them',
       ),
   }),
   response: S.PatchSet,
@@ -771,7 +803,7 @@ export const landChange = defineOp({
   id: 'changes.land',
   summary: 'Land a change',
   description:
-    'Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting.',
+    'Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting. When the policy file has landing steps after the change lands, it answers `202` with the operation that lands it and runs them.',
   tags: ['changes'],
   method: 'POST',
   path: '/repos/{owner}/{repo}/changes/{number}/land',
@@ -780,6 +812,11 @@ export const landChange = defineOp({
   safety: 'destructive',
   body: z.strictObject({ expected_tree: z.string().regex(/^[0-9a-f]{7,40}$/) }),
   response: S.Change,
+  accepted: {
+    response: S.Operation,
+    description:
+      'When the policy file has landing steps after the change lands (`run_pipeline`, `webhook`): the operation that lands it and runs them, one step at a time. Poll its `url`',
+  },
   errors: [
     'not_found',
     'forbidden',
@@ -792,7 +829,7 @@ export const landChange = defineOp({
   handler: (ctx) =>
     Effect.gen(function* () {
       const { run } = yield* Domain
-      return yield* run((d) =>
+      const out = yield* run((d) =>
         d.land(
           ctx.params.owner,
           ctx.params.repo,
@@ -802,6 +839,12 @@ export const landChange = defineOp({
           ctx.dryRun,
         ),
       )
+      if (!('operation' in out)) return out
+      // The operation's other answer (`accepted`), not its usual response.
+      return reply(out.operation, {
+        status: 202,
+        headers: { location: out.operation.url },
+      }) as unknown as Reply<never>
     }),
 })
 
@@ -990,6 +1033,46 @@ export const createReviewComment = defineOp({
     }),
 })
 
+export const addressReviewComment = defineOp({
+  ...write,
+  idempotent: true,
+  id: 'change_comments.address',
+  summary: 'Say which patch set answers a review thread',
+  description:
+    "Links a fix to the comment it answers. The thread's author is told, and the change page can show what changed in that comment's file between the patch set it was written on and the fix. It does not resolve the thread. Send `addresses` with a new patch set to push a fix and mark its threads in one write.",
+  tags: ['changes'],
+  method: 'POST',
+  path: '/repos/{owner}/{repo}/changes/{number}/comments/{comment}/address',
+  scopes: ['pulls:write'],
+  params: reviewCommentParams,
+  body: z.strictObject({
+    patch_set: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe('The patch set with the fix. Default: the newest'),
+    note: z.string().max(2000).optional().describe('What changed'),
+  }),
+  response: S.ChangeComment,
+  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) =>
+        d.addressReviewComment(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.params.comment,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
+      )
+    }),
+})
+
 export const updateReviewComment = defineOp({
   ...write,
   idempotent: true,
@@ -1055,7 +1138,133 @@ export const deleteReviewComment = defineOp({
     }),
 })
 
+export const getGuide = defineOp({
+  ...read,
+  id: 'changes.guide.get',
+  summary: "A change's guide",
+  description:
+    'What the change does and the order to read its files in, each with why and how risky. `current` is false when it was written for an older patch set.',
+  tags: ['changes'],
+  method: 'GET',
+  path: '/repos/{owner}/{repo}/changes/{number}/guide',
+  params: changeParams,
+  response: S.ChangeGuide,
+  errors: ['not_found', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) =>
+        d.getGuide(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+        ),
+      )
+    }),
+})
+
+export const putGuide = defineOp({
+  ...write,
+  idempotent: true,
+  id: 'changes.guide.put',
+  summary: 'Write the guide for a change',
+  description:
+    "For the agent or person who knows the change best: a summary and every file worth reading, in order, with why and how risky. It replaces the guide there was, and says which run wrote it when a run token wrote it. The change page's files follow its order.",
+  tags: ['changes'],
+  method: 'PUT',
+  path: '/repos/{owner}/{repo}/changes/{number}/guide',
+  scopes: ['pulls:write'],
+  params: changeParams,
+  body: bodies['changes.guide.put'],
+  response: S.ChangeGuide,
+  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) =>
+        d.putGuide(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal,
+          ctx.body,
+          ctx.dryRun,
+        ),
+      )
+    }),
+})
+
+const seenBase = {
+  auth: 'required' as const,
+  scopes: ['pulls:read' as const],
+  tags: ['changes'],
+  params: changeParams,
+  response: S.ChangeSeen,
+}
+
+export const getSeen = defineOp({
+  ...seenBase,
+  id: 'changes.seen.get',
+  summary: 'Which files of a change you have seen',
+  description:
+    'Yours alone. A file counts as seen while it is the same as when you marked it; a newer patch set that changes it says `changed_since` instead.',
+  method: 'GET',
+  path: '/repos/{owner}/{repo}/changes/{number}/seen',
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  errors: ['not_found', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      const out = yield* run((d) =>
+        d.changeSeen(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal!,
+        ),
+      )
+      return reply(out, { headers: { 'cache-control': 'private, no-store' } })
+    }),
+})
+
+export const putSeen = defineOp({
+  ...seenBase,
+  id: 'changes.seen.put',
+  summary: 'Mark files of a change as seen',
+  description:
+    'For a reviewer working through a change file by file, and for an agent or the CLI keeping track the same way. The mark is yours alone and changes nothing anyone else sees. It holds for the files as they are at the newest patch set.',
+  method: 'PUT',
+  path: '/repos/{owner}/{repo}/changes/{number}/seen',
+  pool: 'write',
+  safety: 'write',
+  idempotent: true,
+  dryRun: true,
+  body: bodies['changes.seen.put'],
+  errors: ['not_found', 'invalid_request', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) =>
+        d.setSeen(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.number,
+          ctx.principal!,
+          ctx.body,
+          ctx.dryRun,
+        ),
+      )
+    }),
+})
+
 export const changeOps = [
+  getGuide,
+  putGuide,
+  getSeen,
+  putSeen,
   patchSetFiles,
   listChanges,
   getChange,
@@ -1068,6 +1277,7 @@ export const changeOps = [
   createReview,
   listReviewComments,
   createReviewComment,
+  addressReviewComment,
   updateReviewComment,
   deleteReviewComment,
   listFindings,

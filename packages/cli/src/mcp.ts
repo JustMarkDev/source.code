@@ -65,6 +65,24 @@ export function createSxMcpServer(
     cb: (a: unknown) => Promise<CallToolResult>,
   ) => void
 
+  /**
+   * While an agent works on a change, it is in that change's room, so the
+   * people reviewing it see it there. One heartbeat per change per interval,
+   * sent before the call and never in its way.
+   */
+  const lastBeat = new Map<string, number>()
+  const lookingAt = async (args: Array<string>) => {
+    const [group, sub] = args
+    const id = args.at(2) ?? ''
+    if (group !== 'change' || sub === 'presence' || !/^#?\d+$/.test(id)) return
+    const at = args.indexOf('-R')
+    const where = at >= 0 ? ['-R', args[at + 1]] : []
+    const key = `${where.join(' ')}#${id}`
+    if (Date.now() - (lastBeat.get(key) ?? 0) < 15_000) return
+    lastBeat.set(key, Date.now())
+    await sx(['change', 'presence', id, '--here', ...where], options.client)
+  }
+
   const tool = <TShape extends z.ZodRawShape>(
     name: string,
     description: string,
@@ -87,10 +105,9 @@ export function createSxMcpServer(
         },
       },
       async (a: unknown): Promise<CallToolResult> => {
-        const r = await sx(
-          argv(a as z.infer<z.ZodObject<TShape>>),
-          options.client,
-        )
+        const args = argv(a as z.infer<z.ZodObject<TShape>>)
+        await lookingAt(args)
+        const r = await sx(args, options.client)
         if (
           r.code === 0 ||
           (hint.allowExit?.includes(r.code) && r.out.trim() !== '')
@@ -141,13 +158,17 @@ export function createSxMcpServer(
   )
   tool(
     'create_change',
-    'Create a change from a branch. Calling it again for the same branch adds a patch set instead of a duplicate.',
+    'Create a change from a branch. Calling it again for the same branch adds a patch set instead of a duplicate. When it adds a patch set, `addresses` names the review threads it fixes (comment ids that start a thread): they are marked addressed in the same write and their authors are told. Addressed is not resolved.',
     {
       repo: repoArg,
       branch: z.string(),
       title: z.string(),
       draft: z.boolean().optional(),
       base: z.string().optional(),
+      addresses: z
+        .array(z.string())
+        .optional()
+        .describe('Comment ids (cmt_…) of the threads this patch set fixes.'),
       dry_run: dryArg,
     },
     (a) => [
@@ -159,6 +180,60 @@ export function createSxMcpServer(
       a.title,
       ...(a.draft ? ['--draft'] : []),
       ...(a.base ? ['--base', a.base] : []),
+      ...(a.addresses?.length ? ['--addresses', a.addresses.join(',')] : []),
+      ...repo(a),
+      ...dry(a),
+    ],
+    { idempotent: true },
+  )
+  tool(
+    'get_timeline',
+    'The whole story of a change or an issue in one call, oldest first: patch sets, review comments, reviews, findings, checks, evidence, the notes of the agent runs that worked on it, state changes and, for an issue, the changes that fix it. Each entry names the run that made it.',
+    {
+      repo: repoArg,
+      kind: z.enum(['change', 'issue']),
+      id: z.string().describe('The change or issue number, like 216.'),
+    },
+    (a) => [a.kind, 'timeline', a.id, ...repo(a)],
+    { readOnly: true },
+  )
+  tool(
+    'get_presence',
+    'Who else has a change or an issue open right now, people and agents, and the file each is on. Working on a change through these tools puts you in its room too.',
+    {
+      repo: repoArg,
+      kind: z.enum(['change', 'issue']),
+      id: z.string().describe('The change or issue number, like 216.'),
+    },
+    (a) => [a.kind, 'presence', a.id, ...repo(a)],
+    { readOnly: true },
+  )
+  tool(
+    'write_change_guide',
+    'Write the guide reviewers read a change by: a summary, then every file worth reading in order, each with why and how risky. It replaces the guide there was, and records the run that wrote it. Call it after pushing a patch set you know well.',
+    {
+      repo: repoArg,
+      id: z.string().describe('Change number, like 216.'),
+      summary: z.string().describe('What the change does, for a reviewer.'),
+      order: z
+        .array(
+          z.object({
+            path: z.string(),
+            why: z.string().describe('Why to read it, and what to look for.'),
+            risk: z.enum(['low', 'medium', 'high']),
+          }),
+        )
+        .describe(
+          'Files of the newest patch set, each once, in reading order.',
+        ),
+      dry_run: dryArg,
+    },
+    (a) => [
+      'change',
+      'guide',
+      a.id,
+      '--set',
+      JSON.stringify({ summary: a.summary, order: a.order }),
       ...repo(a),
       ...dry(a),
     ],
@@ -375,7 +450,7 @@ export function createSxMcpServer(
     'call_operation',
     {
       description:
-        'Run any API operation by id, as the token this server holds. Path and query parameters go in params, the request in body. A destructive operation needs confirm: true unless dry_run is set. Answers {status, data}; a refusal carries the API error code and hint.',
+        'Run any API operation by id, as the token this server holds. Path and query parameters go in params, the request in body. A destructive operation needs confirm: true unless dry_run is set. Answers {status, data}; a refusal carries the API error code and hint. A policy write (policy.*) in a repository whose rules live in .source/policy/ answers status 202 with a policy_proposal: a change waiting for review, not applied. Report its change number; do not retry.',
       inputSchema: {
         id: z.string().describe('The operation id from search_operations.'),
         params: z

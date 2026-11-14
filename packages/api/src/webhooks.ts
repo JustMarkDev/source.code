@@ -312,6 +312,8 @@ export interface HookPort {
     q: { state?: Delivery['state']; before: number; limit: number },
   ) => MaybePromise<Array<Delivery>>
   ping: (hook: Hook) => MaybePromise<Delivery>
+  /** One event to one webhook, whatever it subscribes to: a landing's webhook step. */
+  deliver: (hook: Hook, event: EventRecord) => MaybePromise<Delivery>
   redeliver: (hook: Hook, d: Delivery) => MaybePromise<Delivery>
   replay: (
     hook: Hook,
@@ -595,6 +597,10 @@ export class WebhookService implements HookPort {
 
   redeliver(hook: Hook, d: Delivery) {
     return this.enqueue(hook, d.event, d.id)
+  }
+
+  deliver(hook: Hook, event: EventRecord) {
+    return this.enqueue(hook, event, null)
   }
 
   /** Re-send every matching event after a sequence, for a receiver that was down. */

@@ -106,6 +106,8 @@ export async function presentRepo(
     website: x.website,
     docs_url: x.docsUrl,
     maintainers: [...x.maintainers].sort(),
+    transcripts: x.transcripts ?? 'off',
+    run_trailer: x.runTrailer ?? 'auto',
     open_changes: c.openChanges,
     open_issues: c.openIssues,
     url: repoUrl(x),

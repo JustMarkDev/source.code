@@ -3,6 +3,8 @@ import type { UploadRec } from '../uploads'
 import type { z } from 'zod'
 import type * as S from '../schemas'
 import { iso } from './records'
+import { DEFAULT_LANDING, policyFileCheck } from '../policy-file'
+import { presentSteps } from '../landing'
 import type {
   AccountRec,
   ActorRec,
@@ -156,6 +158,8 @@ export abstract class DomainPresent extends DomainAccess {
       website: r.website,
       docs_url: r.docsUrl,
       maintainers: [...r.maintainers].sort(),
+      transcripts: r.transcripts ?? 'off',
+      run_trailer: r.runTrailer ?? 'auto',
       open_changes: openChanges,
       open_issues: openIssues,
       url: this.repoUrl(r),
@@ -275,7 +279,12 @@ export abstract class DomainPresent extends DomainAccess {
     const head = this.head(c)
     const out: Array<Requirement> = []
 
-    const reviews = this.latestReviews(c)
+    // With fresh approvals, an approval holds only on the patch set it was
+    // given on, even when a rebase left the tree the same.
+    const fresh = (repo.landing ?? DEFAULT_LANDING).fresh_approvals
+    const reviews = this.latestReviews(c).map((r) =>
+      fresh && r.patchSet !== head.n ? { ...r, carries: false } : r,
+    )
     const humanApprovals = new Set<string>()
     for (const r of reviews)
       if (
@@ -408,6 +417,16 @@ export abstract class DomainPresent extends DomainAccess {
 
     for (const r of repo.customRules ?? [])
       out.push(this.evaluateCustomRule(r, c, assume, humanApprovals, lines))
+
+    // The rules protect themselves: a change to the policy folder needs a
+    // maintainer, and a file that reads. Not a rule a repository can turn off.
+    const policy = policyFileCheck(
+      head,
+      policyRules,
+      (h) => repo.maintainers.has(h),
+      [...humanApprovals],
+    )
+    if (policy) out.push(policy)
 
     // An exception for the author lets their change through a rule.
     return out.map((r) => {
@@ -585,6 +604,7 @@ export abstract class DomainPresent extends DomainAccess {
       url: `${this.repoUrl(repo)}/changes/${c.number}/findings/${f.id}`,
       suggestion: f.suggestion ?? null,
       prompt: f.prompt ?? null,
+      run: f.via?.run ?? null,
       created_at: iso(f.created),
     }
   }
@@ -787,6 +807,7 @@ export abstract class DomainPresent extends DomainAccess {
       url: `${this.urls.api}/operations/${o.id}`,
       created_at: iso(o.created),
       finished_at: o.finished ? iso(o.finished) : null,
+      steps: presentSteps(o.steps ?? [], iso),
     }
   }
 

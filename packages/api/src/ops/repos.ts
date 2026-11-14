@@ -230,6 +230,16 @@ export const updateRepo = defineOp({
     website: webAddress.nullable().optional(),
     docs_url: webAddress.nullable().optional(),
     install: z.string().min(1).max(200).nullable().optional(),
+    transcripts: z
+      .enum(['off', 'on'])
+      .optional()
+      .describe('Let agent runs attach their transcripts'),
+    run_trailer: z
+      .enum(['auto', 'on', 'off'])
+      .optional()
+      .describe(
+        'Keep the `Run-Id:` commit trailer. `auto`: in private repositories only',
+      ),
   }),
   response: S.Repo,
   errors: [

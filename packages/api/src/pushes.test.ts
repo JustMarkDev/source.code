@@ -92,3 +92,54 @@ test('a wrong, missing or stale signature is refused', async () => {
   ).toBe(401)
   expect((await post(signed(body))).status).toBe(200)
 })
+
+test("a push whose commit names a run in its Run-Id trailer is that run's", async () => {
+  const { t, storeId, change } = await setup()
+  const runId = await t.run(async (ctx) => {
+    const repo = (await ctx.db
+      .query('repos')
+      .withIndex('by_storeId', (q) => q.eq('storeId', storeId))
+      .unique())!
+    await ctx.db.insert('runs', {
+      publicId: 'run_trailer0001',
+      repoId: repo._id,
+      repo: `${repo.owner}/${repo.name}`,
+      task: 'Push from a run',
+      state: 'running',
+      handle: 'dana',
+      change: change.number,
+      scopes: ['repo:read'],
+      tokenId: 'tok_trailer0001',
+      notes: [],
+      summary: null,
+      started: Date.now(),
+      expires: Date.now() + 3_600_000,
+      finished: null,
+      version: 1,
+    })
+    return 'run_trailer0001'
+  })
+  const body = JSON.stringify({
+    ...JSON.parse(push(storeId, `refs/heads/${change.branch}`, 'c'.repeat(40))),
+    head_commit: {
+      message: `Fix it\n\nChange-Id: I1234\nRun-Id: ${runId}\n`,
+    },
+  })
+  const res = await t.fetch('/hooks/code-storage', {
+    method: 'POST',
+    headers: { 'x-pierre-signature': signed(body), 'x-pierre-event': 'push' },
+    body,
+  })
+  expect(await res.text()).toBe('patch_set_added')
+  const rows = await t.run(async (ctx) => {
+    const run = (await ctx.db
+      .query('runs')
+      .withIndex('by_publicId', (q) => q.eq('publicId', runId))
+      .unique())!
+    return await ctx.db
+      .query('runPatchSets')
+      .withIndex('by_runId', (q) => q.eq('runId', run._id))
+      .take(10)
+  })
+  expect(rows.map((r) => r.patchSet)).toEqual([change.patchSets.length + 1])
+})

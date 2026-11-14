@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import type { ProposalEditBody } from '../policy-proposals'
 import type { Principal, Scope } from '../auth'
 import type { CursorPosition, Page } from '../cursor'
 import type { EventLog } from '../events'
@@ -6,6 +7,9 @@ import type { Pre } from '../registry'
 import type * as S from '../schemas'
 import type { SearchDoc } from '../search'
 import type { UploadRec } from '../uploads'
+import type { TranscriptRec } from '../transcripts'
+import type { RunUpdate } from './runs'
+import type { GuideBody } from '../guides'
 import type {
   Assume,
   Attached,
@@ -19,6 +23,21 @@ import type {
 } from './records'
 
 type Out<TSchema extends z.ZodType> = z.output<TSchema>
+
+/** What the forge knows about where a line came from. */
+export type ProvenanceFacts = {
+  change: {
+    number: number
+    title: string
+    state: Out<typeof S.Change>['state']
+    url: string
+    html_url: string
+  } | null
+  patch_set: number | null
+  run: Out<typeof S.Run> | null
+  /** The line was already on the change's base, this branch: blame it there. */
+  on_base: string | null
+}
 
 type Dry = boolean
 type IfMatch = string | null
@@ -226,6 +245,8 @@ export interface DomainPort {
       website?: string | null
       docs_url?: string | null
       install?: string | null
+      transcripts?: 'off' | 'on'
+      run_trailer?: 'auto' | 'on' | 'off'
     },
     ifMatch: IfMatch,
     dry: Dry,
@@ -369,6 +390,38 @@ export interface DomainPort {
     summary: string | undefined,
     dry: Dry,
   ) => Promise<Out<typeof S.Run>>
+  updateRun: (
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    body: RunUpdate,
+    dry: Dry,
+  ) => Promise<Out<typeof S.Run>>
+  /**
+   * Checks a transcript may be attached to a run (404, 403, 409
+   * transcripts_disabled) and answers where it goes and the one it replaces.
+   */
+  transcriptTarget: (
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+  ) => Promise<{ full: string; repoId: string; previous: string | null }>
+  attachTranscript: (
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    t: TranscriptRec,
+    dry: Dry,
+  ) => Promise<Out<typeof S.Run>>
+  runTranscript: (
+    owner: string,
+    name: string,
+    id: string,
+    p: Viewer,
+  ) => Promise<TranscriptRec>
   getOperation: (id: string, p: Viewer) => Promise<Out<typeof S.Operation>>
   operationVersion: (id: string, p: Viewer) => Promise<string | null>
   /** The repository an operation belongs to, for waiting on it. Unchecked. */
@@ -572,6 +625,23 @@ export interface DomainPort {
     p: Viewer,
   ) => Promise<Out<typeof S.PolicySet>>
   policySetVersion: (owner: string, name: string, p: Viewer) => Promise<string>
+  /** Whether the rules live in the policy file, so writes propose. */
+  policyInFile: (owner: string, name: string, p: Viewer) => Promise<boolean>
+  /** Edits to the rules as a change to the policy file. */
+  proposePolicy: (
+    owner: string,
+    name: string,
+    p: Viewer,
+    edits: Array<ProposalEditBody>,
+    dry: Dry,
+  ) => Promise<Out<typeof S.PolicyProposal>>
+  /** What stops a change from landing now, and how it will land. */
+  landability: (
+    owner: string,
+    name: string,
+    ref: string,
+    p: Viewer,
+  ) => Promise<Out<typeof S.Landability>>
   setRuleMode: (
     owner: string,
     name: string,
@@ -935,6 +1005,68 @@ export interface DomainPort {
     p: Viewer,
     expand?: ReadonlyArray<string>,
   ) => Promise<string>
+  /**
+   * Where a line came from: in a change (`change`), the patch set that wrote
+   * it; for a commit git blamed (`sha`), the change and patch set it landed
+   * through. Either way, the run that made that patch set.
+   */
+  provenance: (
+    owner: string,
+    name: string,
+    p: Viewer,
+    q: { path: string; line: number; change?: number; sha?: string },
+  ) => Promise<ProvenanceFacts>
+  getGuide: (
+    owner: string,
+    name: string,
+    ref: string,
+    p: Viewer,
+  ) => Promise<Out<typeof S.ChangeGuide>>
+  putGuide: (
+    owner: string,
+    name: string,
+    ref: string,
+    p: Viewer,
+    body: GuideBody,
+    dry: Dry,
+  ) => Promise<Out<typeof S.ChangeGuide>>
+  /** Which files of a change the caller has seen as they are now. */
+  changeSeen: (
+    owner: string,
+    name: string,
+    ref: string,
+    p: Principal,
+  ) => Promise<Out<typeof S.ChangeSeen>>
+  setSeen: (
+    owner: string,
+    name: string,
+    ref: string,
+    p: Principal,
+    body: { paths: Array<string>; seen: boolean },
+    dry: Dry,
+  ) => Promise<Out<typeof S.ChangeSeen>>
+  /** Who is looking at a change or an issue now. */
+  presence: (
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Principal,
+  ) => Promise<Out<typeof S.Presence>>
+  /** The caller is looking at it (or has left), then who is. */
+  heartbeat: (
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Principal,
+    body: { session: string; path: string | null; leave: boolean },
+  ) => Promise<Out<typeof S.Presence>>
+  /** Everything that happened to a change or an issue, oldest first. */
+  timeline: (
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Viewer,
+  ) => Promise<Array<Out<typeof S.TimelineEntry>>>
   createChange: (
     owner: string,
     name: string,
@@ -946,6 +1078,8 @@ export interface DomainPort {
       description?: string
       draft?: boolean
       sha?: string
+      message?: string
+      addresses?: Array<{ comment: string; note?: string }>
       dry_run?: boolean
     },
   ) => Promise<{
@@ -978,7 +1112,8 @@ export interface DomainPort {
     p: Viewer,
     body: { expected_tree: string },
     dry: Dry,
-  ) => Promise<Out<typeof S.Change>>
+    /** The landed change; or, when the policy file has steps after landing, the operation that runs them. */
+  ) => Promise<Out<typeof S.Change> | { operation: Out<typeof S.Operation> }>
   /** Land a stack bottom-up as one long operation. */
   landStack: (
     owner: string,
@@ -1012,6 +1147,7 @@ export interface DomainPort {
       kind: 'update' | 'rebase'
       note?: string
       files?: Record<string, string | null>
+      addresses?: Array<{ comment: string; note?: string }>
     },
     dry: Dry,
   ) => Promise<Out<typeof S.PatchSet>>
@@ -1052,6 +1188,15 @@ export interface DomainPort {
     ref: string,
     p: Viewer,
   ) => Promise<string | null>
+  addressReviewComment: (
+    owner: string,
+    name: string,
+    ref: string,
+    id: string,
+    p: Viewer,
+    body: { patch_set?: number; note?: string },
+    dry: Dry,
+  ) => Promise<Out<typeof S.ChangeComment>>
   createReviewComment: (
     owner: string,
     name: string,
@@ -1063,6 +1208,7 @@ export interface DomainPort {
       line?: number
       patch_set?: number
       reply_to?: string
+      quote?: string
     },
     dry: Dry,
   ) => Promise<Out<typeof S.ChangeComment>>

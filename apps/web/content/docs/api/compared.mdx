@@ -58,7 +58,7 @@ We read the API documentation of GitHub, GitLab, Forgejo and Gitea, Bitbucket Cl
 This is a preview of an API on sample data. The others are in production.
 
 - **They are real.** GitHub, GitLab, Bitbucket and git.cafe run in production with real data. Ours serves a sample.
-- **Surface.** git.cafe publishes an OpenAPI document of about 2 MB, more than 50 webhook event types and, by its server card, 23 MCP tools. We have 192 operations and 24 event types.
+- **Surface.** git.cafe publishes an OpenAPI document of about 2 MB, more than 50 webhook event types and, by its server card, 23 MCP tools. We have 209 operations and 26 event types.
 - **Sign-in.** git.cafe also ships sign-in for agents without a registered client (its `auth.md`). We ship the authorization code flow, the device flow and dynamic registration, with real accounts behind the consent page, but only email and password to sign in with.
 - **GraphQL.** GitHub and GitLab have it. We chose not to, and a client that needs it today has to use `fields`, `expand`, `batch` and `sync`.
 - **Large diffs and runners.** Paging a large diff per file is not built, and the API hands pipeline jobs to runners but we do not run one yet. See the [roadmap](/docs/api/roadmap).

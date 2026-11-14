@@ -36,6 +36,7 @@ http.route({
       before?: unknown
       after?: unknown
       pushed_at?: unknown
+      head_commit?: { message?: unknown }
     }
     if (
       typeof p.repository?.id !== 'string' ||
@@ -52,6 +53,11 @@ http.route({
       before: p.before,
       after: p.after,
       pushedAt: Number.isNaN(at) ? Date.now() : at,
+      // The head commit's message, when the store sends it: its `Run-Id:`
+      // trailer names the run that made the commit.
+      ...(typeof p.head_commit?.message === 'string'
+        ? { message: p.head_commit.message.slice(0, 65536) }
+        : {}),
     })
     return new Response(result, { status: 200 })
   }),

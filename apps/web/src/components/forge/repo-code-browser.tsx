@@ -18,6 +18,7 @@ import {
 import { AboutPanel } from './repo-about'
 import { Who } from './repo-history'
 import { ReadmeCard } from './markdown'
+import { LineProvenance } from './line-provenance'
 import type { RepoDoc } from './markdown'
 import type { Repo } from '~/lib/model/data'
 import { codeTheme, useCodeOverflow } from '~/lib/highlight'
@@ -150,6 +151,8 @@ export function CodeBrowser({
   const paths = React.useMemo(() => tree.entries.map((e) => e.path), [tree])
   const [copied, setCopied] = React.useState(false)
   const [doc, setDoc] = React.useState<RepoDoc>('readme')
+  // The line whose story is open, from a click on its number.
+  const [why, setWhy] = React.useState<number | null>(null)
 
   const isFile = paths.includes(path)
   const isDir = !isFile && paths.some((p) => p.startsWith(`${path}/`))
@@ -304,7 +307,8 @@ export function CodeBrowser({
               {path.split('/').at(-1)}
             </span>
             <span className="text-xs text-muted-foreground">
-              {contents.split('\n').length} lines
+              {contents.split('\n').length} lines · click a line number to see
+              why it is here
             </span>
             <Button
               size="sm"
@@ -326,9 +330,17 @@ export function CodeBrowser({
                 theme: codeTheme(dark),
                 overflow,
                 disableFileHeader: true,
+                onLineNumberClick: ({ lineNumber }) => setWhy(lineNumber),
               }}
             />
           </div>
+          <LineProvenance
+            repo={repo}
+            path={path}
+            line={why}
+            gitRef={tree.ref}
+            onClose={() => setWhy(null)}
+          />
         </div>
       )}
 

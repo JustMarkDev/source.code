@@ -20,6 +20,9 @@ import { EvidenceSection, TestReport } from './evidence'
 import { slugOf } from './repo-shell'
 import { StateIcon, StatusCard } from './status-card'
 import { WorkWithAgent } from './work-with-agent'
+import { LandingCard, rememberLanding } from './landing-card'
+import { FileViewers, Viewers, useFileInView, usePresence } from './presence'
+import type { Viewer } from './presence'
 import type { TimelineEvent } from './change-timeline'
 import type { StatusItem } from './status-card'
 import type { Repo } from '~/lib/model/data'
@@ -38,7 +41,8 @@ import { Switch } from '~/components/ui/switch'
 import { StateTabs } from '~/components/ui/tabs'
 import { Select, SelectItem } from '~/components/ui/select'
 import { useIsDark } from '~/lib/theme'
-import { opQuery, useOp, useWrite } from '~/lib/forge'
+import { opQuery, useOp, useOpMaybe, useWrite } from '~/lib/forge'
+import { useMe } from '~/lib/auth/accounts'
 import {
   timelineOf,
   toChangeItem,
@@ -540,6 +544,14 @@ function ChangeDetail({
   const [tab, setTab] = React.useState<Tab>('summary')
   const [ps, setPs] = React.useState(latest)
   const [compare, setCompare] = React.useState(false)
+  // The patch set the viewer last approved, when the change moved on since.
+  const me = useMe()
+  const mine = api.reviewers.find(
+    (r) => r.actor.handle === me?.handle && r.state === 'approved',
+  )
+  const approvedOn = mine?.patch_set ?? null
+  const myApproval =
+    approvedOn !== null && approvedOn < api.head.patch_set ? approvedOn : null
   const [style, setStyle] = React.useState<'split' | 'unified'>('unified')
   const [state, setState] =
     React.useState<Record<string, FindingState>>(initial)
@@ -549,6 +561,15 @@ function ChangeDetail({
     change.state === 'landed' ? 'landed' : 'idle',
   )
   const [events, setEvents] = React.useState<Array<TimelineEvent>>([])
+  const [operation, setOperation] = React.useState<string | null>(null)
+  // Who else has this change open, and the file each is on.
+  const inView = useFileInView(tab === 'code')
+  const viewers = usePresence(
+    'change',
+    at,
+    tab === 'code' ? inView : null,
+    Boolean(me),
+  )
 
   // A suggestion applied only to the draft has not fixed anything yet.
   const openFindings = list.filter((f) => {
@@ -751,11 +772,14 @@ function ChangeDetail({
               )}
             </div>
           </div>
-          <WorkWithAgent
-            repo={slugOf(repo)}
-            subject={{ kind: 'change', ref: change.id, title: change.title }}
-            label="Continue with an agent"
-          />
+          <div className="flex flex-col items-end gap-2">
+            <WorkWithAgent
+              repo={slugOf(repo)}
+              subject={{ kind: 'change', ref: change.id, title: change.title }}
+              label="Continue with an agent"
+            />
+            <Viewers viewers={viewers} />
+          </div>
         </div>
       </div>
 
@@ -788,6 +812,12 @@ function ChangeDetail({
                   body: { expected_tree: api.head.tree },
                 }).then((r) => {
                   if (!fail(r)) return setLanding('idle')
+                  // With landing steps, it is an operation the card follows.
+                  if (r.data?.object === 'operation') {
+                    rememberLanding(at, r.data.id)
+                    setOperation(r.data.id)
+                    return
+                  }
                   setLanding('landed')
                   log({
                     kind: 'land',
@@ -825,6 +855,13 @@ function ChangeDetail({
           </div>
 
           <aside className="space-y-3">
+            <LandingCard
+              at={at}
+              landed={landing === 'landed'}
+              sha={api.head.sha}
+              operation={operation}
+              onDone={(ok) => setLanding(ok ? 'landed' : 'idle')}
+            />
             <h3 className="text-sm font-medium">On other hosts</h3>
             <MirrorCard repo={repo} change={change} />
           </aside>
@@ -861,6 +898,9 @@ function ChangeDetail({
       )}
       {tab === 'code' && Object.keys(history.base).length > 0 && (
         <CodeReview
+          at={at}
+          viewers={viewers}
+          myApproval={myApproval}
           change={change}
           list={list}
           state={state}
@@ -890,6 +930,9 @@ function ChangeDetail({
 }
 
 function CodeReview({
+  at,
+  viewers,
+  myApproval,
   change,
   list,
   state,
@@ -913,6 +956,11 @@ function CodeReview({
   onDiscard,
   editable,
 }: {
+  at: { owner: string; repo: string; number: string }
+  /** Who else has the change open, and on which file. */
+  viewers: Array<Viewer>
+  /** The patch set the viewer approved, when the change moved on since. */
+  myApproval: number | null
   change: ChangeItem
   list: Array<Finding>
   state: Record<string, FindingState>
@@ -940,7 +988,12 @@ function CodeReview({
   const dark = useIsDark()
   const overflow = useCodeOverflow()
   const latest = patchSets.length
-  const names = Object.keys(base)
+  // The guide, when someone wrote one: its order first, then the rest.
+  const guide = useOpMaybe('changes.guide.get', at)
+  const why = new Map(guide?.order.map((o) => [o.path, o]) ?? [])
+  const rank = (p: string) =>
+    guide ? guide.order.findIndex((o) => o.path === p) + 1 || 1e6 : 0
+  const names = Object.keys(base).sort((x, y) => rank(x) - rank(y))
   const [editing, setEditing] = React.useState(false)
   const factory = useEditorFactory(editing)
   const canEdit = editable && ps === latest && !compare
@@ -960,13 +1013,29 @@ function CodeReview({
   })
 
   const contentsAt = (n: number) => (n === latest ? working : saved[n - 1])
+  // "Changed since your review": from the patch set you approved to the newest.
+  const [since, setSince] = React.useState<number | null>(null)
   const sets = names
     .map((name) => ({
       name,
-      before: compare && ps > 1 ? contentsAt(ps - 1)[name] : base[name],
-      after: contentsAt(ps)[name],
+      before:
+        since !== null
+          ? contentsAt(since)[name]
+          : compare && ps > 1
+            ? contentsAt(ps - 1)[name]
+            : base[name],
+      after: contentsAt(since !== null ? latest : ps)[name],
     }))
-    .filter((f) => !compare || f.before !== f.after)
+    .filter((f) => (!compare && since === null) || f.before !== f.after)
+  // Each reviewer's own seen marks, per file.
+  const seen = useOpMaybe('changes.seen.get', at)
+  const write = useWrite()
+  const seenOf = new Map(seen?.files.map((f) => [f.path, f]) ?? [])
+  const toggleSeen = (path: string) =>
+    void write('changes.seen.put', {
+      ...at,
+      body: { paths: [path], seen: !seenOf.get(path)?.seen },
+    })
 
   // Findings sit on the newest patch set. Older ones show the code as it was.
   const showFindings = !compare && ps === latest
@@ -1071,7 +1140,44 @@ function CodeReview({
           <FileTree model={model} className="block h-36" />
         </div>
         <div className="min-w-0 space-y-4">
-          {current && (
+          {guide && (
+            <div className="space-y-1 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Guide by {guide.by.handle}
+                {guide.current
+                  ? ''
+                  : ` · written for patch set ${guide.patch_set}, an older one`}
+              </p>
+              <p>{guide.summary}</p>
+            </div>
+          )}
+          {(seen || myApproval !== null) && (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              {seen && (
+                <span className="text-muted-foreground">
+                  <b className="font-medium text-foreground">
+                    {seen.seen} of {seen.total}
+                  </b>{' '}
+                  seen
+                </span>
+              )}
+              {myApproval !== null && (
+                <Button
+                  size="sm"
+                  variant={since !== null ? 'brand' : 'ghost'}
+                  aria-pressed={since !== null}
+                  onClick={() => {
+                    setSince(since === null ? myApproval : null)
+                    setPs(latest)
+                    setCompare(false)
+                  }}
+                >
+                  Changed since your review (patch set {myApproval})
+                </Button>
+              )}
+            </div>
+          )}
+          {current && since === null && (
             <p className="text-sm text-muted-foreground">
               <b className="font-medium text-foreground">
                 Patch set {current.n}
@@ -1091,10 +1197,49 @@ function CodeReview({
           <EditingProvider factory={factory}>
             {sets.map(({ name, before, after }) => (
               <div
-                key={`${ps}-${compare}-${name}`}
+                key={`${ps}-${compare}-${since}-${name}`}
                 id={`file-${name}`}
+                data-presence-file={name}
                 className="pierre surface scroll-mt-20 overflow-hidden rounded-2xl border bg-card"
               >
+                {why.get(name) && (
+                  <p className="flex items-start gap-2 border-b px-4 py-1.5 text-xs">
+                    <Chip
+                      tone={
+                        why.get(name)!.risk === 'high'
+                          ? 'danger'
+                          : why.get(name)!.risk === 'medium'
+                            ? 'warning'
+                            : 'muted'
+                      }
+                    >
+                      {why.get(name)!.risk} risk
+                    </Chip>
+                    <span className="text-muted-foreground">
+                      {why.get(name)!.why}
+                    </span>
+                  </p>
+                )}
+                {seen && (
+                  <label className="flex items-center gap-2 border-b bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={seenOf.get(name)?.seen ?? false}
+                      onChange={() => toggleSeen(name)}
+                      className="size-3.5 accent-current"
+                    />
+                    Seen
+                    <span className="ml-auto order-last">
+                      <FileViewers viewers={viewers} path={name} />
+                    </span>
+                    {seenOf.get(name)?.changed_since && (
+                      <span className="text-warning">
+                        changed since you saw it on patch set{' '}
+                        {seenOf.get(name)?.patch_set}
+                      </span>
+                    )}
+                  </label>
+                )}
                 <MultiFileDiff
                   oldFile={{
                     name,

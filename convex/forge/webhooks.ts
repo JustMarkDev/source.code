@@ -261,7 +261,7 @@ export const deliveries = query({
 })
 
 /** Queue one event for one webhook. Keeps the newest thousand. */
-async function enqueue(
+export async function enqueue(
   ctx: MutationCtx,
   h: Doc<'webhooks'>,
   event: string,

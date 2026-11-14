@@ -54,7 +54,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/policy" \
 
 ```http
 HTTP/1.1 200
-etag: W/"chg_01m6dqs9m0g7q74420.1.3.chg_01m6dqs9m0g7q74420.1.0-D3Lrc5m2y9MlPj1a"
+etag: W/"chg_01m6dqs9m0g7q74420.1.3.chg_01m6dqs9m0g7q74420.1.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1187;t=60
 ```
 
@@ -214,8 +214,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/policy" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.pol0.16.1-UK0uOr-AnFY_ukOY"
-ratelimit: "read";r=1153;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.pol0.19.1-cLCI7RmKurcgvlGP"
+ratelimit: "read";r=1145;t=60
 ```
 
 ```json
@@ -223,7 +223,7 @@ ratelimit: "read";r=1153;t=60
   "object": "policy_set",
   "repo": "dana/gitfs",
   "file": ".source/policy/main.yml",
-  "yaml": "# .source/policy/main.yml\n# Written by source.code from the repository settings.\nrules:\n  - id: core-paths\n    mode: enforce\n    when: \"paths src/**\"\n    req…",
+  "yaml": "# .source/policy/main.yml\n# The rules changes in this repository land under. Edit it in a change;\n# policy owners review it. https://source.code/docs/referen…",
   "rules": [
     {
       "id": "core-paths",
@@ -232,7 +232,7 @@ ratelimit: "read";r=1153;t=60
       "when": "paths src/**",
       "requires": ["1 approval, human, a maintainer"],
       "evaluated": 7,
-      "blocked": 5,
+      "blocked": 6,
       "custom": false,
       "would_block": []
     },
@@ -262,7 +262,19 @@ ratelimit: "read";r=1153;t=60
     }
   ],
   "large_change_lines": 400,
-  "version": 0
+  "version": 0,
+  "source": {
+    "state": "settings",
+    "sha": null,
+    "errors": [],
+    "pending": []
+  },
+  "landing": {
+    "strategy": "squash",
+    "fresh_approvals": false,
+    "resolve": "any_reviewer",
+    "steps": []
+  }
 }
 ```
 
@@ -272,16 +284,17 @@ ratelimit: "read";r=1153;t=60
 
 **Let a rule bend for one person, for a while**
 
-Up to 90 days. For core-paths the person counts as a maintainer; for the other rules their own changes pass it. Send an `Idempotency-Key` to retry safely.
+Up to 90 days. For core-paths the person counts as a maintainer; for the other rules their own changes pass it. Send an `Idempotency-Key` to retry safely. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.
 
-| About      |                                     |
-| ---------- | ----------------------------------- |
-| Safety     | `write`, not safe to repeat blindly |
-| Needs      | a token                             |
-| Scopes     | `repo:write`                        |
-| Rate limit | `write` pool, 1 unit                |
-| Dry run    | `?dry_run=true`                     |
-| Success    | `201`, a `policy_exception`         |
+| About      |                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `write`, not safe to repeat blindly                                                                                              |
+| Needs      | a token                                                                                                                          |
+| Scopes     | `repo:write`                                                                                                                     |
+| Rate limit | `write` pool, 1 unit                                                                                                             |
+| Dry run    | `?dry_run=true`                                                                                                                  |
+| Success    | `201`, a `policy_exception`                                                                                                      |
+| Or         | `202`, a `policy_proposal`: When the rules live in the policy file: the edit, as a change to the file that applies once it lands |
 
 **Path parameters**
 
@@ -321,13 +334,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/policy/exceptions" \
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=69;t=60
+ratelimit: "write";r=61;t=60
 ```
 
 ```json
 {
   "object": "policy_exception",
-  "id": "pex_01m6tq6r80hzfs747y",
+  "id": "pex_01m6tq6r804m95tdj3",
   "rule": "core-paths",
   "who": "hollis",
   "reason": "On call this week",
@@ -343,14 +356,17 @@ ratelimit: "write";r=69;t=60
 
 **End an exception now**
 
-| About      |                               |
-| ---------- | ----------------------------- |
-| Safety     | `destructive`, safe to repeat |
-| Needs      | a token                       |
-| Scopes     | `repo:write`                  |
-| Rate limit | `write` pool, 1 unit          |
-| Dry run    | `?dry_run=true`               |
-| Success    | `204`, no body                |
+When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.
+
+| About      |                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `destructive`, safe to repeat                                                                                                    |
+| Needs      | a token                                                                                                                          |
+| Scopes     | `repo:write`                                                                                                                     |
+| Rate limit | `write` pool, 1 unit                                                                                                             |
+| Dry run    | `?dry_run=true`                                                                                                                  |
+| Success    | `204`, no body                                                                                                                   |
+| Or         | `202`, a `policy_proposal`: When the rules live in the policy file: the edit, as a change to the file that applies once it lands |
 
 **Path parameters**
 
@@ -373,13 +389,96 @@ ratelimit: "write";r=69;t=60
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/policy/exceptions/pex_01m6tq6r80hzfs747y" \
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/policy/exceptions/pex_01m6tq6r804m95tdj3" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=68;t=60
+ratelimit: "write";r=60;t=60
+```
+
+### `policy.proposals.create`
+
+`POST /repos/{owner}/{repo}/policy/proposals`
+
+**Propose edits to the rules**
+
+The edits, made to `.source/policy/main.yml` as a change: it keeps the file's comments and layout, puts the policy owners on review, and applies once it lands. Your open policy change takes further edits as patch sets, so you have one at a time. In a repository whose rules are still settings, the first proposal moves them into the file. A dry run answers the diff and opens nothing. Send an `Idempotency-Key` to retry safely.
+
+| About      |                                     |
+| ---------- | ----------------------------------- |
+| Safety     | `write`, not safe to repeat blindly |
+| Needs      | a token                             |
+| Scopes     | `repo:write`                        |
+| Rate limit | `write` pool, 1 unit                |
+| Dry run    | `?dry_run=true`                     |
+| Success    | `202`, a `policy_proposal`          |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member  | Type         | Notes     |
+| ------- | ------------ | --------- |
+| `edits` | array of any | Required. |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/policy/proposals" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "idempotency-key: 7a1e3c9b-2d4f-4b6a-8e0c-1f5d7b9a3c62" \
+  -H "Content-Type: application/json" \
+  -d '{"edits":[{"op":"set_mode","rule":"big-change","mode":"enforce"},{"op":"set_landing","fresh_approvals":true,"steps":[{"wait_checks":["ci/test"]}]}]}'
+```
+
+```http
+HTTP/1.1 202
+location: https://api.source.code/v1/repos/dana/gitfs/changes/222
+ratelimit: "write";r=59;t=60
+```
+
+```json
+{
+  "object": "policy_proposal",
+  "change": 222,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/changes/222",
+  "patch_set": 1,
+  "created": true,
+  "edits": [
+    {
+      "op": "set_mode",
+      "rule": "big-change",
+      "mode": "enforce"
+    },
+    {
+      "op": "set_landing",
+      "fresh_approvals": true,
+      "steps": [
+        {
+          "wait_checks": ["ci/test"]
+        }
+      ]
+    }
+  ],
+  "diff": "--- a/.source/policy/main.yml\n+++ b/.source/policy/main.yml\n # .source/policy/main.yml\n # The rules changes in this repository land under. Edit it in a chang…"
+}
 ```
 
 ### `policy.create_rule`
@@ -388,16 +487,17 @@ ratelimit: "write";r=68;t=60
 
 **Write a rule of the repository's own**
 
-Three kinds. `required_check`: `check` has to pass on the tree that lands. `path_approval`: a change touching `paths` (globs, `**` crosses folders) needs `approvals` human approvals, from the people in `from` if given. `max_lines`: a change may add and remove at most `max_lines`. Sending the same `id` again replaces the rule. Every open change's requirements are worked out again.
+Three kinds. `required_check`: `check` has to pass on the tree that lands. `path_approval`: a change touching `paths` (globs, `**` crosses folders) needs `approvals` human approvals, from the people in `from` if given. `max_lines`: a change may add and remove at most `max_lines`. Sending the same `id` again replaces the rule. Every open change's requirements are worked out again. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.
 
-| About      |                         |
-| ---------- | ----------------------- |
-| Safety     | `write`, safe to repeat |
-| Needs      | a token                 |
-| Scopes     | `repo:write`            |
-| Rate limit | `write` pool, 1 unit    |
-| Dry run    | `?dry_run=true`         |
-| Success    | `201`, a JSON document  |
+| About      |                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `write`, safe to repeat                                                                                                          |
+| Needs      | a token                                                                                                                          |
+| Scopes     | `repo:write`                                                                                                                     |
+| Rate limit | `write` pool, 1 unit                                                                                                             |
+| Dry run    | `?dry_run=true`                                                                                                                  |
+| Success    | `201`, a JSON document                                                                                                           |
+| Or         | `202`, a `policy_proposal`: When the rules live in the policy file: the edit, as a change to the file that applies once it lands |
 
 **Path parameters**
 
@@ -442,7 +542,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/policy/rules" \
 ```http
 HTTP/1.1 201
 sx-outcome: created
-ratelimit: "write";r=71;t=60
+ratelimit: "write";r=63;t=60
 ```
 
 ```json
@@ -465,16 +565,17 @@ ratelimit: "write";r=71;t=60
 
 **Delete a rule the repository wrote**
 
-Its exceptions go with it. A built-in rule cannot be deleted; turn it off instead.
+Its exceptions go with it. A built-in rule cannot be deleted; turn it off instead. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.
 
-| About      |                               |
-| ---------- | ----------------------------- |
-| Safety     | `destructive`, safe to repeat |
-| Needs      | a token                       |
-| Scopes     | `repo:write`                  |
-| Rate limit | `write` pool, 1 unit          |
-| Dry run    | `?dry_run=true`               |
-| Success    | `204`, no body                |
+| About      |                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `destructive`, safe to repeat                                                                                                    |
+| Needs      | a token                                                                                                                          |
+| Scopes     | `repo:write`                                                                                                                     |
+| Rate limit | `write` pool, 1 unit                                                                                                             |
+| Dry run    | `?dry_run=true`                                                                                                                  |
+| Success    | `204`, no body                                                                                                                   |
+| Or         | `202`, a `policy_proposal`: When the rules live in the policy file: the edit, as a change to the file that applies once it lands |
 
 **Path parameters**
 
@@ -503,7 +604,7 @@ curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/policy/rules/docs-ow
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=70;t=60
+ratelimit: "write";r=62;t=60
 ```
 
 ### `policy.update_rule`
@@ -512,16 +613,17 @@ ratelimit: "write";r=70;t=60
 
 **Enforce a rule, dry-run it, or turn it off**
 
-Every open change's requirements are worked out again, so a change can become landable, or stop being.
+Every open change's requirements are worked out again, so a change can become landable, or stop being. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.
 
-| About      |                         |
-| ---------- | ----------------------- |
-| Safety     | `write`, safe to repeat |
-| Needs      | a token                 |
-| Scopes     | `repo:write`            |
-| Rate limit | `write` pool, 1 unit    |
-| Dry run    | `?dry_run=true`         |
-| Success    | `200`, a JSON document  |
+| About      |                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `write`, safe to repeat                                                                                                          |
+| Needs      | a token                                                                                                                          |
+| Scopes     | `repo:write`                                                                                                                     |
+| Rate limit | `write` pool, 1 unit                                                                                                             |
+| Dry run    | `?dry_run=true`                                                                                                                  |
+| Success    | `200`, a JSON document                                                                                                           |
+| Or         | `202`, a `policy_proposal`: When the rules live in the policy file: the edit, as a change to the file that applies once it lands |
 
 **Path parameters**
 
@@ -558,7 +660,7 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/policy/rules/big-chan
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=72;t=60
+ratelimit: "write";r=64;t=60
 ```
 
 ```json

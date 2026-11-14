@@ -161,6 +161,8 @@ export abstract class DomainRepos extends DomainAccounts {
       website?: string | null
       docs_url?: string | null
       install?: string | null
+      transcripts?: 'off' | 'on'
+      run_trailer?: 'auto' | 'on' | 'off'
     },
     ifMatch: string | null,
     dry: boolean,
@@ -241,6 +243,8 @@ export abstract class DomainRepos extends DomainAccounts {
         website: body.website === undefined ? repo.website : body.website,
         docsUrl: body.docs_url === undefined ? repo.docsUrl : body.docs_url,
         install: body.install === undefined ? repo.install : body.install,
+        transcripts: body.transcripts ?? repo.transcripts,
+        runTrailer: body.run_trailer ?? repo.runTrailer,
         maintainers: nextMaintainers
           ? new Set(nextMaintainers)
           : repo.maintainers,
@@ -279,6 +283,20 @@ export abstract class DomainRepos extends DomainAccounts {
     if (body.install !== undefined && body.install !== repo.install) {
       repo.install = body.install
       changed.push('install')
+    }
+    if (
+      body.transcripts !== undefined &&
+      body.transcripts !== (repo.transcripts ?? 'off')
+    ) {
+      repo.transcripts = body.transcripts
+      changed.push('transcripts')
+    }
+    if (
+      body.run_trailer !== undefined &&
+      body.run_trailer !== (repo.runTrailer ?? 'auto')
+    ) {
+      repo.runTrailer = body.run_trailer
+      changed.push('run_trailer')
     }
     if (maintainersChanged) {
       const removed = [...repo.maintainers].filter(

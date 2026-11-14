@@ -93,6 +93,24 @@ export async function emit(
     changes,
     data: (data ?? null) as EventRecord['data'],
   }
+  // A state change is also kept by what it happened to, for timelines.
+  const state = (data as { state?: unknown } | null)?.state
+  if (
+    subject.number !== null &&
+    (subject.object === 'change' || subject.object === 'issue') &&
+    typeof state === 'string' &&
+    /^(change\.(opened|updated|landed|abandoned)|issue\.(created|updated|closed))$/.test(
+      type,
+    )
+  )
+    await ctx.db.insert('stateChanges', {
+      repoId: repo._id,
+      subject: `${subject.object}:${subject.number}`,
+      to: state,
+      at,
+      eventId: record.id,
+      actor: by,
+    })
   await ctx.db.insert('forgeEvents', {
     stream: repo.publicId,
     seq: c.seq + 1,

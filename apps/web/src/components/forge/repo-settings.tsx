@@ -30,6 +30,7 @@ const sections = [
   ['mirrors', 'Mirrors and sync'],
   ['secrets', 'Secrets'],
   ['policies', 'Policies'],
+  ['agents', 'Agent history'],
   ['integrations', 'Integrations'],
   ['automations', 'Automations'],
 ] as const
@@ -581,6 +582,59 @@ function Mirrors({ repo }: { repo: Repo }) {
   )
 }
 
+/** What this repository keeps about the agent runs that work in it. */
+function AgentHistory({ repo }: { repo: Repo }) {
+  const at = { owner: repo.owner, repo: repo.name }
+  const shown = useOp('repos.get', at)
+  const write = useWrite()
+  const [error, setError] = React.useState('')
+  const save = (body: {
+    transcripts?: 'off' | 'on'
+    run_trailer?: 'auto' | 'on' | 'off'
+  }) =>
+    void write('repos.update', { ...at, body }).then((r) =>
+      setError(r.error?.message ?? ''),
+    )
+  const trailerNow =
+    shown.run_trailer === 'auto'
+      ? shown.visibility === 'private'
+        ? 'kept, because this repository is private'
+        : 'removed, because this repository is public'
+      : shown.run_trailer === 'on'
+        ? 'kept'
+        : 'removed'
+  return (
+    <div className="max-w-2xl space-y-8">
+      <SwitchRow
+        checked={shown.transcripts === 'on'}
+        onChange={(on) => save({ transcripts: on ? 'on' : 'off' })}
+        label="Keep agent transcripts"
+        hint="A run can attach what its agent saw and said. Every transcript is checked for secrets first, and anything that looks like a token or key is masked. Reading one needs the runs:transcripts scope."
+      />
+      <Field label="Run-Id commit trailer">
+        <Select
+          value={shown.run_trailer}
+          onValueChange={(v) =>
+            save({ run_trailer: v === 'on' || v === 'off' ? v : 'auto' })
+          }
+        >
+          <SelectItem value="auto">
+            Automatic: keep it in private repositories, remove it in public ones
+          </SelectItem>
+          <SelectItem value="on">Always keep it</SelectItem>
+          <SelectItem value="off">Always remove it</SelectItem>
+        </Select>
+      </Field>
+      <p className="-mt-5 text-sm text-muted-foreground">
+        Commits an agent run makes say which run made them. Here the trailer is{' '}
+        {trailerNow}. Commits that landed here can be traced to their run either
+        way.
+      </p>
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </div>
+  )
+}
+
 export function RepoSettings({
   repo,
   section,
@@ -631,6 +685,16 @@ export function RepoSettings({
           )}
           {current === 'secrets' && <SecretsPage repo={repo} />}
           {current === 'policies' && <PoliciesPage repo={repo} />}
+          {current === 'agents' && (
+            <>
+              <Title title="Agent history">
+                What this repository keeps about the agent runs that work in it,
+                so any line of code leads back to the conversation that wrote
+                it.
+              </Title>
+              <AgentHistory repo={repo} />
+            </>
+          )}
           {current === 'integrations' && (
             <>
               <Title title="Integrations">

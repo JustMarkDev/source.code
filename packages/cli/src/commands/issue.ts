@@ -1,3 +1,5 @@
+import { showTimeline } from '../timeline'
+import { showPresence } from '../presence'
 import { resolveRepo } from '../repo'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
@@ -56,6 +58,18 @@ export const issue: Command = async (
   if (sub === 'view') {
     const found = (await api.get(`${repo.path}/issues/${n}`)).json
     print(ctx, found, () => `#${found.number} ${found.state}  ${found.title}`)
+    return
+  }
+  if (sub === 'presence') {
+    await showPresence(ctx, `${repo.path}/issues/${n}/presence`, n, {
+      here: has(flags, 'here'),
+      path: str(flags, 'path'),
+      leave: has(flags, 'leave'),
+    })
+    return
+  }
+  if (sub === 'timeline') {
+    await showTimeline(ctx, `${repo.path}/issues/${n}/timeline`, String(n))
     return
   }
   if (sub === 'close') {

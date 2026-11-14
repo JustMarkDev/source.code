@@ -1,3 +1,6 @@
+import { currentPosition, presentAnchor } from '@source-code/api/anchors'
+import { DEFAULT_LANDING, policyFileCheck } from '@source-code/api/policy-file'
+import type { FileError, Landing } from '@source-code/api/policy-file'
 import { fail } from './errors'
 import { canWrite } from './access'
 import { counters } from './events'
@@ -12,6 +15,7 @@ import type {
   CustomRuleRec,
   EvidenceRec,
   FindingRec,
+  GuideRec,
   PatchSetRec,
   PolicyExceptionRec,
   Requirement,
@@ -97,6 +101,13 @@ export type RepoPolicy = {
   ruleModes: Map<string, RuleMode>
   customRules: Array<CustomRuleRec>
   exceptions: Array<PolicyExceptionRec>
+  /** How changes land: from the policy file, or the defaults. */
+  landing: Landing
+  /**
+   * The policy file once the rules live in it: its text as last landed, the
+   * commit, and why it did not read if it did not.
+   */
+  file: { text: string; sha: string; errors: Array<FileError> } | null
   rev: number
   doc: Doc<'repoPolicy'> | null
 }
@@ -120,6 +131,17 @@ export async function loadPolicy(
     exceptions: doc
       ? (JSON.parse(doc.exceptions) as Array<PolicyExceptionRec>)
       : [],
+    landing: doc?.landing
+      ? (JSON.parse(doc.landing) as Landing)
+      : DEFAULT_LANDING,
+    file:
+      doc?.sourceText !== undefined
+        ? {
+            text: doc.sourceText,
+            sha: doc.sourceSha ?? '',
+            errors: JSON.parse(doc.errors ?? '[]') as Array<FileError>,
+          }
+        : null,
     rev: c.policyRev,
     doc,
   }
@@ -134,6 +156,14 @@ export async function savePolicy(
     ruleModes: [...p.ruleModes].map(([id, mode]) => ({ id, mode })),
     customRules: JSON.stringify(p.customRules),
     exceptions: JSON.stringify(p.exceptions),
+    landing: JSON.stringify(p.landing),
+    ...(p.file
+      ? {
+          sourceText: p.file.text,
+          sourceSha: p.file.sha,
+          errors: JSON.stringify(p.file.errors),
+        }
+      : {}),
   }
   if (p.doc) await ctx.db.patch('repoPolicy', p.doc._id, fields)
   else await ctx.db.insert('repoPolicy', { repoId: repo._id, ...fields })
@@ -151,6 +181,7 @@ const KINDS: Array<PartKind> = [
   'check',
   'comment',
   'evidence',
+  'guide',
 ]
 
 export type Loaded = {
@@ -173,6 +204,7 @@ export async function hydrate(
     check: [],
     comment: [],
     evidence: [],
+    guide: [],
   }
   for (const kind of KINDS)
     for (const p of await ctx.db
@@ -202,6 +234,7 @@ export async function hydrate(
     mirrors: doc.mirrors,
     evidence: lists.evidence as Array<EvidenceRec>,
     comments: lists.comment as Array<ReviewCommentRec>,
+    ...(lists.guide.length ? { guide: lists.guide[0] as GuideRec } : {}),
     commentRev: doc.commentRev,
     ...(doc.baseFiles ? { baseFiles: JSON.parse(doc.baseFiles) } : {}),
     created: doc.created,
@@ -275,6 +308,10 @@ function partsOf(
       key: x.id,
       value: x,
     })),
+    // One guide per change, under one key: a new one replaces the old.
+    ...(rec.guide
+      ? [{ kind: 'guide' as const, key: 'current', value: rec.guide }]
+      : []),
   ]
 }
 
@@ -483,7 +520,12 @@ export class ChangeView {
   evaluateRules(c: ChangeRec, assume: Assume): Array<Requirement> {
     const head = this.head(c)
     const out: Array<Requirement> = []
-    const reviews = this.latestReviews(c)
+    // With fresh approvals, an approval holds only on the patch set it was
+    // given on, even when a rebase left the tree the same.
+    const fresh = this.policy.landing.fresh_approvals
+    const reviews = this.latestReviews(c).map((r) =>
+      fresh && r.patchSet !== head.n ? { ...r, carries: false } : r,
+    )
     const maintainers = new Set(this.repo.maintainers)
     const humanApprovals = new Set<string>()
     for (const r of reviews)
@@ -604,6 +646,15 @@ export class ChangeView {
     })
     for (const r of this.policy.customRules)
       out.push(this.evaluateCustomRule(r, c, assume, humanApprovals, lines))
+    // The rules protect themselves: a change to the policy folder needs a
+    // maintainer, and a file that reads. Not a rule a repository can turn off.
+    const policy = policyFileCheck(
+      head,
+      policyRules,
+      (h) => maintainers.has(h),
+      [...humanApprovals],
+    )
+    if (policy) out.push(policy)
     return out.map((r) => {
       if (r.id === 'core-paths' || r.state === 'pass' || r.state === 'na')
         return r
@@ -775,6 +826,7 @@ export class ChangeView {
       url: `${repoUrl(this.repo)}/changes/${c.number}/findings/${f.id}`,
       suggestion: f.suggestion ?? null,
       prompt: f.prompt ?? null,
+      run: f.via?.run ?? null,
       created_at: iso(f.created),
     }
   }
@@ -805,11 +857,30 @@ export class ChangeView {
       author: this.actor(ps.author),
       files: Object.keys(ps.files).length,
       url: `${repoUrl(this.repo)}/changes/${c.number}/patch-sets/${ps.n}`,
+      run: ps.via?.run ?? null,
       created_at: iso(ps.created),
     }
   }
 
+  presentReview(r: ReviewRec) {
+    return {
+      object: 'review' as const,
+      id: r.id,
+      actor: this.actor(r.actor),
+      state: r.state,
+      patch_set: r.patchSet,
+      carries_to_head: r.carries,
+      body: r.body,
+      run: r.via?.run ?? null,
+      created_at: iso(r.created),
+    }
+  }
+
   presentReviewComment(c: ChangeRec, x: ReviewCommentRec) {
+    const root = x.replyTo
+      ? (c.comments ?? []).find((y) => y.id === x.replyTo)
+      : undefined
+    const start = root ?? x
     return {
       object: 'change_comment' as const,
       id: x.id,
@@ -821,6 +892,17 @@ export class ChangeView {
       patch_set: x.patchSet,
       reply_to: x.replyTo,
       resolved: x.resolved,
+      anchor: start.anchor ? presentAnchor(start.anchor) : null,
+      ...currentPosition(x, root, this.head(c).n),
+      addressed: x.addressed
+        ? {
+            patch_set: x.addressed.patchSet,
+            by: this.actor(x.addressed.by),
+            note: x.addressed.note,
+            at: iso(x.addressed.at),
+          }
+        : null,
+      run: x.via?.run ?? null,
       created_at: iso(x.created),
       updated_at: iso(x.updated),
       version: x.version,

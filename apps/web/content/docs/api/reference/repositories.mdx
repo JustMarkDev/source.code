@@ -40,7 +40,7 @@ curl "https://api.source.code/v1/imports" \
 ```http
 HTTP/1.1 200
 etag: W/"5oyWwZ9tk8dor04o"
-ratelimit: "read";r=1143;t=60
+ratelimit: "read";r=1135;t=60
 ```
 
 ```json
@@ -118,13 +118,13 @@ curl -X POST "https://api.source.code/v1/imports" \
 ```http
 HTTP/1.1 201
 sx-outcome: created
-ratelimit: "write";r=46;t=60
+ratelimit: "write";r=37;t=60
 ```
 
 ```json
 {
   "object": "repo",
-  "id": "rep_01m6tq6r80az5fdv1k",
+  "id": "rep_01m6tq6r80wct1za5z",
   "owner": "dana",
   "name": "dotfiles",
   "full_name": "dana/dotfiles",
@@ -146,6 +146,8 @@ ratelimit: "write";r=46;t=60
   "website": null,
   "docs_url": null,
   "maintainers": ["dana"],
+  "transcripts": "off",
+  "run_trailer": "auto",
   "open_changes": 0,
   "open_issues": 0,
   "url": "https://api.source.code/v1/repos/dana/dotfiles",
@@ -193,7 +195,7 @@ curl "https://api.source.code/v1/repos?limit=2" \
 
 ```http
 HTTP/1.1 200
-etag: W/"aTt_IBHrx6rosAc3"
+etag: W/"u522JCwGHaZpKTF8"
 ratelimit: "read";r=1197;t=60
 ```
 
@@ -222,6 +224,8 @@ ratelimit: "read";r=1197;t=60
       "website": null,
       "docs_url": null,
       "maintainers": ["dana", "hollis"],
+      "transcripts": "off",
+      "run_trailer": "auto",
       "open_changes": 3,
       "open_issues": 0,
       "url": "https://api.source.code/v1/repos/dana/stacky",
@@ -251,6 +255,8 @@ ratelimit: "read";r=1197;t=60
       "website": null,
       "docs_url": null,
       "maintainers": ["dana"],
+      "transcripts": "off",
+      "run_trailer": "auto",
       "open_changes": 0,
       "open_issues": 0,
       "url": "https://api.source.code/v1/repos/dana/notes",
@@ -315,13 +321,13 @@ curl -X POST "https://api.source.code/v1/repos" \
 HTTP/1.1 201
 location: https://api.source.code/v1/repos/dana/notes2
 sx-outcome: created
-ratelimit: "write";r=82;t=60
+ratelimit: "write";r=80;t=60
 ```
 
 ```json
 {
   "object": "repo",
-  "id": "rep_01m6tq6r80pb1by5pc",
+  "id": "rep_01m6tq6r80d97cf0ge",
   "owner": "dana",
   "name": "notes2",
   "full_name": "dana/notes2",
@@ -340,6 +346,8 @@ ratelimit: "write";r=82;t=60
   "website": null,
   "docs_url": null,
   "maintainers": ["dana"],
+  "transcripts": "off",
+  "run_trailer": "auto",
   "open_changes": 0,
   "open_issues": 0,
   "url": "https://api.source.code/v1/repos/dana/notes2",
@@ -394,7 +402,7 @@ curl -X DELETE "https://api.source.code/v1/repos/northwind/scratch2?confirm=nort
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=26;t=60
+ratelimit: "write";r=17;t=60
 ```
 
 ### `repos.get`
@@ -440,7 +448,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-D3Lrc5m2y9MlPj1a"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1196;t=60
 ```
 
@@ -476,6 +484,8 @@ ratelimit: "read";r=1196;t=60
   "website": "https://gitfs.dev",
   "docs_url": "https://gitfs.dev/docs",
   "maintainers": ["dana", "hollis"],
+  "transcripts": "off",
+  "run_trailer": "auto",
   "open_changes": 5,
   "open_issues": 2,
   "url": "https://api.source.code/v1/repos/dana/gitfs",
@@ -529,6 +539,8 @@ Owners of the account and admins of the organization only. Send `If-Match` with 
 | `website`        | string (up to 300 characters, pattern) or null                         |                                                                                                                                                                                                                            |
 | `docs_url`       | string (up to 300 characters, pattern) or null                         |                                                                                                                                                                                                                            |
 | `install`        | string (up to 200 characters, at least 1) or null                      |                                                                                                                                                                                                                            |
+| `transcripts`    | `off` or `on`                                                          | Let agent runs attach their transcripts                                                                                                                                                                                    |
+| `run_trailer`    | `auto` or `on` or `off`                                                | Keep the `Run-Id:` commit trailer. `auto`: in private repositories only                                                                                                                                                    |
 
 **Errors**
 
@@ -545,13 +557,13 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/notes2" \
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=28;t=60
+ratelimit: "write";r=19;t=60
 ```
 
 ```json
 {
   "object": "repo",
-  "id": "rep_01m6tq6r80pb1by5pc",
+  "id": "rep_01m6tq6r80d97cf0ge",
   "owner": "dana",
   "name": "scratch2",
   "full_name": "dana/scratch2",
@@ -570,6 +582,8 @@ ratelimit: "write";r=28;t=60
   "website": null,
   "docs_url": null,
   "maintainers": ["dana"],
+  "transcripts": "off",
+  "run_trailer": "auto",
   "open_changes": 0,
   "open_issues": 0,
   "url": "https://api.source.code/v1/repos/dana/scratch2",
@@ -625,7 +639,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/context" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-D3Lrc5m2y9MlPj1a"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.1.0.6.3.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1195;t=60
 ```
 
@@ -663,6 +677,8 @@ ratelimit: "read";r=1195;t=60
     "website": "https://gitfs.dev",
     "docs_url": "https://gitfs.dev/docs",
     "maintainers": ["dana", "hollis"],
+    "transcripts": "off",
+    "run_trailer": "auto",
     "open_changes": 5,
     "open_issues": 2,
     "url": "https://api.source.code/v1/repos/dana/gitfs",
@@ -772,7 +788,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/contributors" \
 ```http
 HTTP/1.1 200
 etag: W/"YD5gJfyTTo4mR31w"
-ratelimit: "read";r=1158;t=60
+ratelimit: "read";r=1150;t=60
 ```
 
 ```json
@@ -836,8 +852,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/insights" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.ins26.16.8.2406.20764.1-UK0uOr-AnFY_ukOY"
-ratelimit: "heavy";r=116;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.ins30.19.8.2406.20764.1-cLCI7RmKurcgvlGP"
+ratelimit: "heavy";r=115;t=60
 ```
 
 ```json
@@ -925,6 +941,76 @@ ratelimit: "read";r=1194;t=60
 }
 ```
 
+### `repos.provenance`
+
+`GET /repos/{owner}/{repo}/provenance`
+
+**Where a line of code came from**
+
+Follows a line to the conversation that produced it: the commit that wrote it (by blame, up to 200 commits back), the change it landed through, the patch set, and the agent run that pushed that patch set, with its task, summary, links and transcript. With `change`, the line is read in that change's newest patch set instead, and the answer is the patch set of the change that wrote it; a line that was on the base already is followed there.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `repo:read`                                |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `provenance`                      |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+
+**Query parameters**
+
+| Name     | Type                                       | Notes                                                 |
+| -------- | ------------------------------------------ | ----------------------------------------------------- |
+| `path`   | string (up to 1000 characters, at least 1) | Required. A file, without a leading slash             |
+| `line`   | integer (min 1, max 9007199254740991)      | Required. 1-based                                     |
+| `ref`    | string (up to 200 characters)              | A branch, or a commit id. Default: the default branch |
+| `change` | integer (min 1, max 9007199254740991)      | Read the line in this change's newest patch set       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/provenance?path=src/refs.rs&line=3&change=216" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"6ZftKQO-to6Gqzaz"
+ratelimit: "read";r=1122;t=60
+```
+
+```json
+{
+  "object": "provenance",
+  "path": "src/refs.rs",
+  "line": 3,
+  "ref": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+  "commit": {
+    "sha": "1b7880d028f90a3eaac9e41bb3c28086691e29ba",
+    "message": "Cache negative ref lookups",
+    "author": {
+      "name": "Dana Okafor",
+      "email": "dana@users.source.code"
+    },
+    "date": "2026-10-20T16:45:00.000Z"
+  },
+  "change": null,
+  "patch_set": null,
+  "run": null
+}
+```
+
 ### `releases.list`
 
 `GET /repos/{owner}/{repo}/releases`
@@ -969,8 +1055,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/releases?limit=1" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.r3.3.1-10FRoEUdRGGGOKGc"
-ratelimit: "read";r=1150;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.r3.3.1-SVu2WbIeNMnyppub"
+ratelimit: "read";r=1142;t=60
 ```
 
 ```json
@@ -1093,13 +1179,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/releases" \
 ```http
 HTTP/1.1 201
 sx-outcome: created
-ratelimit: "write";r=62;t=60
+ratelimit: "write";r=53;t=60
 ```
 
 ```json
 {
   "object": "release",
-  "id": "rel_01m6tq6r80j0xk1dpc",
+  "id": "rel_01m6tq6r800ngr8qx1",
   "tag": "v0.9.1",
   "url": "https://api.source.code/v1/repos/dana/gitfs/releases/v0.9.1",
   "html_url": "https://source.code/dana/gitfs/releases",
@@ -1172,7 +1258,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/releases/v0.9.0" \
 ```http
 HTTP/1.1 200
 etag: W/"iPUfK4MAx2wv21u4"
-ratelimit: "read";r=1149;t=60
+ratelimit: "read";r=1141;t=60
 ```
 
 ```json
@@ -1285,13 +1371,13 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/releases/v0.9.1" \
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=61;t=60
+ratelimit: "write";r=52;t=60
 ```
 
 ```json
 {
   "object": "release",
-  "id": "rel_01m6tq6r80j0xk1dpc",
+  "id": "rel_01m6tq6r800ngr8qx1",
   "tag": "v0.9.1",
   "url": "https://api.source.code/v1/repos/dana/gitfs/releases/v0.9.1",
   "html_url": "https://source.code/dana/gitfs/releases",
@@ -1369,7 +1455,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/releases/v0.9.0/assets
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=60;t=60
+ratelimit: "write";r=51;t=60
 ```
 
 ```json
@@ -1428,7 +1514,7 @@ curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/star" \
 ```http
 HTTP/1.1 200
 sx-outcome: updated
-ratelimit: "write";r=76;t=60
+ratelimit: "write";r=68;t=60
 ```
 
 ```json
@@ -1476,8 +1562,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/star" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.2.26.7.5.1.dana-UK0uOr-AnFY_ukOY"
-ratelimit: "read";r=1159;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.3.30.7.5.1.dana-cLCI7RmKurcgvlGP"
+ratelimit: "read";r=1151;t=60
 ```
 
 ```json
@@ -1533,7 +1619,7 @@ curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/star" \
 ```http
 HTTP/1.1 200
 sx-outcome: updated
-ratelimit: "write";r=77;t=60
+ratelimit: "write";r=69;t=60
 ```
 
 ```json
@@ -1598,13 +1684,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/scratch2/transfer" \
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=27;t=60
+ratelimit: "write";r=18;t=60
 ```
 
 ```json
 {
   "object": "repo",
-  "id": "rep_01m6tq6r80pb1by5pc",
+  "id": "rep_01m6tq6r80d97cf0ge",
   "owner": "northwind",
   "name": "scratch2",
   "full_name": "northwind/scratch2",
@@ -1623,6 +1709,8 @@ ratelimit: "write";r=27;t=60
   "website": null,
   "docs_url": null,
   "maintainers": ["dana"],
+  "transcripts": "off",
+  "run_trailer": "auto",
   "open_changes": 0,
   "open_issues": 0,
   "url": "https://api.source.code/v1/repos/northwind/scratch2",

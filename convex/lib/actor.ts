@@ -46,6 +46,7 @@ export const allScopes = [
   'webhooks:read',
   'webhooks:write',
   'tokens:manage',
+  'runs:transcripts',
 ] as const
 
 /** The claims the API puts in its JWT. Short names: they ride on every call. */

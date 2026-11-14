@@ -4,7 +4,8 @@ import { Domain, Raw, defineOp, reply } from '../registry'
 import * as S from '../schemas'
 import { apiError } from '../problem'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
-import type { GitCommit } from '../git'
+import { mapLines, splitLines } from '../lines'
+import type { GitCommit, GitData } from '../git'
 
 const base = {
   auth: 'optional' as const,
@@ -429,4 +430,142 @@ export const gitDiff = defineOp({
     }),
 })
 
-export const gitOps = [gitTree, gitBlob, gitRaw, gitCommits, gitCommit, gitDiff]
+/** How far back blame follows a line before it gives the oldest commit it reached. */
+const BLAME_DEPTH = 200
+
+/**
+ * The commit that last wrote a line: follow the line from `ref` back through
+ * first parents until a commit added it. One file read per commit, cached.
+ */
+async function blame(
+  git: GitData,
+  full: string,
+  path: string,
+  line: number,
+  ref: string | undefined,
+): Promise<{ at: string; commit: GitCommit }> {
+  const at = (await git.files(full, ref)).ref
+  let sha = at
+  let text = await git.blob(full, path, sha)
+  if (!text)
+    throw apiError('not_found', `No file ${path} at ${sha.slice(0, 7)}.`)
+  const decode = (b: Uint8Array) => splitLines(new TextDecoder().decode(b))
+  let lines = decode(text)
+  if (line > lines.length)
+    throw apiError(
+      'invalid_request',
+      `${path} has ${lines.length} lines at ${sha.slice(0, 7)}.`,
+      {
+        errors: [
+          {
+            pointer: '/query/line',
+            code: 'out_of_range',
+            message: `Lines run from 1 to ${lines.length}.`,
+          },
+        ],
+      },
+    )
+  let idx = line - 1
+  for (let depth = 0; ; depth++) {
+    const c = await git.commit(full, sha)
+    const parent = c.parents[0] as string | undefined
+    if (!parent || depth >= BLAME_DEPTH) return { at, commit: c }
+    text = await git.blob(full, path, parent).catch(() => null)
+    if (!text) return { at, commit: c }
+    const before = decode(text)
+    const from = mapLines(before, lines).indexOf(idx)
+    if (from < 0) return { at, commit: c }
+    idx = from
+    lines = before
+    sha = parent
+  }
+}
+
+export const provenance = defineOp({
+  ...base,
+  tags: ['git', 'runs'],
+  id: 'repos.provenance',
+  summary: 'Where a line of code came from',
+  description: `Follows a line to the conversation that produced it: the commit that wrote it (by blame, up to ${BLAME_DEPTH} commits back), the change it landed through, the patch set, and the agent run that pushed that patch set, with its task, summary, links and transcript. With \`change\`, the line is read in that change's newest patch set instead, and the answer is the patch set of the change that wrote it; a line that was on the base already is followed there.`,
+  method: 'GET',
+  path: '/repos/{owner}/{repo}/provenance',
+  params: repoParams,
+  query: z.strictObject({
+    path: z
+      .string()
+      .min(1)
+      .max(1000)
+      .describe('A file, without a leading slash'),
+    line: z.coerce.number().int().min(1).describe('1-based'),
+    ref: refQuery,
+    change: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("Read the line in this change's newest patch set"),
+  }),
+  response: S.Provenance,
+  errors: ['not_found', 'invalid_request', 'invalid_state', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run(async (d) => {
+        const { owner, repo } = ctx.params
+        const q = ctx.query
+        const path = q.path.replace(/^\/+/, '')
+        const full = await d.repoAccess(owner, repo, ctx.principal, 'read')
+        let ref = q.ref
+        if (q.change !== undefined) {
+          const f = await d.provenance(owner, repo, ctx.principal, {
+            path,
+            line: q.line,
+            change: q.change,
+          })
+          if (!f.on_base)
+            return {
+              object: 'provenance' as const,
+              path,
+              line: q.line,
+              ref: `change ${q.change}`,
+              commit: null,
+              change: f.change,
+              patch_set: f.patch_set,
+              run: f.run,
+            }
+          ref = f.on_base
+        }
+        const b = await blame(d.svc.git, full, path, q.line, ref)
+        const f = await d.provenance(owner, repo, ctx.principal, {
+          path,
+          line: q.line,
+          sha: b.commit.sha,
+        })
+        return {
+          object: 'provenance' as const,
+          path,
+          line: q.line,
+          ref: b.at,
+          commit: {
+            sha: b.commit.sha,
+            message: b.commit.message,
+            author: b.commit.author,
+            date: b.commit.date,
+          },
+          change: f.change,
+          patch_set: f.patch_set,
+          run: f.run,
+        }
+      })
+    }),
+})
+
+export const gitOps = [
+  gitTree,
+  gitBlob,
+  gitRaw,
+  gitCommits,
+  gitCommit,
+  gitDiff,
+  provenance,
+]

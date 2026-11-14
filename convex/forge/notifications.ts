@@ -184,6 +184,18 @@ export async function fanOutEvent(ctx: MutationCtx, e: Event) {
   }
   const author = d.author?.handle
   const where = `/${full}/changes?n=${n}`
+  // A fix that answers a thread tells whoever started the thread.
+  const addressed = (e.data as { addressed?: unknown } | null)?.addressed
+  if (Array.isArray(addressed)) {
+    for (const x of addressed as Array<{ author: string; patch_set: number }>)
+      await tell(
+        x.author,
+        'review',
+        `${by} addressed your comment on #${n} in patch set ${x.patch_set}`,
+        where,
+      )
+    if (type === 'change.comment_addressed') return
+  }
   if (type === 'change.commented') {
     const told = new Set<string>()
     for (const h of mentions(d.body ?? '')) {

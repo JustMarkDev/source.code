@@ -1,4 +1,7 @@
-import { gitContext, resolveRepo } from '../repo'
+import { showTimeline } from '../timeline'
+import { showPresence } from '../presence'
+import { amendHead, gitContext, headCommit, resolveRepo } from '../repo'
+import { runTrailerOn, withRunTrailer } from '../trailer'
 import { SxError, exit, print, table } from '../output'
 import { has, str } from '../args'
 import { resolve } from '../config'
@@ -90,8 +93,43 @@ export const change: Command = async (
     const base = str(flags, 'base') ?? resolve('change.base').value
     const draft =
       has(flags, 'draft') || resolve('change.draft').value === 'true'
+    // Inside an agent run (SX_RUN), the commit says which run made it: a
+    // `Run-Id:` trailer, when the repository keeps one. The server reads it.
+    const run = process.env.SX_RUN
+    let head: { sha: string; message: string } | undefined
+    if (run && /^run_[A-Za-z0-9]+$/.test(run) && !str(flags, 'branch')) {
+      head = headCommit()
+      const shown = head && (await api.get(repo.path)).json
+      if (head && shown && runTrailerOn(shown)) {
+        const message = withRunTrailer(head.message, run)
+        if (message.trim() !== head.message.trim() && !dry) {
+          const sha = amendHead(message)
+          if (!sha)
+            throw new SxError(
+              'git_failed',
+              'Could not add the Run-Id trailer to HEAD.',
+              'Commit your work, then run sx change create again.',
+              exit.usage,
+            )
+          head = { sha, message }
+        } else head = { ...head, message }
+      }
+    }
+    // The review threads this patch set fixes: `--addresses cmt_1,cmt_2`.
+    const addresses = (str(flags, 'addresses') ?? '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .map((comment) => ({ comment }))
     const r = await api.post(`${repo.path}/changes`, {
-      body: { branch, title, base, draft },
+      body: {
+        branch,
+        title,
+        base,
+        draft,
+        ...(head ? { sha: head.sha, message: head.message } : {}),
+        ...(addresses.length ? { addresses } : {}),
+      },
       dryRun: dry,
     })
     const action = r.headers.get('sx-outcome') ?? 'created'
@@ -114,6 +152,58 @@ export const change: Command = async (
   }
 
   const c = await find(ctx, repo.path, rest.at(0))
+  if (sub === 'guide') {
+    // `--set '<json>'` writes it: {"summary": "...", "order": [{"path", "why", "risk"}]}.
+    const set = str(flags, 'set')
+    const path = `${repo.path}/changes/${c.number}/guide`
+    let body: unknown
+    if (set)
+      try {
+        body = JSON.parse(set)
+      } catch {
+        throw new SxError(
+          'bad_json',
+          '--set is not JSON.',
+          'Send {"summary": "...", "order": [{"path": "...", "why": "...", "risk": "low"}]}.',
+          exit.usage,
+        )
+      }
+    const g = set
+      ? (await api.put(path, { body, dryRun: has(flags, 'dry-run') })).json
+      : (await api.get(path)).json
+    print(ctx, { ...g, id: String(c.number) }, () =>
+      [
+        `#${c.number} guide for patch set ${g.patch_set}${g.current ? '' : ' (an older one)'}`,
+        g.summary,
+        ...g.order.map(
+          (o: { path: string; why: string; risk: string }, i: number) =>
+            `${i + 1}. ${o.path} [${o.risk}] ${o.why}`,
+        ),
+      ].join('\n'),
+    )
+    return
+  }
+  if (sub === 'presence') {
+    await showPresence(
+      ctx,
+      `${repo.path}/changes/${c.number}/presence`,
+      String(c.number),
+      {
+        here: has(flags, 'here'),
+        path: str(flags, 'path'),
+        leave: has(flags, 'leave'),
+      },
+    )
+    return
+  }
+  if (sub === 'timeline') {
+    await showTimeline(
+      ctx,
+      `${repo.path}/changes/${c.number}/timeline`,
+      String(c.number),
+    )
+    return
+  }
   if (sub === 'view') {
     const policy = (await api.get(`${repo.path}/changes/${c.number}/policy`))
       .json

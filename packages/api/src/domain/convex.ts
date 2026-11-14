@@ -541,6 +541,26 @@ export class ConvexDomain implements DomainPort {
     )
   changeVersion: Port['changeVersion'] = (owner, name, ref, p, expand = []) =>
     this.q('changes:version', { owner, name, ref, expand: [...expand] }, p)
+  getGuide: Port['getGuide'] = (owner, name, ref, p) =>
+    this.q('changes:guide', { owner, name, ref }, p)
+  putGuide: Port['putGuide'] = (owner, name, ref, p, body, dry) =>
+    this.m('changes:putGuide', { owner, name, ref, ...body, dry }, p)
+  changeSeen: Port['changeSeen'] = (owner, name, ref, p) =>
+    this.q('changes:seen', { owner, name, ref }, p)
+  setSeen: Port['setSeen'] = (owner, name, ref, p, body, dry) =>
+    this.m('changes:setSeen', { owner, name, ref, ...body, dry }, p)
+  presence: Port['presence'] = (owner, name, subject, p) =>
+    this.q('presence:list', { owner, name, ...subject }, p)
+  heartbeat: Port['heartbeat'] = (owner, name, subject, p, body) =>
+    this.m('presence:heartbeat', { owner, name, ...subject, ...body }, p)
+  timeline: Port['timeline'] = (owner, name, subject, p) =>
+    this.q(
+      'timelines:get',
+      { owner, name, kind: subject.kind, ref: subject.ref, at: this.now() },
+      p,
+    )
+  provenance: Port['provenance'] = (owner, name, p, q) =>
+    this.q('changes:provenance', { owner, name, ...q, at: this.now() }, p)
   createChange: Port['createChange'] = (owner, name, p, body) => {
     const { dry_run, ...rest } = body
     return this.m('changes:create', { owner, name, ...rest, dry: dry_run }, p)
@@ -588,8 +608,23 @@ export class ConvexDomain implements DomainPort {
         kind: body.kind,
         note: body.note,
         files: body.files ? Object.entries(body.files) : undefined,
+        addresses: body.addresses,
         dry,
       },
+      p,
+    )
+  addressReviewComment: Port['addressReviewComment'] = (
+    owner,
+    name,
+    ref,
+    id,
+    p,
+    body,
+    dry,
+  ) =>
+    this.m(
+      'changes:addressReviewComment',
+      { owner, name, ref, id, ...body, dry },
       p,
     )
   getPatchSetFiles: Port['getPatchSetFiles'] = (owner, name, ref, n, p) =>
@@ -980,6 +1015,14 @@ export class ConvexDomain implements DomainPort {
     this.m('runs:note', { owner, name, id, text, dry }, p)
   endRun: Port['endRun'] = (owner, name, id, p, state, summary, dry) =>
     this.m('runs:end', { owner, name, id, state, summary, dry }, p)
+  updateRun: Port['updateRun'] = (owner, name, id, p, body, dry) =>
+    this.m('runs:update', { owner, name, id, ...body, dry }, p)
+  transcriptTarget: Port['transcriptTarget'] = (owner, name, id, p) =>
+    this.q('runs:transcriptTarget', { owner, name, id }, p)
+  attachTranscript: Port['attachTranscript'] = (owner, name, id, p, t, dry) =>
+    this.m('runs:attachTranscript', { owner, name, id, transcript: t, dry }, p)
+  runTranscript: Port['runTranscript'] = (owner, name, id, p) =>
+    this.q('runs:transcript', { owner, name, id }, p)
 
   // ---- pipelines ------------------------------------------------------------------
 
@@ -1070,6 +1113,12 @@ export class ConvexDomain implements DomainPort {
   }
   deleteRule: Port['deleteRule'] = (owner, name, rule, p, dry) =>
     this.m('policy:deleteRule', { owner, name, rule, dry }, p)
+  policyInFile: Port['policyInFile'] = (owner, name, p) =>
+    this.q('policy:inFile', { owner, name }, p)
+  proposePolicy: Port['proposePolicy'] = (owner, name, p, edits, dry) =>
+    this.m('policy:propose', { owner, name, edits, dry }, p)
+  landability: Port['landability'] = (owner, name, ref, p) =>
+    this.q('changes:landability', { owner, name, ref, at: this.now() }, p)
   setRuleMode: Port['setRuleMode'] = (owner, name, rule, p, mode, dry) =>
     this.m('policy:setRuleMode', { owner, name, rule, mode, dry }, p)
   addPolicyException: Port['addPolicyException'] = (

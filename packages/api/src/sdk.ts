@@ -121,7 +121,22 @@ function readOps(doc: Json): Array<Op> {
           ? tsOf(bodyContent['application/json'].schema)
           : null,
         bodyRequired: !!op.requestBody?.required,
-        response: json ? tsOf(json.schema) : null,
+        // Every JSON answer the operation can give, such as a 202 proposal.
+        response: (() => {
+          const all = Object.entries<Json>(op.responses ?? {})
+            .filter(
+              ([code, r]) =>
+                code.startsWith('2') &&
+                (r.content as Json | undefined)?.['application/json'],
+            )
+            .map(([, r]) =>
+              tsOf((r.content as Json)['application/json'].schema),
+            )
+          if (!all.length) return null
+          // A 204 next to a JSON answer is a void one.
+          if ('204' in (op.responses ?? {})) all.push('void')
+          return all.join(' | ')
+        })(),
         raw: !!ok && !json && Object.keys(content).length > 0,
         idempotent: !!op['x-sx-idempotent'],
         secretResponse: !!op['x-sx-secret-response'],

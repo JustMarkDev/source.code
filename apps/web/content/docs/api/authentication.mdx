@@ -52,23 +52,24 @@ It returns the login, the account the request acts as, the actor `class` (`human
 
 ## Scopes
 
-| Scope             | Allows                                                                  |
-| ----------------- | ----------------------------------------------------------------------- |
-| `repo:read`       | Read repositories, mirrors, uploads                                     |
-| `repo:write`      | Create repositories and mirrors, announce uploads                       |
-| `issues:read`     | Read issues                                                             |
-| `issues:comment`  | Comment on issues                                                       |
-| `issues:write`    | Open, edit and close issues                                             |
-| `pulls:read`      | Read changes, run policy simulations                                    |
-| `pulls:comment`   | Review, comment, resolve and dismiss findings                           |
-| `pulls:write`     | Create changes, add patch sets, report checks, attach evidence, abandon |
-| `pulls:merge`     | Land a change or a stack                                                |
-| `secrets:schema`  | Read names and kinds of environment variables, request a grant          |
-| `secrets:write`   | Set variables, approve and revoke grants (people only)                  |
-| `secrets:decrypt` | Read values, through a grant for agents. Never granted by OAuth         |
-| `webhooks:read`   | Read webhooks and their deliveries                                      |
-| `webhooks:write`  | Create, change, delete and replay webhooks                              |
-| `tokens:manage`   | Create and revoke tokens and authorizations. Never granted by OAuth     |
+| Scope              | Allows                                                                  |
+| ------------------ | ----------------------------------------------------------------------- |
+| `repo:read`        | Read repositories, mirrors, uploads                                     |
+| `repo:write`       | Create repositories and mirrors, announce uploads                       |
+| `issues:read`      | Read issues                                                             |
+| `issues:comment`   | Comment on issues                                                       |
+| `issues:write`     | Open, edit and close issues                                             |
+| `pulls:read`       | Read changes, run policy simulations                                    |
+| `pulls:comment`    | Review, comment, resolve and dismiss findings                           |
+| `pulls:write`      | Create changes, add patch sets, report checks, attach evidence, abandon |
+| `pulls:merge`      | Land a change or a stack                                                |
+| `secrets:schema`   | Read names and kinds of environment variables, request a grant          |
+| `secrets:write`    | Set variables, approve and revoke grants (people only)                  |
+| `secrets:decrypt`  | Read values, through a grant for agents. Never granted by OAuth         |
+| `webhooks:read`    | Read webhooks and their deliveries                                      |
+| `webhooks:write`   | Create, change, delete and replay webhooks                              |
+| `tokens:manage`    | Create and revoke tokens and authorizations. Never granted by OAuth     |
+| `runs:transcripts` | Read agent run transcripts, in repositories you can read                |
 
 `pulls:*` is the scope family for changes. The names match the ones shown in **Settings, Agents and tokens**.
 

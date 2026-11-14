@@ -200,6 +200,21 @@ describe('mcp', () => {
     expect(JSON.parse(text(r)).error.code).toBe('policy_blocked')
   })
 
+  test('working on a change puts the agent in its room', async () => {
+    const c = await client()
+    await c.callTool({
+      name: 'get_change',
+      arguments: { repo: 'dana/gitfs', id: '216' },
+    })
+    const r = await c.callTool({
+      name: 'get_presence',
+      arguments: { repo: 'dana/gitfs', kind: 'change', id: '216' },
+    })
+    const p = JSON.parse(text(r))
+    expect(p.object).toBe('presence')
+    expect(p.viewers.length).toBe(1)
+  })
+
   test('serves the skill as a resource', async () => {
     const c = await client()
     const r = await c.readResource({ uri: 'sx://skill' })

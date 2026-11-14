@@ -208,6 +208,11 @@ describe('a screen reads what the API answers', () => {
         patchSet: p.number,
       })
     await same('dana', 'change_comments.list', { ...at, number })
+    await same('dana', 'changes.seen.get', { ...at, number })
+    await same('dana', 'changes.landability', { ...at, number })
+    await same('dana', 'changes.presence.get', { ...at, number })
+    await same('dana', 'issues.presence.get', { ...at, number: 4 })
+    await same('dana', 'changes.guide.get', { ...at, number })
     await same('dana', 'change_comments.list', {
       ...at,
       number,
@@ -306,6 +311,22 @@ describe('a screen writes what the API writes', () => {
     })
     const change = list.data.find((c) => (c.findings?.length ?? 0) > 1)!
     const number = String(change.number)
+    const files = await read('changes.seen.get', { ...at, number })
+    await same('dana', 'changes.seen.put', {
+      ...at,
+      number,
+      body: { paths: [files.files[0].path] },
+    })
+    await same('dana', 'changes.presence.put', {
+      ...at,
+      number,
+      body: { session: 'screen-tab-1', path: files.files[0].path },
+    })
+    await same('dana', 'issues.presence.put', {
+      ...at,
+      number: 4,
+      body: { session: 'screen-tab-1' },
+    })
     const comment = await same('dana', 'change_comments.create', {
       ...at,
       number,
@@ -354,13 +375,13 @@ describe('a screen writes what the API writes', () => {
     })
     await same('dana', 'policy.update_rule', (s) => ({
       ...at,
-      rule: rule[s].id,
+      rule: (rule[s] as { id: string }).id,
       body: { mode: 'enforce' },
     }))
     const ex = await same('dana', 'policy.add_exception', (s) => ({
       ...at,
       body: {
-        rule: rule[s].id,
+        rule: (rule[s] as { id: string }).id,
         who: 'hollis',
         reason: 'Migrating',
         expires_at: new Date(worlds[s].now() + 86_400_000).toISOString(),
@@ -368,12 +389,27 @@ describe('a screen writes what the API writes', () => {
     }))
     await same('dana', 'policy.remove_exception', (s) => ({
       ...at,
-      exception: ex[s].id,
+      exception: (ex[s] as { id: string }).id,
     }))
     await same('dana', 'policy.delete_rule', (s) => ({
       ...at,
-      rule: rule[s].id,
+      rule: (rule[s] as { id: string }).id,
     }))
+    // Proposing opens a change to the policy file; a second edit adds to it.
+    await same('dana', 'policy.proposals.create', {
+      ...at,
+      body: {
+        edits: [{ op: 'set_mode', rule: 'big-change', mode: 'enforce' }],
+      },
+    })
+    await same('dana', 'policy.proposals.create', {
+      ...at,
+      body: { edits: [{ op: 'set_landing', fresh_approvals: true }] },
+    })
+    await same('dana', 'policy.proposals.create', {
+      ...at,
+      body: { edits: [{ op: 'delete_rule', rule: 'core-paths' }] },
+    })
   })
 
   test('pipelines, automations and runs', async () => {

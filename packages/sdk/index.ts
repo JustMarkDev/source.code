@@ -273,11 +273,79 @@ export type ChangeComment = {
   reply_to: string | null
   /** For the comment that starts a thread: whether it is settled */
   resolved: boolean
+  /** What a comment on a line is about, so it follows the code into newer patch sets. A reply has its thread's */
+  anchor: {
+    /** The text the comment is about */
+    quote: string
+    /** Up to three lines above it */
+    before: Array<string>
+    /** Up to three lines below it */
+    after: Array<string>
+    side: 'head' | 'base'
+  } | null
+  /** Where its thread is in the newest patch set; null when it is not on a line or its code is gone */
+  current_line: number | null
+  /** Its code is gone from the newest patch set. `line` and `patch_set` still say where it was written */
+  outdated: boolean
+  /** On the comment that starts a thread: the fix that answers it. Addressed is not resolved; someone still settles the thread */
+  addressed: {
+    /** The patch set that answers it */
+    patch_set: number
+    by: Actor
+    note: string
+    /** RFC 3339 time, UTC */
+    at: string
+  } | null
+  /** The agent run that made it; null when no run did */
+  run: string | null
   /** RFC 3339 time, UTC */
   created_at: string
   /** RFC 3339 time, UTC */
   updated_at: string
   version: number
+}
+
+export type ChangeGuide = {
+  object: 'change_guide'
+  change: number
+  /** The patch set it was written for */
+  patch_set: number
+  /** It was written for the newest patch set */
+  current: boolean
+  /** What the change does, for a reviewer */
+  summary: string
+  /** The files in the order to read them */
+  order: Array<{
+    path: string
+    /** Why to read it, and what to look for */
+    why: string
+    risk: 'low' | 'medium' | 'high'
+  }>
+  by: Actor
+  /** The agent run that wrote it, if any */
+  run: string | null
+  /** RFC 3339 time, UTC */
+  created_at: string
+}
+
+export type ChangeSeen = {
+  object: 'change_seen'
+  change: number
+  /** The newest patch set */
+  patch_set: number
+  /** Files you have seen as they are now */
+  seen: number
+  /** Files the change touches */
+  total: number
+  files: Array<{
+    path: string
+    /** You marked it seen and it has not changed since */
+    seen: boolean
+    /** The patch set you marked it seen on; null if never */
+    patch_set: number | null
+    /** You saw it, then a newer patch set changed it */
+    changed_since: boolean
+  }>
 }
 
 export type CheckRun = {
@@ -559,6 +627,8 @@ export type Finding = {
   suggestion: Suggestion | null
   /** The same fix as instructions for an agent */
   prompt: string | null
+  /** The agent run that made it; null when no run did */
+  run: string | null
   /** RFC 3339 time, UTC */
   created_at: string
 }
@@ -770,6 +840,29 @@ export type Label = {
   created_at: string
 }
 
+export type Landability = {
+  object: 'landability'
+  change: number
+  patch_set: number
+  /** Send it as `expected_tree` to land */
+  tree: string
+  landable: boolean
+  /** What stops it now: failed or pending requirements, and landing steps it waits on */
+  blockers: Array<Requirement>
+  requirements: Array<Requirement>
+  landing: Landing
+}
+
+export type Landing = {
+  strategy: 'squash' | 'rebase' | 'merge'
+  /** Approvals count only on the newest patch set, not carried over a rebase */
+  fresh_approvals: boolean
+  /** Who may settle a review thread */
+  resolve: 'author' | 'any_reviewer'
+  /** `{wait_checks: [...]}`, `{run_pipeline: name}` or `{webhook: url}`, in order */
+  steps: Array<Record<string, unknown>>
+}
+
 export type Limits = {
   object: 'limits'
   pools: Array<{
@@ -893,6 +986,16 @@ export type Operation = {
   /** RFC 3339 time, UTC */
   created_at: string
   finished_at: string | null
+  /** For a landing: each change it lands, then the policy file's landing steps, with how each went. Empty for other operations */
+  steps: Array<{
+    name: string
+    kind: 'land' | 'run_pipeline' | 'webhook'
+    /** The change number, the pipeline's workflow, or the URL */
+    target: string
+    state: 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped'
+    detail: string
+    finished_at: string | null
+  }>
 }
 
 export type PatchSet = {
@@ -905,6 +1008,8 @@ export type PatchSet = {
   author: Actor
   files: number
   url: string
+  /** The agent run that made it; null when no run did */
+  run: string | null
   /** RFC 3339 time, UTC */
   created_at: string
 }
@@ -1068,6 +1173,19 @@ export type PolicyException = {
   expires_at: string
 }
 
+export type PolicyProposal = {
+  object: 'policy_proposal'
+  /** The change that carries the edit; null for a dry run */
+  change: number | null
+  url: string | null
+  patch_set: number | null
+  /** True when a new change was opened; false when the edit went on your open policy change as a patch set */
+  created: boolean
+  edits: Array<Record<string, unknown>>
+  /** What this edit does to the file, as a unified diff */
+  diff: string
+}
+
 export type PolicySet = {
   object: 'policy_set'
   repo: string
@@ -1098,6 +1216,43 @@ export type PolicySet = {
   exceptions: Array<PolicyException>
   large_change_lines: number
   version: number
+  /** Where the rules come from */
+  source: {
+    /** `settings` until the rules move into the file; `file` once they live there; `errors` when the file that landed last does not read, and the last valid rules stay in force */
+    state: 'settings' | 'file' | 'errors'
+    /** The commit the rules were read from */
+    sha: string | null
+    errors: Array<{
+      /** Where in the file, like `rules[2].mode` */
+      path: string
+      line: number | null
+      message: string
+    }>
+    /** Open changes that edit the policy file */
+    pending: Array<{
+      change: number
+      title: string
+      author: string
+      url: string
+    }>
+  }
+  landing: Landing
+}
+
+export type Presence = {
+  object: 'presence'
+  kind: 'change' | 'issue'
+  number: number
+  /** Seconds between heartbeats. A viewer who sends none for two and a half intervals is gone */
+  interval: number
+  /** People and agents looking at it now, agents marked by class */
+  viewers: Array<{
+    actor: Actor
+    /** The file they have open; null on the overview */
+    path: string | null
+    /** Their last heartbeat */
+    seen_at: string
+  }>
 }
 
 export type Principal = {
@@ -1186,6 +1341,37 @@ export type Profile = {
   activity_hidden: boolean
 }
 
+export type Provenance = {
+  object: 'provenance'
+  path: string
+  line: number
+  /** The commit the line was read at, or the change it is in */
+  ref: string
+  /** The commit that last wrote the line; null inside a change */
+  commit: {
+    sha: string
+    message: string
+    author: {
+      name: string
+      email: string
+    }
+    /** RFC 3339 time, UTC */
+    date: string
+  } | null
+  /** The change it came through; null when none of ours did */
+  change: {
+    number: number
+    title: string
+    state: 'draft' | 'open' | 'landed' | 'abandoned'
+    url: string
+    html_url: string
+  } | null
+  /** The patch set of that change that wrote the line */
+  patch_set: number | null
+  /** The agent run that pushed that patch set, with its task, summary, links and transcript */
+  run: Run | null
+}
+
 export type Recipient = {
   object: 'recipient'
   id: string
@@ -1196,6 +1382,16 @@ export type Recipient = {
   environments: Array<'development' | 'preview' | 'production'>
   added_at: string | null
   last_used_at: string | null
+}
+
+export type Reference = {
+  object: 'reference'
+  change: number
+  title: string
+  state: 'draft' | 'open' | 'landed' | 'abandoned'
+  /** It says it fixes the issue (Fixes, Closes or Resolves #n) */
+  closes: boolean
+  url: string
 }
 
 export type Release = {
@@ -1285,6 +1481,10 @@ export type Repo = {
   docs_url: string | null
   /** People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant. */
   maintainers: Array<string>
+  /** Whether agent runs may attach their transcripts. Off unless an owner turns it on */
+  transcripts: 'off' | 'on'
+  /** Whether commits keep a `Run-Id:` trailer naming the run that made them. `auto` keeps it in private repositories and removes it in public ones */
+  run_trailer: 'auto' | 'on' | 'off'
   open_changes: number
   open_issues: number
   url: string
@@ -1366,6 +1566,8 @@ export type Review = {
   patch_set: number
   carries_to_head: boolean
   body: string
+  /** The agent run that made it; null when no run did */
+  run: string | null
   /** RFC 3339 time, UTC */
   created_at: string
 }
@@ -1400,6 +1602,27 @@ export type Run = {
     text: string
   }>
   summary: string | null
+  /** The issue this run works on, if any */
+  issue: number | null
+  /** What drove the agent, such as claude-code, delta or sx */
+  harness: string | null
+  /** Conversations about this run elsewhere, such as a Delta thread */
+  links: Array<string>
+  /** What the agent saw and said, when the repository keeps it */
+  transcript: {
+    /** Bytes, after masking */
+    size: number
+    sha256: string
+    /** How many secrets were masked when it was attached */
+    redactions: number
+    /** Read it here, with the runs:transcripts scope */
+    url: string
+  } | null
+  /** The patch sets this run pushed, oldest first */
+  patch_sets: Array<{
+    change: number
+    patch_set: number
+  }>
   url: string
   /** RFC 3339 time, UTC */
   started_at: string
@@ -1407,6 +1630,30 @@ export type Run = {
   expires_at: string
   finished_at: string | null
   version: number
+}
+
+export type RunNote = {
+  object: 'run_note'
+  /** Starts with run_ */
+  run: string
+  task: string
+  text: string
+  /** The run's summary, said when it ended, rather than a note */
+  final: boolean
+}
+
+export type RunTranscript = {
+  object: 'run_transcript'
+  /** Starts with run_ */
+  run: string
+  content_type: 'text/plain' | 'application/json'
+  /** Bytes */
+  size: number
+  sha256: string
+  /** How many secrets were masked when it was attached */
+  redactions: number
+  /** The transcript, secrets masked */
+  content: string
 }
 
 export type SearchResult = {
@@ -1434,6 +1681,13 @@ export type Star = {
   starred: boolean
   /** How many people did */
   stars: number
+}
+
+export type StateChange = {
+  object: 'state_change'
+  /** Null when it was opened */
+  from: string | null
+  to: string
 }
 
 export type Status = {
@@ -1536,6 +1790,44 @@ export type TestCase = {
   head: 'pass' | 'fail' | 'skip'
 }
 
+export type TimelineEntry = {
+  object: 'timeline_entry'
+  /** Stable: the kind and the id of what it shows */
+  id: string
+  kind:
+    | 'patch_set'
+    | 'comment'
+    | 'review'
+    | 'finding'
+    | 'check'
+    | 'guide'
+    | 'evidence'
+    | 'run_note'
+    | 'state_change'
+    | 'reference'
+  /** RFC 3339 time, UTC */
+  created_at: string
+  actor: Actor | null
+  /** The agent run that made it; null when no run did */
+  run: string | null
+  /** One line, for reading the story at a glance */
+  summary: string
+  /** What happened, as its own object */
+  item:
+    | PatchSet
+    | ChangeComment
+    | Review
+    | Finding
+    | CheckRun
+    | IssueComment
+    | Evidence
+    | IssueEvidence
+    | ChangeGuide
+    | RunNote
+    | StateChange
+    | Reference
+}
+
 export type Token = {
   object: 'token'
   /** Starts with tok_ */
@@ -1564,7 +1856,7 @@ export type Upload = {
   filename: string
   content_type: string
   size: number
-  purpose: 'evidence' | 'release'
+  purpose: 'evidence' | 'release' | 'transcript'
   state: 'pending' | 'uploaded'
   sha256: string | null
   /** PUT the file here. Needs no token. Once, for an hour */
@@ -1826,6 +2118,7 @@ export interface Operations {
           | 'webhooks:read'
           | 'webhooks:write'
           | 'tokens:manage'
+          | 'runs:transcripts'
         >
       }
     }
@@ -1888,10 +2181,27 @@ export interface Operations {
           | 'webhooks:read'
           | 'webhooks:write'
           | 'tokens:manage'
+          | 'runs:transcripts'
         >
       }
     }
     output: Bot
+  }
+  /** Say which patch set answers a review thread (`POST /repos/{owner}/{repo}/changes/{number}/comments/{comment}/address`) */
+  'change_comments.address': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+      comment: string
+      body: {
+        /** The patch set with the fix. Default: the newest */
+        patch_set?: number
+        /** What changed */
+        note?: string
+      }
+    }
+    output: ChangeComment
   }
   /** Comment on a line, a file or a change (`POST /repos/{owner}/{repo}/changes/{number}/comments`) */
   'change_comments.create': {
@@ -1906,6 +2216,8 @@ export interface Operations {
         patch_set?: number
         /** A comment to answer; `file`, `line` and `patch_set` follow it */
         reply_to?: string
+        /** The text the comment is about, starting on `line`. Without it, the line itself. The comment follows this text into newer patch sets */
+        quote?: string
       }
     }
     output: ChangeComment
@@ -1975,6 +2287,14 @@ export interface Operations {
         description?: string
         draft?: boolean
         sha?: string
+        /** The head commit's message. A `Run-Id:` trailer in it names the run that made the commit, when the token is not that run's own */
+        message?: string
+        /** When this adds a patch set: the review threads it answers, marked in the same write */
+        addresses?: Array<{
+          /** The `cmt_` id that starts a thread */
+          comment: string
+          note?: string
+        }>
       }
     }
     output: Change
@@ -1993,6 +2313,35 @@ export interface Operations {
     }
     output: Change
   }
+  /** A change's guide (`GET /repos/{owner}/{repo}/changes/{number}/guide`) */
+  'changes.guide.get': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+    }
+    output: ChangeGuide
+  }
+  /** Write the guide for a change (`PUT /repos/{owner}/{repo}/changes/{number}/guide`) */
+  'changes.guide.put': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+      body: {
+        summary: string
+        /** Files of the newest patch set, each once, in reading order */
+        order: Array<{
+          path: string
+          why?: string
+          risk?: 'low' | 'medium' | 'high'
+        }>
+        /** The patch set it is for. Default: the newest */
+        patch_set?: number
+      }
+    }
+    output: ChangeGuide
+  }
   /** Land a change (`POST /repos/{owner}/{repo}/changes/{number}/land`) */
   'changes.land': {
     input: {
@@ -2003,7 +2352,16 @@ export interface Operations {
         expected_tree: string
       }
     }
-    output: Change
+    output: Change | Operation
+  }
+  /** What stops a change from landing (`GET /repos/{owner}/{repo}/changes/{number}/landability`) */
+  'changes.landability': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+    }
+    output: Landability
   }
   /** Changes in a repository (`GET /repos/{owner}/{repo}/changes`) */
   'changes.list': {
@@ -2045,6 +2403,32 @@ export interface Operations {
     }
     output: Change
   }
+  /** Who is looking at a change (`GET /repos/{owner}/{repo}/changes/{number}/presence`) */
+  'changes.presence.get': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+    }
+    output: Presence
+  }
+  /** Say you are looking at a change (`PUT /repos/{owner}/{repo}/changes/{number}/presence`) */
+  'changes.presence.put': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+      body: {
+        /** One per open tab or agent process, so two of yours count once and leaving one leaves only it */
+        session: string
+        /** The file you have open */
+        path?: string | null
+        /** Leave now instead of once the heartbeats stop */
+        leave?: boolean
+      }
+    }
+    output: Presence
+  }
   /** Reopen an abandoned change (`POST /repos/{owner}/{repo}/changes/{number}/restore`) */
   'changes.restore': {
     input: {
@@ -2053,6 +2437,47 @@ export interface Operations {
       number: string
     }
     output: Change
+  }
+  /** Which files of a change you have seen (`GET /repos/{owner}/{repo}/changes/{number}/seen`) */
+  'changes.seen.get': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+    }
+    output: ChangeSeen
+  }
+  /** Mark files of a change as seen (`PUT /repos/{owner}/{repo}/changes/{number}/seen`) */
+  'changes.seen.put': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+      body: {
+        paths: Array<string>
+        /** False takes the mark off, so the files read as unseen */
+        seen?: boolean
+      }
+    }
+    output: ChangeSeen
+  }
+  /** A change's timeline (`GET /repos/{owner}/{repo}/changes/{number}/timeline`) */
+  'changes.timeline': {
+    input: {
+      owner: string
+      repo: string
+      number: string
+      /** Items per page, 1 to 200. Larger values are clamped. */
+      limit?: number
+      /** `next_cursor` from the previous page, exactly as returned */
+      cursor?: string
+    }
+    output: {
+      object: 'list'
+      data: Array<TimelineEntry>
+      has_more: boolean
+      next_cursor: string | null
+    }
   }
   /** Edit title, description or labels (`PATCH /repos/{owner}/{repo}/changes/{number}`) */
   'changes.update': {
@@ -2745,6 +3170,50 @@ export interface Operations {
       next_cursor: string | null
     }
   }
+  /** Who is looking at an issue (`GET /repos/{owner}/{repo}/issues/{number}/presence`) */
+  'issues.presence.get': {
+    input: {
+      owner: string
+      repo: string
+      number: number
+    }
+    output: Presence
+  }
+  /** Say you are looking at an issue (`PUT /repos/{owner}/{repo}/issues/{number}/presence`) */
+  'issues.presence.put': {
+    input: {
+      owner: string
+      repo: string
+      number: number
+      body: {
+        /** One per open tab or agent process, so two of yours count once and leaving one leaves only it */
+        session: string
+        /** The file you have open */
+        path?: string | null
+        /** Leave now instead of once the heartbeats stop */
+        leave?: boolean
+      }
+    }
+    output: Presence
+  }
+  /** An issue's timeline (`GET /repos/{owner}/{repo}/issues/{number}/timeline`) */
+  'issues.timeline': {
+    input: {
+      owner: string
+      repo: string
+      number: number
+      /** Items per page, 1 to 200. Larger values are clamped. */
+      limit?: number
+      /** `next_cursor` from the previous page, exactly as returned */
+      cursor?: string
+    }
+    output: {
+      object: 'list'
+      data: Array<TimelineEntry>
+      has_more: boolean
+      next_cursor: string | null
+    }
+  }
   /** Edit an issue, or close or reopen it (`PATCH /repos/{owner}/{repo}/issues/{number}`) */
   'issues.update': {
     input: {
@@ -3045,6 +3514,13 @@ export interface Operations {
         note?: string
         /** Edited files, whole, by path; null deletes. Only files the change already touches. The patch set is the head with these on top, and its commit id is a hash of the result */
         files?: Record<string, string | null>
+        /** Review threads this patch set answers. They are marked addressed in the same write and their authors are told; they stay open until someone resolves them */
+        addresses?: Array<{
+          /** The `cmt_` id that starts a thread */
+          comment: string
+          /** What changed */
+          note?: string
+        }>
       }
     }
     output: PatchSet
@@ -3212,7 +3688,7 @@ export interface Operations {
         expires_at: string
       }
     }
-    output: PolicyException
+    output: PolicyException | PolicyProposal
   }
   /** Write a rule of the repository's own (`POST /repos/{owner}/{repo}/policy/rules`) */
   'policy.create_rule': {
@@ -3231,26 +3707,28 @@ export interface Operations {
         mode?: 'enforce' | 'dry-run' | 'off'
       }
     }
-    output: {
-      id: string
-      name: string
-      /** `dry-run` reports what it would block and blocks nothing */
-      mode: 'enforce' | 'dry-run' | 'off'
-      when: string
-      requires: Array<string>
-      /** Changes it applied to */
-      evaluated: number
-      /** Of those, how many it held back, or would have */
-      blocked: number
-      /** Written by the repository, not built in; it can be deleted */
-      custom: boolean
-      /** For a rule in dry run: the changes it would block now */
-      would_block: Array<{
-        change: number
-        title: string
-        why: string
-      }>
-    }
+    output:
+      | {
+          id: string
+          name: string
+          /** `dry-run` reports what it would block and blocks nothing */
+          mode: 'enforce' | 'dry-run' | 'off'
+          when: string
+          requires: Array<string>
+          /** Changes it applied to */
+          evaluated: number
+          /** Of those, how many it held back, or would have */
+          blocked: number
+          /** Written by the repository, not built in; it can be deleted */
+          custom: boolean
+          /** For a rule in dry run: the changes it would block now */
+          would_block: Array<{
+            change: number
+            title: string
+            why: string
+          }>
+        }
+      | PolicyProposal
   }
   /** Delete a rule the repository wrote (`DELETE /repos/{owner}/{repo}/policy/rules/{rule}`) */
   'policy.delete_rule': {
@@ -3259,7 +3737,7 @@ export interface Operations {
       repo: string
       rule: string
     }
-    output: void
+    output: PolicyProposal | void
   }
   /** Each policy requirement for a change (`GET /repos/{owner}/{repo}/changes/{number}/policy`) */
   'policy.get': {
@@ -3272,6 +3750,67 @@ export interface Operations {
     }
     output: PolicyEvaluation
   }
+  /** Propose edits to the rules (`POST /repos/{owner}/{repo}/policy/proposals`) */
+  'policy.proposals.create': {
+    input: {
+      owner: string
+      repo: string
+      body: {
+        edits: Array<
+          | {
+              op: 'set_mode'
+              rule: string
+              mode: 'enforce' | 'dry-run' | 'off'
+            }
+          | {
+              op: 'create_rule'
+              id: string
+              name: string
+              kind: 'required_check' | 'path_approval' | 'max_lines'
+              check?: string
+              paths?: Array<string>
+              approvals?: number
+              from?: Array<string>
+              max_lines?: number
+              mode?: 'enforce' | 'dry-run' | 'off'
+            }
+          | {
+              op: 'delete_rule'
+              rule: string
+            }
+          | {
+              op: 'add_exception'
+              rule: string
+              who: string
+              reason: string
+              expires_at: string
+            }
+          | {
+              op: 'remove_exception'
+              exception: string
+            }
+          | {
+              op: 'set_landing'
+              strategy?: 'squash' | 'rebase' | 'merge'
+              fresh_approvals?: boolean
+              resolve?: 'author' | 'any_reviewer'
+              steps?: Array<
+                | {
+                    wait_checks: Array<string>
+                  }
+                | {
+                    run_pipeline: string
+                  }
+                | {
+                    webhook: string
+                  }
+              >
+            }
+        >
+      }
+    }
+    output: PolicyProposal
+  }
   /** End an exception now (`DELETE /repos/{owner}/{repo}/policy/exceptions/{exception}`) */
   'policy.remove_exception': {
     input: {
@@ -3279,7 +3818,7 @@ export interface Operations {
       repo: string
       exception: string
     }
-    output: void
+    output: PolicyProposal | void
   }
   /** A repository's policy (`GET /repos/{owner}/{repo}/policy`) */
   'policy.rules': {
@@ -3313,26 +3852,28 @@ export interface Operations {
         mode: 'enforce' | 'dry-run' | 'off'
       }
     }
-    output: {
-      id: string
-      name: string
-      /** `dry-run` reports what it would block and blocks nothing */
-      mode: 'enforce' | 'dry-run' | 'off'
-      when: string
-      requires: Array<string>
-      /** Changes it applied to */
-      evaluated: number
-      /** Of those, how many it held back, or would have */
-      blocked: number
-      /** Written by the repository, not built in; it can be deleted */
-      custom: boolean
-      /** For a rule in dry run: the changes it would block now */
-      would_block: Array<{
-        change: number
-        title: string
-        why: string
-      }>
-    }
+    output:
+      | {
+          id: string
+          name: string
+          /** `dry-run` reports what it would block and blocks nothing */
+          mode: 'enforce' | 'dry-run' | 'off'
+          when: string
+          requires: Array<string>
+          /** Changes it applied to */
+          evaluated: number
+          /** Of those, how many it held back, or would have */
+          blocked: number
+          /** Written by the repository, not built in; it can be deleted */
+          custom: boolean
+          /** For a rule in dry run: the changes it would block now */
+          would_block: Array<{
+            change: number
+            title: string
+            why: string
+          }>
+        }
+      | PolicyProposal
   }
   /** What your profile shows, and how downloads pick a file (`GET /user/preferences`) */
   'preferences.get': {
@@ -3540,6 +4081,22 @@ export interface Operations {
     }
     output: NumberRef
   }
+  /** Where a line of code came from (`GET /repos/{owner}/{repo}/provenance`) */
+  'repos.provenance': {
+    input: {
+      owner: string
+      repo: string
+      /** A file, without a leading slash */
+      path: string
+      /** 1-based */
+      line: number
+      /** A branch, or a commit id. Default: the default branch */
+      ref?: string
+      /** Read the line in this change's newest patch set */
+      change?: number
+    }
+    output: Provenance
+  }
   /** Give a repository to another account (`POST /repos/{owner}/{repo}/transfer`) */
   'repos.transfer': {
     input: {
@@ -3577,6 +4134,10 @@ export interface Operations {
         website?: string | null
         docs_url?: string | null
         install?: string | null
+        /** Let agent runs attach their transcripts */
+        transcripts?: 'off' | 'on'
+        /** Keep the `Run-Id:` commit trailer. `auto`: in private repositories only */
+        run_trailer?: 'auto' | 'on' | 'off'
       }
     }
     output: Repo
@@ -3694,8 +4255,49 @@ export interface Operations {
           | 'webhooks:read'
           | 'webhooks:write'
           | 'tokens:manage'
+          | 'runs:transcripts'
         >
         ttl_minutes?: number
+      }
+    }
+    output: Run
+  }
+  /** Read a run's transcript (`GET /repos/{owner}/{repo}/runs/{id}/transcript`) */
+  'runs.transcript.get': {
+    input: {
+      owner: string
+      repo: string
+      id: string
+    }
+    output: RunTranscript
+  }
+  /** Attach a run's transcript (`PUT /repos/{owner}/{repo}/runs/{id}/transcript`) */
+  'runs.transcript.put': {
+    input: {
+      owner: string
+      repo: string
+      id: string
+      body: {
+        /** The `upl_` id */
+        upload: string
+        /** What to do with secrets: mask them, or refuse the transcript */
+        mode?: 'mask' | 'block'
+      }
+    }
+    output: Run
+  }
+  /** Say what a run belongs to (`PATCH /repos/{owner}/{repo}/runs/{id}`) */
+  'runs.update': {
+    input: {
+      owner: string
+      repo: string
+      id: string
+      body: {
+        /** The issue the run works on; null to unlink it */
+        issue?: number | null
+        /** Such as claude-code, delta or sx */
+        harness?: string | null
+        links?: Array<string>
       }
     }
     output: Run
@@ -3888,6 +4490,7 @@ export interface Operations {
           | 'webhooks:read'
           | 'webhooks:write'
           | 'tokens:manage'
+          | 'runs:transcripts'
         >
         expires_in_days?: 30 | 60 | 90 | 365
         /** `owner/name`. Limits the token to these repositories */
@@ -3946,8 +4549,8 @@ export interface Operations {
           | 'application/zip'
           | 'application/gzip'
         size: number
-        /** `release` for a file of a release; binaries, zip and gzip are only allowed there */
-        purpose?: 'evidence' | 'release'
+        /** `release` for a file of a release; binaries, zip and gzip are only allowed there. `transcript` for a run's transcript */
+        purpose?: 'evidence' | 'release' | 'transcript'
       }
     }
     output: Upload
@@ -4364,6 +4967,17 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'write',
   },
+  'change_comments.address': {
+    method: 'POST',
+    path: '/repos/{owner}/{repo}/changes/{number}/comments/{comment}/address',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
   'change_comments.create': {
     method: 'POST',
     path: '/repos/{owner}/{repo}/changes/{number}/comments',
@@ -4441,6 +5055,28 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'read',
   },
+  'changes.guide.get': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/changes/{number}/guide',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
+  'changes.guide.put': {
+    method: 'PUT',
+    path: '/repos/{owner}/{repo}/changes/{number}/guide',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
   'changes.land': {
     method: 'POST',
     path: '/repos/{owner}/{repo}/changes/{number}/land',
@@ -4451,6 +5087,17 @@ const OPERATIONS = {
     idempotent: false,
     secretResponse: false,
     safety: 'destructive',
+  },
+  'changes.landability': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/changes/{number}/landability',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
   },
   'changes.list': {
     method: 'GET',
@@ -4485,6 +5132,28 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'write',
   },
+  'changes.presence.get': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/changes/{number}/presence',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
+  'changes.presence.put': {
+    method: 'PUT',
+    path: '/repos/{owner}/{repo}/changes/{number}/presence',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
   'changes.restore': {
     method: 'POST',
     path: '/repos/{owner}/{repo}/changes/{number}/restore',
@@ -4495,6 +5164,39 @@ const OPERATIONS = {
     idempotent: false,
     secretResponse: false,
     safety: 'write',
+  },
+  'changes.seen.get': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/changes/{number}/seen',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
+  'changes.seen.put': {
+    method: 'PUT',
+    path: '/repos/{owner}/{repo}/changes/{number}/seen',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
+  'changes.timeline': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/changes/{number}/timeline',
+    query: ['limit', 'cursor'],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
   },
   'changes.update': {
     method: 'PATCH',
@@ -5079,6 +5781,39 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'read',
   },
+  'issues.presence.get': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/issues/{number}/presence',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
+  'issues.presence.put': {
+    method: 'PUT',
+    path: '/repos/{owner}/{repo}/issues/{number}/presence',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
+  'issues.timeline': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/issues/{number}/timeline',
+    query: ['limit', 'cursor'],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
   'issues.update': {
     method: 'PATCH',
     path: '/repos/{owner}/{repo}/issues/{number}',
@@ -5530,6 +6265,17 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'read',
   },
+  'policy.proposals.create': {
+    method: 'POST',
+    path: '/repos/{owner}/{repo}/policy/proposals',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: false,
+    secretResponse: false,
+    safety: 'write',
+  },
   'policy.remove_exception': {
     method: 'DELETE',
     path: '/repos/{owner}/{repo}/policy/exceptions/{exception}',
@@ -5739,6 +6485,17 @@ const OPERATIONS = {
     secretResponse: false,
     safety: 'read',
   },
+  'repos.provenance': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/provenance',
+    query: ['path', 'line', 'ref', 'change'],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
   'repos.transfer': {
     method: 'POST',
     path: '/repos/{owner}/{repo}/transfer',
@@ -5847,6 +6604,39 @@ const OPERATIONS = {
     json: true,
     idempotent: false,
     secretResponse: true,
+    safety: 'write',
+  },
+  'runs.transcript.get': {
+    method: 'GET',
+    path: '/repos/{owner}/{repo}/runs/{id}/transcript',
+    query: [],
+    body: false,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'read',
+  },
+  'runs.transcript.put': {
+    method: 'PUT',
+    path: '/repos/{owner}/{repo}/runs/{id}/transcript',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
+    safety: 'write',
+  },
+  'runs.update': {
+    method: 'PATCH',
+    path: '/repos/{owner}/{repo}/runs/{id}',
+    query: [],
+    body: true,
+    rawBody: false,
+    json: true,
+    idempotent: true,
+    secretResponse: false,
     safety: 'write',
   },
   'search.query': {
@@ -6342,6 +7132,10 @@ export interface Client extends Core {
     ) => Promise<Operations['bots.update']['output']>
   }
   change_comments: {
+    address: (
+      input: Operations['change_comments.address']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['change_comments.address']['output']>
     create: (
       input: Operations['change_comments.create']['input'],
       options?: RequestOptions,
@@ -6376,6 +7170,10 @@ export interface Client extends Core {
       input: Operations['changes.land']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['changes.land']['output']>
+    landability: (
+      input: Operations['changes.landability']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['changes.landability']['output']>
     list: (
       input: Operations['changes.list']['input'],
       options?: RequestOptions,
@@ -6388,10 +7186,44 @@ export interface Client extends Core {
       input: Operations['changes.restore']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['changes.restore']['output']>
+    timeline: (
+      input: Operations['changes.timeline']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['changes.timeline']['output']>
     update: (
       input: Operations['changes.update']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['changes.update']['output']>
+    guide: {
+      get: (
+        input: Operations['changes.guide.get']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.guide.get']['output']>
+      put: (
+        input: Operations['changes.guide.put']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.guide.put']['output']>
+    }
+    presence: {
+      get: (
+        input: Operations['changes.presence.get']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.presence.get']['output']>
+      put: (
+        input: Operations['changes.presence.put']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.presence.put']['output']>
+    }
+    seen: {
+      get: (
+        input: Operations['changes.seen.get']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.seen.get']['output']>
+      put: (
+        input: Operations['changes.seen.put']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['changes.seen.put']['output']>
+    }
   }
   checks: {
     list: (
@@ -6630,10 +7462,24 @@ export interface Client extends Core {
       input: Operations['issues.list']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['issues.list']['output']>
+    timeline: (
+      input: Operations['issues.timeline']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['issues.timeline']['output']>
     update: (
       input: Operations['issues.update']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['issues.update']['output']>
+    presence: {
+      get: (
+        input: Operations['issues.presence.get']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['issues.presence.get']['output']>
+      put: (
+        input: Operations['issues.presence.put']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['issues.presence.put']['output']>
+    }
   }
   labels: {
     create: (
@@ -6830,6 +7676,12 @@ export interface Client extends Core {
       input: Operations['policy.update_rule']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['policy.update_rule']['output']>
+    proposals: {
+      create: (
+        input: Operations['policy.proposals.create']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['policy.proposals.create']['output']>
+    }
   }
   preferences: {
     get: (
@@ -6896,6 +7748,10 @@ export interface Client extends Core {
       input: Operations['repos.number']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['repos.number']['output']>
+    provenance: (
+      input: Operations['repos.provenance']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['repos.provenance']['output']>
     transfer: (
       input: Operations['repos.transfer']['input'],
       options?: RequestOptions,
@@ -6940,6 +7796,20 @@ export interface Client extends Core {
       input: Operations['runs.start']['input'],
       options?: RequestOptions,
     ) => Promise<Operations['runs.start']['output']>
+    update: (
+      input: Operations['runs.update']['input'],
+      options?: RequestOptions,
+    ) => Promise<Operations['runs.update']['output']>
+    transcript: {
+      get: (
+        input: Operations['runs.transcript.get']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['runs.transcript.get']['output']>
+      put: (
+        input: Operations['runs.transcript.put']['input'],
+        options?: RequestOptions,
+      ) => Promise<Operations['runs.transcript.put']['output']>
+    }
   }
   search: {
     query: (

@@ -397,32 +397,44 @@ export const start = mutation({
   handler: async (ctx, a) => {
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
-    let last: PipelineRun | null = null
-    for await (const d of ctx.db
-      .query('pipelineRuns')
-      .withIndex('by_repoId_and_started', (q) => q.eq('repoId', repo._id))
-      .order('desc'))
-      if (d.workflow === a.workflow) {
-        last = await load(ctx, d)
-        break
-      }
-    if (!last)
-      fail(
-        'not_found',
-        `No workflow ${a.workflow} in ${repo.owner}/${repo.name}.`,
-        {
-          hint: 'GET the pipelines list to see which workflows have run.',
-        },
-      )
-    const branch = a.branch ?? repo.defaultBranch
-    const r = await queuedFrom(ctx, repo, last, p.handle)
-    r.branch = branch
-    r.sha = a.sha ?? last.sha
-    r.title = `${a.workflow} on ${branch}`
-    await insertRun(ctx, repo, r)
+    const r = await startWorkflow(ctx, repo, a.workflow, p.handle, a)
     return finish(a.dry, present(repo, r, true))
   },
 })
+
+/** Queues a workflow from its last run's jobs. A landing's `run_pipeline` step starts one too. */
+export async function startWorkflow(
+  ctx: MutationCtx,
+  repo: Doc<'repos'>,
+  workflow: string,
+  actor: string,
+  at: { branch?: string; sha?: string } = {},
+) {
+  let last: PipelineRun | null = null
+  for await (const d of ctx.db
+    .query('pipelineRuns')
+    .withIndex('by_repoId_and_started', (q) => q.eq('repoId', repo._id))
+    .order('desc'))
+    if (d.workflow === workflow) {
+      last = await load(ctx, d)
+      break
+    }
+  if (!last)
+    fail(
+      'not_found',
+      `No workflow ${workflow} in ${repo.owner}/${repo.name}.`,
+      {
+        hint: 'GET the pipelines list to see which workflows have run.',
+      },
+    )
+  const branch = at.branch ?? repo.defaultBranch
+  const r = await queuedFrom(ctx, repo, last, actor)
+  r.branch = branch
+  r.sha = at.sha ?? last.sha
+  r.title = `${workflow} on ${branch}`
+  await insertRun(ctx, repo, r)
+  return r
+}
 
 /** A runner asks for work: the oldest queued job in the repository, now running on it. */
 export const claim = mutation({

@@ -17,6 +17,8 @@ import { compact, latestStable } from '~/lib/model/data'
 import { useOp, useOpMaybe, useWrite } from '~/lib/forge'
 import { toMedia } from '~/lib/change'
 import { EvidenceSection } from './evidence'
+import { IssueHistory } from './issue-history'
+import { Viewers, usePresence } from './presence'
 import { manages, useAccount, useMe } from '~/lib/auth/accounts'
 import { timeAgo } from '~/lib/repo'
 import { ShareDonut, TrendChart } from '~/components/charts'
@@ -308,6 +310,13 @@ function IssueDetail({ repo, n }: { repo: Repo; n: number }) {
     return !r.error
   }
 
+  const viewers = usePresence(
+    'issue',
+    { owner: repo.owner, repo: repo.name, number: String(n) },
+    null,
+    Boolean(me),
+  )
+
   const thread = [
     {
       id: 'body',
@@ -340,6 +349,9 @@ function IssueDetail({ repo, n }: { repo: Repo; n: number }) {
               </Chip>
               {issue.author.handle} opened this {timeAgo(issue.created_at)}
             </div>
+            <div className="mt-2">
+              <Viewers viewers={viewers} />
+            </div>
           </div>
           {issue.state === 'open' && (
             <WorkWithAgent
@@ -365,6 +377,7 @@ function IssueDetail({ repo, n }: { repo: Repo; n: number }) {
           </Panel>
         ))}
         <EvidenceSection title="What people saw" items={toMedia(evidence)} />
+        <IssueHistory repo={repo} n={n} />
         {me ? (
           <Panel className="space-y-3 p-4">
             <textarea

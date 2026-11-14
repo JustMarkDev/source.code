@@ -52,7 +52,7 @@ curl "https://api.source.code/v1/events?repo=dana/gitfs&type=issue.*&limit=2" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.16.1-0eGvi__ULZIuhu7X"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.18.1-gpPeN3Jfo5Lv87mz"
 ratelimit: "read";r=1179;t=60
 ```
 
@@ -236,20 +236,20 @@ Poll it, or add ?wait=20 with If-None-Match to hold the request until it changes
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/operations/op_01m6tq6r80afbfkr4h" \
+curl "https://api.source.code/v1/operations/op_01m6tq6r80tgf8fc46" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"op_01m6tq6r80afbfkr4h.succeeded.3-awXppFXKoOGyoskW"
-ratelimit: "read";r=1124;t=60
+etag: W/"op_01m6tq6r80tgf8fc46.succeeded.3-H0-WMK_Fak9BZoPj"
+ratelimit: "read";r=1115;t=60
 ```
 
 ```json
 {
   "object": "operation",
-  "id": "op_01m6tq6r80afbfkr4h",
+  "id": "op_01m6tq6r80tgf8fc46",
   "kind": "stack.land",
   "state": "succeeded",
   "progress": {
@@ -262,9 +262,28 @@ ratelimit: "read";r=1124;t=60
     "url": "https://api.source.code/v1/repos/dana/stacky/stacks/stk_stacky000000000000"
   },
   "error": null,
-  "url": "https://api.source.code/v1/operations/op_01m6tq6r80afbfkr4h",
+  "url": "https://api.source.code/v1/operations/op_01m6tq6r80tgf8fc46",
   "created_at": "2026-11-07T10:00:00.000Z",
-  "finished_at": "2026-11-07T10:00:00.000Z"
+  "finished_at": "2026-11-07T10:00:00.000Z",
+  "steps": [
+    {
+      "name": "Land #1",
+      "kind": "land",
+      "target": "1",
+      "state": "succeeded",
+      "detail": "Landed as 1111111.",
+      "finished_at": "2026-11-07T10:00:00.000Z"
+    },
+    {
+      "name": "Land #2",
+      "kind": "land",
+      "target": "2",
+      "state": "succeeded",
+      "detail": "Landed as 5fa504c.",
+      "finished_at": "2026-11-07T10:00:00.000Z"
+    },
+    "…and 1 more"
+  ]
 }
 ```
 
@@ -307,14 +326,14 @@ curl "https://api.source.code/v1/sync?repo=dana/tinyqueue" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m4dbvam0dtex0we7.1.0.0.8.0.1-h8boj6TT9Aas0mum"
+etag: W/"rep_01m4dbvam0dtex0we7.1.0.0.8.0.1-j9piAO8gS3HyW04O"
 ratelimit: "read";r=1178;t=60
 ```
 
 ```json
 {
   "object": "sync",
-  "cursor": "e_rep_01m4dbvam0dtex0we7_16",
+  "cursor": "e_rep_01m4dbvam0dtex0we7_18",
   "objects": [
     {
       "object": "repo",
@@ -349,6 +368,8 @@ ratelimit: "read";r=1178;t=60
       "website": null,
       "docs_url": null,
       "maintainers": ["dana"],
+      "transcripts": "off",
+      "run_trailer": "auto",
       "open_changes": 0,
       "open_issues": 5,
       "url": "https://api.source.code/v1/repos/dana/tinyqueue",

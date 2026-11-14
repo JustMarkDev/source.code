@@ -209,6 +209,12 @@ export type OpSpec<
   markdown?: (object: Record<string, unknown>) => string
   /** Name of a state-changing result the operation may return as 202. */
   mayBeAsync?: boolean
+  /**
+   * Another answer the operation may give: `202` with this object when the
+   * request was taken but waits on something else (a policy proposal waits
+   * for its change to land).
+   */
+  accepted?: { response: z.ZodType; description: string }
   handler: (
     ctx: Ctx<Infer<TParams>, Infer<TQuery>, Infer<TBody>>,
   ) => Effect.Effect<

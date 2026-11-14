@@ -1,3 +1,6 @@
+import type { LandingStepRec } from '../landing'
+import type { FileError, Landing } from '../policy-file'
+import type { Addressed, Anchor, Placement } from '../anchors'
 import type { HookPort } from '../webhooks'
 import type { SearchIndex } from '../search'
 import type { GitData } from '../git'
@@ -61,6 +64,17 @@ export type RunRec = {
   tokenId: string
   notes: Array<{ at: number; text: string }>
   summary: string | null
+  issue?: number | null
+  harness?: string | null
+  links?: Array<string>
+  transcript?: {
+    uploadId: string
+    size: number
+    sha256: string
+    redactions: number
+  } | null
+  /** The patch sets this run pushed, oldest first. */
+  patchSets?: Array<{ change: number; patchSet: number }>
   started: number
   expires: number
   finished: number | null
@@ -81,6 +95,15 @@ export type TeamRec = {
 }
 
 export type FileStat = { hash: string; add: number; del: number }
+/**
+ * Which run made a part, and with what kind of token. Filled in from the
+ * caller's token, never sent by a client. Older parts have none.
+ */
+export type ViaRec = {
+  run: string | null
+  /** `push` when it came as a git push rather than through the API. */
+  tokenKind: 'personal' | 'bot' | 'run' | 'oauth' | 'session' | 'push'
+}
 export type PatchSetRec = {
   n: number
   sha: string
@@ -96,6 +119,7 @@ export type PatchSetRec = {
    * has not read), so a reader says the files are not available.
    */
   contents?: Record<string, string | null>
+  via?: ViaRec
 }
 export type SuggestionRec = {
   summary: string
@@ -119,6 +143,7 @@ export type ReviewRec = {
   carries: boolean
   body: string
   created: number
+  via?: ViaRec
 }
 export type FindingRec = {
   id: string
@@ -136,6 +161,7 @@ export type FindingRec = {
   suggestion?: SuggestionRec
   /** The same fix as instructions for an agent. */
   prompt?: string
+  via?: ViaRec
 }
 export type CheckRec = {
   id: string
@@ -168,6 +194,8 @@ export type ChangeRec = {
   evidence?: Array<EvidenceRec>
   /** Review comments, oldest first: on a line, on a file or on the whole change. */
   comments?: Array<ReviewCommentRec>
+  /** The newest guide; a new one replaces it. */
+  guide?: GuideRec
   /** Bumped by every comment write, for the comments list's version. */
   commentRev?: number
   /** The touched files as they are on the base. Null is "not there". */
@@ -185,6 +213,15 @@ export type ChangeRec = {
   landed: number | null
   version: number
 }
+/** How to read a change: what it does and its files in order. */
+export type GuideRec = {
+  patchSet: number
+  summary: string
+  order: Array<{ path: string; why: string; risk: 'low' | 'medium' | 'high' }>
+  by: ActorRec
+  run: string | null
+  created: number
+}
 export type ReviewCommentRec = {
   id: string
   author: ActorRec
@@ -201,6 +238,13 @@ export type ReviewCommentRec = {
   created: number
   updated: number
   version: number
+  /** What a comment on a line is about, so it can follow the code. */
+  anchor?: Anchor | null
+  /** Where the thread is in each later patch set. Only on a thread's start. */
+  placements?: Record<string, Placement>
+  /** The patch set that answers this thread, said by whoever pushed it. */
+  addressed?: Addressed | null
+  via?: ViaRec
 }
 export type EvidenceRec = {
   id: string
@@ -264,6 +308,8 @@ export type OperationRec = {
   error: Record<string, unknown> | null
   created: number
   finished: number | null
+  /** A landing's plan, each step with how it went. */
+  steps?: Array<LandingStepRec>
 }
 
 export type RepoCategory = (typeof S.repoCategories)[number]
@@ -301,6 +347,10 @@ export type RepoRec = {
   license: string | null
   website: string | null
   docsUrl: string | null
+  /** Whether runs may attach transcripts. Off when absent. */
+  transcripts?: 'off' | 'on'
+  /** The `Run-Id:` commit trailer. `auto` when absent. */
+  runTrailer?: 'auto' | 'on' | 'off'
   created: number
   updated: number
   version: number
@@ -328,6 +378,19 @@ export type RepoRec = {
   customRules?: Array<CustomRuleRec>
   /** Bumped by every policy write, so evaluations are worked out again. */
   policyRev?: number
+  /**
+   * The policy file, once the rules live in it: its text as last landed, the
+   * commit, and why it did not read if it did not (the last valid rules then
+   * stay in force).
+   */
+  policyFile?: {
+    text: string
+    sha: string
+    errors: Array<FileError>
+    at: number
+  }
+  /** How changes land: from the policy file, or the defaults. */
+  landing?: Landing
   /** By lowercase name. */
   labels: Map<string, LabelRec>
   /** Bumped by every label write, for the list's version. */

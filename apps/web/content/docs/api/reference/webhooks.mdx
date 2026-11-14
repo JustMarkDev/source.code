@@ -44,7 +44,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/webhooks" \
 
 ```http
 HTTP/1.1 200
-etag: W/"HJnwJWkA3JUCpSjd"
+etag: W/"Nr-fuy8KC8GKtdFG"
 ratelimit: "read";r=1169;t=60
 ```
 
@@ -54,7 +54,7 @@ ratelimit: "read";r=1169;t=60
   "data": [
     {
       "object": "webhook",
-      "id": "whk_01m6tq6r80tk10514n",
+      "id": "whk_01m6tq6r80cb8wdrft",
       "repo": "dana/gitfs",
       "endpoint": "https://hooks.example.com/source-code",
       "description": "Chat bridge",
@@ -64,7 +64,7 @@ ratelimit: "read";r=1169;t=60
       "secret": null,
       "last_delivery": null,
       "html_url": "https://source.code/dana/gitfs/settings",
-      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft",
       "created_at": "2026-11-07T10:00:00.000Z",
       "updated_at": "2026-11-07T10:00:00.000Z",
       "version": 1
@@ -128,14 +128,14 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks" \
 
 ```http
 HTTP/1.1 201
-location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n
-ratelimit: "write";r=94;t=60
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft
+ratelimit: "write";r=92;t=60
 ```
 
 ```json
 {
   "object": "webhook",
-  "id": "whk_01m6tq6r80tk10514n",
+  "id": "whk_01m6tq6r80cb8wdrft",
   "repo": "dana/gitfs",
   "endpoint": "https://hooks.example.com/source-code",
   "description": "Chat bridge",
@@ -145,7 +145,7 @@ ratelimit: "write";r=94;t=60
   "secret": "whsec_…",
   "last_delivery": null,
   "html_url": "https://source.code/dana/gitfs/settings",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft",
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 1
@@ -190,13 +190,13 @@ Pending deliveries are dropped.
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n" \
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=87;t=60
+ratelimit: "write";r=85;t=60
 ```
 
 ### `webhooks.get`
@@ -228,20 +228,20 @@ ratelimit: "write";r=87;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n" \
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"whk_01m6tq6r80tk10514n.1...0-D3Lrc5m2y9MlPj1a"
+etag: W/"whk_01m6tq6r80cb8wdrft.1...0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1168;t=60
 ```
 
 ```json
 {
   "object": "webhook",
-  "id": "whk_01m6tq6r80tk10514n",
+  "id": "whk_01m6tq6r80cb8wdrft",
   "repo": "dana/gitfs",
   "endpoint": "https://hooks.example.com/source-code",
   "description": "Chat bridge",
@@ -251,7 +251,7 @@ ratelimit: "read";r=1168;t=60
   "secret": null,
   "last_delivery": null,
   "html_url": "https://source.code/dana/gitfs/settings",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft",
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 1
@@ -305,7 +305,7 @@ Set `active: true` to turn a disabled endpoint back on. That also clears the fai
 **Example**
 
 ```bash
-curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n" \
+curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"events":["change.*","issue.*"]}'
@@ -313,13 +313,13 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=93;t=60
+ratelimit: "write";r=91;t=60
 ```
 
 ```json
 {
   "object": "webhook",
-  "id": "whk_01m6tq6r80tk10514n",
+  "id": "whk_01m6tq6r80cb8wdrft",
   "repo": "dana/gitfs",
   "endpoint": "https://hooks.example.com/source-code",
   "description": "Chat bridge",
@@ -329,7 +329,7 @@ ratelimit: "write";r=93;t=60
   "secret": null,
   "last_delivery": null,
   "html_url": "https://source.code/dana/gitfs/settings",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft",
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 2
@@ -375,13 +375,13 @@ Kept up to 1,000 per webhook.
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries?limit=2" \
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries?limit=2" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"t95ywQuU7pi8nGGT"
+etag: W/"74QWM6I60WU13SOV"
 ratelimit: "read";r=1167;t=60
 ```
 
@@ -391,12 +391,12 @@ ratelimit: "read";r=1167;t=60
   "data": [
     {
       "object": "delivery",
-      "id": "dlv_01m6tq6r80teyt7ym0",
-      "webhook": "whk_01m6tq6r80tk10514n",
+      "id": "dlv_01m6tq6r800rf84wtp",
+      "webhook": "whk_01m6tq6r80cb8wdrft",
       "event": {
-        "id": "evt_01m6tq6r8087qsjpbk",
+        "id": "evt_01m6tq6r8062rx90ds",
         "type": "issue.created",
-        "sequence": 17
+        "sequence": 19
       },
       "state": "succeeded",
       "attempt_count": 1,
@@ -404,15 +404,15 @@ ratelimit: "read";r=1167;t=60
       "payload": null,
       "next_attempt_at": null,
       "redelivery_of": null,
-      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80teyt7ym0",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r800rf84wtp",
       "created_at": "2026-11-07T10:00:00.000Z"
     },
     {
       "object": "delivery",
-      "id": "dlv_01m6tq6r80kj1y7r6r",
-      "webhook": "whk_01m6tq6r80tk10514n",
+      "id": "dlv_01m6tq6r808znbevwd",
+      "webhook": "whk_01m6tq6r80cb8wdrft",
       "event": {
-        "id": "evt_01m6tq6r80cb8wdrft",
+        "id": "evt_01m6tq6r80teyt7ym0",
         "type": "webhook.ping",
         "sequence": 0
       },
@@ -422,7 +422,7 @@ ratelimit: "read";r=1167;t=60
       "payload": null,
       "next_attempt_at": null,
       "redelivery_of": null,
-      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80kj1y7r6r",
+      "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r808znbevwd",
       "created_at": "2026-11-07T10:00:00.000Z"
     }
   ],
@@ -461,25 +461,25 @@ ratelimit: "read";r=1167;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80teyt7ym0" \
+curl "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r800rf84wtp" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"TPeuaPZSo-r5VrB1"
+etag: W/"Zjm0v6g1lU394rh2"
 ratelimit: "read";r=1166;t=60
 ```
 
 ```json
 {
   "object": "delivery",
-  "id": "dlv_01m6tq6r80teyt7ym0",
-  "webhook": "whk_01m6tq6r80tk10514n",
+  "id": "dlv_01m6tq6r800rf84wtp",
+  "webhook": "whk_01m6tq6r80cb8wdrft",
   "event": {
-    "id": "evt_01m6tq6r8087qsjpbk",
+    "id": "evt_01m6tq6r8062rx90ds",
     "type": "issue.created",
-    "sequence": 17
+    "sequence": 19
   },
   "state": "succeeded",
   "attempt_count": 1,
@@ -494,8 +494,8 @@ ratelimit: "read";r=1166;t=60
   ],
   "payload": {
     "object": "event",
-    "id": "evt_01m6tq6r8087qsjpbk",
-    "sequence": 17,
+    "id": "evt_01m6tq6r8062rx90ds",
+    "sequence": 19,
     "created_at": "2026-11-07T10:00:00.000Z",
     "type": "issue.created",
     "repo": "dana/gitfs",
@@ -508,13 +508,13 @@ ratelimit: "read";r=1166;t=60
     },
     "subject": {
       "object": "issue",
-      "id": "iss_01m6tq6r80px8sv67k",
+      "id": "iss_01m6tq6r80dnf32jk6",
       "number": 221
     },
     "changes": ["state"],
     "data": {
       "object": "issue",
-      "id": "iss_01m6tq6r80px8sv67k",
+      "id": "iss_01m6tq6r80dnf32jk6",
       "number": 221,
       "url": "https://api.source.code/v1/repos/dana/gitfs/issues/221",
       "html_url": "https://source.code/dana/gitfs/issues/221",
@@ -544,7 +544,7 @@ ratelimit: "read";r=1166;t=60
   },
   "next_attempt_at": null,
   "redelivery_of": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80teyt7ym0",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r800rf84wtp",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -581,33 +581,33 @@ Creates a new delivery of the same event. `webhook-id` is unchanged, so a receiv
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80teyt7ym0/redeliver" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r800rf84wtp/redeliver" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 202
-location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80w47f6x3f
-ratelimit: "write";r=90;t=60
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r80mr4sfvc5
+ratelimit: "write";r=88;t=60
 ```
 
 ```json
 {
   "object": "delivery",
-  "id": "dlv_01m6tq6r80w47f6x3f",
-  "webhook": "whk_01m6tq6r80tk10514n",
+  "id": "dlv_01m6tq6r80mr4sfvc5",
+  "webhook": "whk_01m6tq6r80cb8wdrft",
   "event": {
-    "id": "evt_01m6tq6r8087qsjpbk",
+    "id": "evt_01m6tq6r8062rx90ds",
     "type": "issue.created",
-    "sequence": 17
+    "sequence": 19
   },
   "state": "pending",
   "attempt_count": 0,
   "attempts": null,
   "payload": null,
   "next_attempt_at": "2026-11-07T10:00:00.000Z",
-  "redelivery_of": "dlv_01m6tq6r80teyt7ym0",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80w47f6x3f",
+  "redelivery_of": "dlv_01m6tq6r800rf84wtp",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r80mr4sfvc5",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -643,23 +643,23 @@ Sends a `webhook.ping` event so you can check the endpoint and your signature ch
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/ping" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/ping" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 202
-location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80kj1y7r6r
-ratelimit: "write";r=92;t=60
+location: https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r808znbevwd
+ratelimit: "write";r=90;t=60
 ```
 
 ```json
 {
   "object": "delivery",
-  "id": "dlv_01m6tq6r80kj1y7r6r",
-  "webhook": "whk_01m6tq6r80tk10514n",
+  "id": "dlv_01m6tq6r808znbevwd",
+  "webhook": "whk_01m6tq6r80cb8wdrft",
   "event": {
-    "id": "evt_01m6tq6r80cb8wdrft",
+    "id": "evt_01m6tq6r80teyt7ym0",
     "type": "webhook.ping",
     "sequence": 0
   },
@@ -669,7 +669,7 @@ ratelimit: "write";r=92;t=60
   "payload": null,
   "next_attempt_at": "2026-11-07T10:00:00.000Z",
   "redelivery_of": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/deliveries/dlv_01m6tq6r80kj1y7r6r",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/deliveries/dlv_01m6tq6r808znbevwd",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -712,7 +712,7 @@ Sends every event after `after_sequence` that this webhook subscribes to, oldest
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/replay" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/replay" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"after_sequence":0,"limit":50}'
@@ -720,14 +720,14 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r8
 
 ```http
 HTTP/1.1 202
-ratelimit: "write";r=89;t=60
+ratelimit: "write";r=87;t=60
 ```
 
 ```json
 {
   "object": "replay",
-  "queued": 13,
-  "last_sequence": 18
+  "queued": 15,
+  "last_sequence": 20
 }
 ```
 
@@ -762,19 +762,19 @@ Returns the new secret once. Deliveries are signed with both the new and the old
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n/rotate-secret" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft/rotate-secret" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=88;t=60
+ratelimit: "write";r=86;t=60
 ```
 
 ```json
 {
   "object": "webhook",
-  "id": "whk_01m6tq6r80tk10514n",
+  "id": "whk_01m6tq6r80cb8wdrft",
   "repo": "dana/gitfs",
   "endpoint": "https://hooks.example.com/source-code",
   "description": "Chat bridge",
@@ -783,12 +783,12 @@ ratelimit: "write";r=88;t=60
   "disabled_reason": null,
   "secret": "whsec_…",
   "last_delivery": {
-    "id": "dlv_01m6tq6r80d2se5vge",
+    "id": "dlv_01m6tq6r8026zr8jh9",
     "state": "succeeded",
     "at": "2026-11-07T10:00:00.000Z"
   },
   "html_url": "https://source.code/dana/gitfs/settings",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80tk10514n",
+  "url": "https://api.source.code/v1/repos/dana/gitfs/webhooks/whk_01m6tq6r80cb8wdrft",
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 3

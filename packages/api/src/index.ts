@@ -13,6 +13,8 @@ import { extrasOps } from './ops/extras'
 import { gitOps } from './ops/git'
 import { teamOps } from './ops/teams'
 import { runOps } from './ops/runs'
+import { timelineOps } from './ops/timelines'
+import { presenceOps } from './ops/presence'
 import { StoreGit } from './git'
 import { ExtrasStore } from './extras'
 import { SearchIndex } from './search'
@@ -73,6 +75,8 @@ export const operations: ReadonlyArray<Op> = [
   ...gitOps,
   ...teamOps,
   ...runOps,
+  ...timelineOps,
+  ...presenceOps,
   ...accountOps,
   ...notificationOps,
   ...releaseOps,

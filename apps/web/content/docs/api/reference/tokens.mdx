@@ -39,7 +39,7 @@ curl "https://api.source.code/v1/authorizations" \
 
 ```http
 HTTP/1.1 200
-etag: W/"al3fbpuVqRzImTc6"
+etag: W/"1Om69CPfcA3S0AEE"
 ratelimit: "read";r=1170;t=60
 ```
 
@@ -49,14 +49,14 @@ ratelimit: "read";r=1170;t=60
   "data": [
     {
       "object": "authorization",
-      "id": "atz_01m6tq6r80296e9xad",
+      "id": "atz_01m6tq6r80qqddy0yk",
       "client": {
-        "id": "cl_WF6winSPDv2N3JgXGj2Z",
+        "id": "cl_PDvHTAqUoEuJ5STNFkqC",
         "name": "My agent"
       },
       "scopes": ["repo:read", "pulls:read"],
       "audience": ["api", "mcp"],
-      "url": "https://api.source.code/v1/authorizations/atz_01m6tq6r80296e9xad",
+      "url": "https://api.source.code/v1/authorizations/atz_01m6tq6r80qqddy0yk",
       "created_at": "2026-11-07T10:00:00.000Z",
       "last_used_at": null
     }
@@ -102,13 +102,13 @@ Every access and refresh token the application holds stops working at once.
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/authorizations/atz_01m6tq6r80296e9xad" \
+curl -X DELETE "https://api.source.code/v1/authorizations/atz_01m6tq6r80qqddy0yk" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=95;t=60
+ratelimit: "write";r=93;t=60
 ```
 
 ### `tokens.list`
@@ -140,7 +140,7 @@ curl "https://api.source.code/v1/tokens" \
 
 ```http
 HTTP/1.1 200
-etag: W/"akwLfcPL97u8K97T"
+etag: W/"NWzR9In8d9-xVrn1"
 ratelimit: "read";r=1172;t=60
 ```
 
@@ -154,7 +154,7 @@ ratelimit: "read";r=1172;t=60
       "name": "dana",
       "kind": "personal",
       "class": "human",
-      "scopes": ["repo:read", "repo:write", "…and 13 more"],
+      "scopes": ["repo:read", "repo:write", "…and 14 more"],
       "repos": null,
       "prefix": "sxp_dana",
       "secret": null,
@@ -169,7 +169,7 @@ ratelimit: "read";r=1172;t=60
       "name": "limited",
       "kind": "personal",
       "class": "human",
-      "scopes": ["repo:read", "repo:write", "…and 13 more"],
+      "scopes": ["repo:read", "repo:write", "…and 14 more"],
       "repos": ["dana/tinyqueue"],
       "prefix": "sxp_dana",
       "secret": null,
@@ -210,12 +210,12 @@ The response is the only time the secret is shown. A token can never have a scop
 
 **Request body**
 
-| Member            | Type                                                                                                                                                                                                                                                                                   | Notes                                                |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `name`            | string (up to 100 characters, at least 1)                                                                                                                                                                                                                                              | Required.                                            |
-| `scopes`          | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` | Required.                                            |
-| `expires_in_days` | `30` or `60` or `90` or `365`                                                                                                                                                                                                                                                          | Default `90`.                                        |
-| `repos`           | array of string (pattern)                                                                                                                                                                                                                                                              | `owner/name`. Limits the token to these repositories |
+| Member            | Type                                                                                                                                                                                                                                                                                                         | Notes                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `name`            | string (up to 100 characters, at least 1)                                                                                                                                                                                                                                                                    | Required.                                            |
+| `scopes`          | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` or `runs:transcripts` | Required.                                            |
+| `expires_in_days` | `30` or `60` or `90` or `365`                                                                                                                                                                                                                                                                                | Default `90`.                                        |
+| `repos`           | array of string (pattern)                                                                                                                                                                                                                                                                                    | `owner/name`. Limits the token to these repositories |
 
 **Errors**
 
@@ -232,22 +232,22 @@ curl -X POST "https://api.source.code/v1/tokens" \
 
 ```http
 HTTP/1.1 201
-location: https://api.source.code/v1/tokens/tok_01m6tq6r80wdm2r3xw
-ratelimit: "write";r=97;t=60
+location: https://api.source.code/v1/tokens/tok_01m6tq6r80dwrqtxs1
+ratelimit: "write";r=95;t=60
 ```
 
 ```json
 {
   "object": "token",
-  "id": "tok_01m6tq6r80wdm2r3xw",
+  "id": "tok_01m6tq6r80dwrqtxs1",
   "name": "ci",
   "kind": "personal",
   "class": "human",
   "scopes": ["repo:read", "pulls:read"],
   "repos": ["dana/gitfs"],
-  "prefix": "sxp_XSmU",
+  "prefix": "sxp_nqfn",
   "secret": "sxp_…",
-  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80wdm2r3xw",
+  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80dwrqtxs1",
   "expires_at": "2026-12-07T10:00:00.000Z",
   "created_at": "2026-11-07T10:00:00.000Z",
   "last_used_at": null
@@ -290,13 +290,13 @@ It stops working at once. Revoking a token that is already revoked answers 404.
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/tokens/tok_01m6tq6r80wdm2r3xw" \
+curl -X DELETE "https://api.source.code/v1/tokens/tok_01m6tq6r80dwrqtxs1" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=96;t=60
+ratelimit: "write";r=94;t=60
 ```
 
 ### `tokens.get`
@@ -326,28 +326,28 @@ ratelimit: "write";r=96;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/tokens/tok_01m6tq6r80wdm2r3xw" \
+curl "https://api.source.code/v1/tokens/tok_01m6tq6r80dwrqtxs1" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"VMIhDoh-98cmQRyd"
+etag: W/"dIFTJ4_uKCwkUO-n"
 ratelimit: "read";r=1171;t=60
 ```
 
 ```json
 {
   "object": "token",
-  "id": "tok_01m6tq6r80wdm2r3xw",
+  "id": "tok_01m6tq6r80dwrqtxs1",
   "name": "ci",
   "kind": "personal",
   "class": "human",
   "scopes": ["repo:read", "pulls:read"],
   "repos": ["dana/gitfs"],
-  "prefix": "sxp_XSmU",
+  "prefix": "sxp_nqfn",
   "secret": null,
-  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80wdm2r3xw",
+  "url": "https://api.source.code/v1/tokens/tok_01m6tq6r80dwrqtxs1",
   "expires_at": "2026-12-07T10:00:00.000Z",
   "created_at": "2026-11-07T10:00:00.000Z",
   "last_used_at": null

@@ -22,6 +22,26 @@ for (const f of new Bun.Glob('**/*.{ts,js}').scanSync(dir))
   if (!f.endsWith('.d.ts') && !f.includes('.test.'))
     modules[`./${f}`] = () => import(`${dir}${f}`) as Promise<never>
 
+/**
+ * A component's functions and schema, from its built files, for
+ * `registerComponent`. The packages' own `test.ts` uses Vite's
+ * `import.meta.glob`, which Bun does not have.
+ */
+function component(entry: string) {
+  const root = `${entry.slice(0, entry.lastIndexOf('/dist/'))}/dist/component/`
+  const mods: Record<string, () => Promise<never>> = {}
+  for (const f of new Bun.Glob('**/*.js').scanSync(root))
+    mods[`./component/${f}`] = () => import(`${root}${f}`) as Promise<never>
+  const own = require(`${root}schema.js`) as { default: never }
+  return { schema: own.default, modules: mods }
+}
+const presence = component(require.resolve('@convex-dev/presence'))
+const batchWorker = component(
+  require.resolve('@convex-dev/batch-worker', {
+    paths: [require.resolve('@convex-dev/presence')],
+  }),
+)
+
 type Fn = (ref: unknown, args: unknown) => Promise<unknown>
 
 /**
@@ -54,6 +74,12 @@ export const convexFactory: DomainFactory = ({
   process.env.SITE_URL = urls.html
   process.env.API_URL = urls.api
   const t = convexTest(schema, modules)
+  t.registerComponent('presence', presence.schema, presence.modules)
+  t.registerComponent(
+    'presence/batchWorker',
+    batchWorker.schema,
+    batchWorker.modules,
+  )
   const world = exportWorld(memory, sample)
   // Convex never lets time go backwards: a function runs at the later of
   // the clock and the last commit. So the seed commits at the test clock too.

@@ -213,6 +213,26 @@ const reads: { [Id in OperationId]?: Read<Id> } = {
     fn: api.forge.changes.getPatchSetFiles,
     args: (i) => ({ ...repo(i), ref: i.number, n: i.patchSet }),
   },
+  'changes.guide.get': {
+    fn: api.forge.changes.guide,
+    args: (i) => ({ ...repo(i), ref: i.number }),
+  },
+  'changes.seen.get': {
+    fn: api.forge.changes.seen,
+    args: (i) => ({ ...repo(i), ref: i.number }),
+  },
+  'changes.presence.get': {
+    fn: api.forge.presence.list,
+    args: (i) => ({ ...repo(i), kind: 'change' as const, ref: i.number }),
+  },
+  'issues.presence.get': {
+    fn: api.forge.presence.list,
+    args: (i) => ({
+      ...repo(i),
+      kind: 'issue' as const,
+      ref: String(i.number),
+    }),
+  },
   'change_comments.list': {
     fn: api.forge.changes.listReviewComments,
     args: (i, c) => ({
@@ -227,6 +247,10 @@ const reads: { [Id in OperationId]?: Read<Id> } = {
   'policy.rules': {
     fn: api.forge.policy.get,
     args: (i, c) => ({ ...repo(i), at: c.at }),
+  },
+  'changes.landability': {
+    fn: api.forge.changes.landability,
+    args: (i, c) => ({ ...repo(i), ref: i.number, at: c.at }),
   },
   'releases.list': {
     fn: api.forge.releases.list,
@@ -334,6 +358,28 @@ const writes: { [Id in OperationId]?: Write<Id> } = {
     fn: api.forge.issues.createComment,
     args: (i) => ({ ...repo(i), number: i.number, body: i.body.body }),
   },
+  'changes.seen.put': {
+    fn: api.forge.changes.setSeen,
+    args: (i) => ({ ...repo(i), ref: i.number, ...i.body }),
+  },
+  'changes.presence.put': {
+    fn: api.forge.presence.heartbeat,
+    args: (i) => ({
+      ...repo(i),
+      kind: 'change' as const,
+      ref: i.number,
+      ...i.body,
+    }),
+  },
+  'issues.presence.put': {
+    fn: api.forge.presence.heartbeat,
+    args: (i) => ({
+      ...repo(i),
+      kind: 'issue' as const,
+      ref: String(i.number),
+      ...i.body,
+    }),
+  },
   'change_comments.create': {
     fn: api.forge.changes.createReviewComment,
     args: (i) => ({ ...repo(i), ref: i.number, ...i.body }),
@@ -384,6 +430,10 @@ const writes: { [Id in OperationId]?: Write<Id> } = {
     fn: api.forge.integrations.disconnect,
     args: (i) => ({ handle: i.handle, id: i.integration }),
     empty: true,
+  },
+  'policy.proposals.create': {
+    fn: api.forge.policy.propose,
+    args: (i) => ({ ...repo(i), edits: i.body.edits }),
   },
   'policy.update_rule': {
     fn: api.forge.policy.setRuleMode,

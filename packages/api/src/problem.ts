@@ -125,6 +125,20 @@ export const errorCatalog = {
     exit: 2,
     hint: 'The Allow header lists the methods this path accepts.',
   },
+  transcripts_disabled: {
+    status: 409,
+    title: 'This repository does not keep agent transcripts',
+    retryable: false,
+    exit: 2,
+    hint: 'An owner can turn transcripts on in the repository settings (transcripts: on).',
+  },
+  transcript_has_secrets: {
+    status: 422,
+    title: 'The transcript has secrets in it',
+    retryable: false,
+    exit: 2,
+    hint: 'The upload was deleted. Remove the secrets, or attach it with mode=mask to have them masked.',
+  },
   invalid_state: {
     status: 409,
     title: 'The thing is not in a state that allows this',

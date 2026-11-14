@@ -208,6 +208,18 @@ Delete one you no longer need. `GET /v1/limits` lists the numbers.
 
 PUT the bytes to the `upload_url` from the upload, then use it.
 
+### `transcripts_disabled`
+
+**409.** This repository does not keep agent transcripts. Not retryable. CLI exit code 2.
+
+An owner can turn transcripts on in the repository settings (transcripts: on).
+
+### `transcript_has_secrets`
+
+**422.** The transcript has secrets in it. Not retryable. CLI exit code 2.
+
+The upload was deleted. Remove the secrets, or attach it with mode=mask to have them masked.
+
 ## Retries
 
 ### `idempotency_key_reused`

@@ -60,7 +60,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/issues?state=all&limit=2" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.0.1.0-pUP5QoLYCoNt9bDI"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.0.1.0-ie2q-KCPT1hAZ8wH"
 ratelimit: "read";r=1185;t=60
 ```
 
@@ -268,7 +268,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/issues/4" \
 
 ```http
 HTTP/1.1 200
-etag: W/"iss_01m60vspm0e27awv79.1.1.0-D3Lrc5m2y9MlPj1a"
+etag: W/"iss_01m60vspm0e27awv79.1.1.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1184;t=60
 ```
 
@@ -361,7 +361,7 @@ Send If-Match with the ETag you read. `state: closed` closes.
 ```bash
 curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/issues/4" \
   -H "Authorization: Bearer $SX_TOKEN" \
-  -H "if-match: W/\"iss_01m60vspm0e27awv79.1.1.0-D3Lrc5m2y9MlPj1a\"" \
+  -H "if-match: W/\"iss_01m60vspm0e27awv79.1.1.0-KO3isrAOBKaFndKd\"" \
   -H "Content-Type: application/json" \
   -d '{"state":"closed"}'
 ```
@@ -456,7 +456,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/issues/4/comments" \
 
 ```http
 HTTP/1.1 200
-etag: W/"iss_01m60vspm0e27awv79.2.c.0-D3Lrc5m2y9MlPj1a"
+etag: W/"iss_01m60vspm0e27awv79.2.c.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1181;t=60
 ```
 
@@ -571,6 +571,256 @@ ratelimit: "write";r=104;t=60
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 1
+}
+```
+
+### `issues.presence.get`
+
+`GET /repos/{owner}/{repo}/issues/{number}/presence`
+
+**Who is looking at an issue**
+
+The people and agents with the issue open now, and the file each is on. It changes by the second, so it is never cached.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `issues:read`          |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `presence`    |
+
+**Path parameters**
+
+| Name     | Type                                  | Notes |
+| -------- | ------------------------------------- | ----- |
+| `owner`  | string                                |       |
+| `repo`   | string                                |       |
+| `number` | integer (min 1, max 9007199254740991) |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/issues/4/presence" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"a_PsyJHM-A5gJDIx"
+ratelimit: "read";r=1156;t=60
+```
+
+```json
+{
+  "object": "presence",
+  "kind": "issue",
+  "number": 4,
+  "interval": 20,
+  "viewers": [
+    {
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "path": null,
+      "seen_at": "2026-11-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `issues.presence.put`
+
+`PUT /repos/{owner}/{repo}/issues/{number}/presence`
+
+**Say you are looking at an issue**
+
+A heartbeat: send one every `interval` seconds while the issue is open, with the file you are on, and `leave` when you close it. The MCP server sends one for an agent while its run works on a change. Answers who is looking, you included. Not an event, and nothing is kept once you stop.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `issues:read`           |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `200`, a `presence`     |
+
+**Path parameters**
+
+| Name     | Type                                  | Notes |
+| -------- | ------------------------------------- | ----- |
+| `owner`  | string                                |       |
+| `repo`   | string                                |       |
+| `number` | integer (min 1, max 9007199254740991) |       |
+
+**Request body**
+
+| Member    | Type                                               | Notes                                                                                                  |
+| --------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `session` | string (up to 128 characters, at least 8)          | Required. One per open tab or agent process, so two of yours count once and leaving one leaves only it |
+| `path`    | string (up to 1000 characters, at least 1) or null | Default `null`. The file you have open                                                                 |
+| `leave`   | boolean                                            | Default `false`. Leave now instead of once the heartbeats stop                                         |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/issues/4/presence" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"session":"tab-7f3a91c2"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=73;t=60
+```
+
+```json
+{
+  "object": "presence",
+  "kind": "issue",
+  "number": 4,
+  "interval": 20,
+  "viewers": [
+    {
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "path": null,
+      "seen_at": "2026-11-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `issues.timeline`
+
+`GET /repos/{owner}/{repo}/issues/{number}/timeline`
+
+**An issue's timeline**
+
+Everything that happened to an issue, oldest first: comments, evidence, the notes of the agent runs working on it (a run names its issue with `runs.update`), the changes that link it (`Fixes #n`, `Closes #n`, `Resolves #n`, or `Refs #n`), and its state changes.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `issues:read`                              |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `timeline_entry`          |
+
+**Path parameters**
+
+| Name     | Type                                  | Notes |
+| -------- | ------------------------------------- | ----- |
+| `owner`  | string                                |       |
+| `repo`   | string                                |       |
+| `number` | integer (min 1, max 9007199254740991) |       |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                              |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/issues/4/timeline" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"PT9BBBPYojZePF0V"
+ratelimit: "read";r=1154;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "timeline_entry",
+      "id": "comment:cmt_01m6250240da1qvgaf",
+      "kind": "comment",
+      "created_at": "2026-10-28T21:00:00.000Z",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "run": null,
+      "summary": "Thanks for the report. I can reproduce this on main.",
+      "item": {
+        "object": "issue_comment",
+        "id": "cmt_01m6250240da1qvgaf",
+        "issue": 4,
+        "author": {
+          "object": "actor",
+          "id": "acc_01m203xrm0bw4d69nd",
+          "handle": "dana",
+          "class": "human"
+        },
+        "body": "Thanks for the report. I can reproduce this on main.",
+        "created_at": "2026-10-28T21:00:00.000Z",
+        "updated_at": "2026-10-28T21:00:00.000Z",
+        "version": 1
+      }
+    },
+    {
+      "object": "timeline_entry",
+      "id": "comment:cmt_01m62xq2m0mgqrzvkb",
+      "kind": "comment",
+      "created_at": "2026-10-29T04:12:00.000Z",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0pqcgp142",
+        "handle": "ines",
+        "class": "human"
+      },
+      "run": null,
+      "summary": "Same here on macOS. The trailing dot is passed straight to the path join.",
+      "item": {
+        "object": "issue_comment",
+        "id": "cmt_01m62xq2m0mgqrzvkb",
+        "issue": 4,
+        "author": {
+          "object": "actor",
+          "id": "acc_01m203xrm0pqcgp142",
+          "handle": "ines",
+          "class": "human"
+        },
+        "body": "Same here on macOS. The trailing dot is passed straight to the path join.",
+        "created_at": "2026-10-29T04:12:00.000Z",
+        "updated_at": "2026-10-29T04:12:00.000Z",
+        "version": 1
+      }
+    },
+    "…and 3 more"
+  ],
+  "has_more": false,
+  "next_cursor": null
 }
 ```
 
@@ -737,7 +987,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/labels" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.0.2.0-D3Lrc5m2y9MlPj1a"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.0.2.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1182;t=60
 ```
 

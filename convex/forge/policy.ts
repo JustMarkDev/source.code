@@ -1,6 +1,6 @@
 import { v } from 'convex/values'
 import { newId } from '@source-code/api/ids'
-import { query } from '../_generated/server'
+import { internalMutation, query } from '../_generated/server'
 import { mutation } from '../lib/functions'
 import { bodyOf } from '../lib/input'
 import { actorOf, signedIn } from '../lib/actor'
@@ -9,6 +9,7 @@ import { fail, finish, out } from '../lib/errors'
 import { actorFor, counters, emit } from '../lib/events'
 import {
   BIG_CHANGE,
+  branchOwner,
   hydrate,
   loadPolicy,
   policyRules,
@@ -16,10 +17,22 @@ import {
   viewFor,
 } from '../lib/changes'
 import type { Actor } from '../lib/actor'
-import type { RepoPolicy } from '../lib/changes'
-import type { CustomRuleRec, RuleMode } from '../lib/changeTypes'
+import type { Loaded, RepoPolicy } from '../lib/changes'
+import { urls } from '../lib/present'
+import {
+  POLICY_FILE,
+  editPolicy,
+  lineStats,
+  policyYaml,
+  unifiedDiff,
+} from '@source-code/api/policy-file'
+import { proposalEdits, proposalTitle } from '@source-code/api/policy-proposals'
+import { commit, hex, patchSetEvent, pushPatchSet } from './changes'
+import type { ChangeRec, CustomRuleRec, RuleMode } from '../lib/changeTypes'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
+import type { ActorRef } from '../lib/events'
+import type { PolicyEdit } from '@source-code/api/policy-file'
 
 /**
  * A repository's policy: which rules apply and how hard, its own rules, and
@@ -27,7 +40,6 @@ import type { MutationCtx, QueryCtx } from '../_generated/server'
  * `lib/changes.ts`; this edits what that reads and reports what rules did.
  */
 
-const day = (t: number) => new Date(t).toISOString().slice(0, 10)
 const mode = v.union(
   v.literal('enforce'),
   v.literal('dry-run'),
@@ -73,28 +85,21 @@ const modeOf = (pol: RepoPolicy, id: string): RuleMode =>
   policyRules.find((r) => r.id === id)?.mode ??
   'enforce'
 
-function yamlOf(pol: RepoPolicy, at: number) {
-  const lines = [
-    '# .source/policy/main.yml',
-    '# Written by source.code from the repository settings.',
-    'rules:',
-  ]
-  for (const r of rulesOf(pol)) {
-    lines.push(`  - id: ${r.id}`, `    mode: ${modeOf(pol, r.id)}`)
-    if (r.custom) lines.push(`    name: ${JSON.stringify(r.name)}`)
-    lines.push(`    when: ${JSON.stringify(r.when)}`, '    require:')
-    for (const q of r.requires) lines.push(`      - ${JSON.stringify(q)}`)
-    lines.push('')
-  }
-  const live = pol.exceptions.filter((e) => e.expires > at)
-  if (live.length) {
-    lines.push('exceptions:')
-    for (const e of live)
-      lines.push(
-        `  - { rule: ${e.rule}, who: ${e.who}, until: ${day(e.expires)}, reason: ${JSON.stringify(e.reason)} }`,
-      )
-  }
-  return `${lines.join('\n').trimEnd()}\n`
+/** The policy file as it stands on the default branch, or as the move would write it. */
+function policyText(pol: RepoPolicy, at: number) {
+  return (
+    pol.file?.text ??
+    policyYaml(
+      {
+        modes: Object.fromEntries(pol.ruleModes),
+        custom: pol.customRules,
+        exceptions: pol.exceptions,
+        landing: pol.landing,
+      },
+      policyRules,
+      at,
+    )
+  )
 }
 
 const presentException = (e: RepoPolicy['exceptions'][number]) => ({
@@ -137,8 +142,8 @@ async function policySet(
   return {
     object: 'policy_set' as const,
     repo: `${repo.owner}/${repo.name}`,
-    file: '.source/policy/main.yml',
-    yaml: yamlOf(pol, at),
+    file: POLICY_FILE,
+    yaml: policyText(pol, at),
     rules: rulesOf(pol).map((r) => {
       const applied = said
         .map(({ c, reqs }) => ({ c, q: reqs.find((x) => x.id === r.id) }))
@@ -171,8 +176,237 @@ async function policySet(
       .map(presentException),
     large_change_lines: BIG_CHANGE,
     version: pol.rev,
+    source: {
+      state: !pol.file
+        ? ('settings' as const)
+        : pol.file.errors.length
+          ? ('errors' as const)
+          : ('file' as const),
+      sha: pol.file?.sha ?? null,
+      errors: pol.file?.errors ?? [],
+      pending: loaded
+        .map((l) => l.rec)
+        .filter(
+          (c) =>
+            (c.state === 'open' || c.state === 'draft') &&
+            POLICY_FILE in c.patchSets[c.patchSets.length - 1].files,
+        )
+        .map((c) => ({
+          change: c.number,
+          title: c.title,
+          author: c.author.handle,
+          url: `${urls().api}/repos/${repo.owner}/${repo.name}/changes/${c.number}`,
+        })),
+    },
+    landing: pol.landing,
   }
 }
+
+/** Whether the rules live in the policy file, so writes propose. */
+export const inFile = query({
+  args: { owner: v.string(), name: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, a) => {
+    const repo = await resolve(ctx, a.owner, a.name, await actorOf(ctx))
+    return !!(await loadPolicy(ctx, repo)).file
+  },
+})
+
+/** Writes to settings stop once the rules live in the file. */
+function settingsOnly(pol: RepoPolicy) {
+  if (pol.file)
+    fail(
+      'invalid_state',
+      `The rules live in ${POLICY_FILE}. Propose the edit: POST /repos/{owner}/{repo}/policy/proposals.`,
+    )
+}
+
+/**
+ * Edits to the rules as a change to the policy file. Your open policy change
+ * takes them as a new patch set; without one a change is opened. Nothing
+ * applies until it lands. In a repository whose rules are still settings,
+ * the first proposal is the move: the file written from them, edits made.
+ */
+export const propose = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    edits: v.array(v.any()),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const { edits } = await bodyOf(ctx, 'policy.proposals.create', {
+      edits: a.edits,
+    })
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p, 'write')
+    const by = await actorFor(ctx, p.handle, p.class)
+    const at = Date.now()
+    const people = new Map<string, boolean>()
+    for (const e of edits)
+      for (const h of e.op === 'create_rule'
+        ? (e.from ?? [])
+        : e.op === 'add_exception'
+          ? [e.who]
+          : [])
+        people.set(h, (await accountByHandle(ctx, h))?.kind === 'person')
+    const made = proposalEdits(
+      edits,
+      {
+        now: at,
+        by: p.handle,
+        newId: () => newId('exception', at),
+        isPerson: (h) => people.get(h) ?? false,
+      },
+      fail,
+    )
+    return proposeIn(ctx, repo, by, edits, made, !!a.dry)
+  },
+})
+
+/** The edits as a change to the policy file: on the author's open one, or a new one. */
+async function proposeIn(
+  ctx: MutationCtx,
+  repo: Doc<'repos'>,
+  by: ActorRef,
+  edits: ReadonlyArray<unknown>,
+  made: Array<PolicyEdit>,
+  dry: boolean,
+) {
+  const at = Date.now()
+  const pol = await loadPolicy(ctx, repo)
+  const branch = `policy/${by.handle}`
+  const draftDoc = await branchOwner(ctx, repo, branch)
+  const draft = draftDoc ? await hydrate(ctx, draftDoc) : null
+  const mine =
+    draft &&
+    draft.rec.author.handle === by.handle &&
+    (draft.rec.state === 'open' || draft.rec.state === 'draft')
+      ? draft
+      : null
+  const main = policyText(pol, at)
+  const base = mine
+    ? (mine.rec.patchSets[mine.rec.patchSets.length - 1].contents?.[
+        POLICY_FILE
+      ] ?? main)
+    : main
+  const next = editPolicy(base, made, policyRules, fail)
+  const diff = unifiedDiff(POLICY_FILE, base, next)
+  const shownAs = (c: ChangeRec | null) => ({
+    object: 'policy_proposal' as const,
+    change: c?.number ?? null,
+    url: c
+      ? `${urls().api}/repos/${repo.owner}/${repo.name}/changes/${c.number}`
+      : null,
+    patch_set: c ? c.patchSets[c.patchSets.length - 1].n : null,
+    created: !mine,
+    edits,
+    diff,
+  })
+  if (dry) return out(shownAs(null))
+  const sha = hex(`${repo.publicId}/${branch}/${at}/${next}`)
+  const files = {
+    [POLICY_FILE]: { hash: sha.slice(0, 6), ...lineStats(main, next) },
+  }
+  const note = proposalTitle(made, !pol.file)
+  if (mine) {
+    const was = mine.rec.state
+    pushPatchSet(mine.rec, by, {
+      sha,
+      kind: 'update',
+      note,
+      files,
+      contents: { [POLICY_FILE]: next },
+    })
+    await commit(ctx, repo, mine, was, patchSetEvent(by, []))
+    return out(shownAs(mine.rec))
+  }
+  const c = await counters(ctx, repo)
+  await ctx.db.patch('repoCounters', c._id, { nextNumber: c.nextNumber + 1 })
+  const rec: ChangeRec = {
+    id: newId('change', at),
+    number: c.nextNumber,
+    title: note,
+    description: pol.file
+      ? 'Proposed from the policy settings. The rules change when this lands.'
+      : 'Moves the rules from the repository settings into the policy file. The settings stay in force until this lands; after it, the file is the rules.',
+    state: 'open',
+    author: by,
+    base: repo.defaultBranch,
+    branch,
+    patchSets: [
+      {
+        n: 1,
+        sha,
+        tree: sha.slice(0, 7),
+        note,
+        author: by,
+        created: at,
+        files,
+        kind: 'initial',
+        contents: { [POLICY_FILE]: next },
+      },
+    ],
+    reviews: [],
+    findings: [],
+    checks: [],
+    stackId: null,
+    labels: [],
+    mirrors: [],
+    evidence: [],
+    comments: [],
+    commentRev: 0,
+    created: at,
+    updated: at,
+    landed: null,
+    version: 1,
+  }
+  const l = { rec, parts: new Map() } as unknown as Loaded
+  await commit(ctx, repo, l, null, {
+    type: 'change.opened',
+    by,
+    changes: ['state'],
+  })
+  return out(shownAs(rec))
+}
+
+/**
+ * The one-off move: each repository whose rules are still settings gets a
+ * change that writes them to the policy file, opened by source.code. The
+ * settings stay in force until it lands. Run once from the dashboard;
+ * `after` pages through repositories.
+ */
+export const moveToFile = internalMutation({
+  args: { after: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.object({
+    opened: v.number(),
+    next: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, a) => {
+    const repos = await ctx.db
+      .query('repos')
+      .withIndex('by_publicId', (q) =>
+        a.after ? q.gt('publicId', a.after) : q,
+      )
+      .take(a.limit ?? 50)
+    const by = await actorFor(ctx, 'source-code', 'bot')
+    let opened = 0
+    for (const repo of repos) {
+      if ((await loadPolicy(ctx, repo)).file) continue
+      if (await branchOwner(ctx, repo, `policy/${by.handle}`)) continue
+      await proposeIn(ctx, repo, by, [], [], false)
+      opened++
+    }
+    return {
+      opened,
+      next:
+        repos.length === (a.limit ?? 50)
+          ? repos[repos.length - 1].publicId
+          : null,
+    }
+  },
+})
 
 export const get = query({
   args: { owner: v.string(), name: v.string(), at: v.number() },
@@ -284,6 +518,7 @@ export const createRule = mutation({
       if ((await accountByHandle(ctx, h))?.kind !== 'person')
         bad('/body/from', `${h} is not a person.`)
     const pol = await loadPolicy(ctx, repo)
+    settingsOnly(pol)
     const have = pol.customRules.find((r) => r.id === a.id)
     const rec: CustomRuleRec = {
       id: a.id,
@@ -325,6 +560,7 @@ export const deleteRule = mutation({
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
     const pol = await loadPolicy(ctx, repo)
+    settingsOnly(pol)
     const r = ruleOf(pol, a.rule)
     if (!r.custom)
       fail(
@@ -353,6 +589,7 @@ export const setRuleMode = mutation({
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
     const pol = await loadPolicy(ctx, repo)
+    settingsOnly(pol)
     ruleOf(pol, a.rule)
     if (modeOf(pol, a.rule) !== a.mode) {
       pol.ruleModes.set(a.rule, a.mode)
@@ -392,6 +629,7 @@ export const addException = mutation({
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
     const pol = await loadPolicy(ctx, repo)
+    settingsOnly(pol)
     ruleOf(pol, a.rule)
     if ((await accountByHandle(ctx, a.who))?.kind !== 'person')
       fail('invalid_request', `${a.who} is not a person.`, {
@@ -442,6 +680,7 @@ export const removeException = mutation({
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
     const pol = await loadPolicy(ctx, repo)
+    settingsOnly(pol)
     if (!pol.exceptions.some((e) => e.id === a.id))
       fail('not_found', `No exception ${a.id}.`)
     pol.exceptions = pol.exceptions.filter((e) => e.id !== a.id)

@@ -56,6 +56,7 @@ const all: Array<Scope> = [
   'webhooks:read',
   'webhooks:write',
   'tokens:manage',
+  'runs:transcripts',
 ]
 
 export function sampleTokenStore(

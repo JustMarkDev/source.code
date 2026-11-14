@@ -44,6 +44,13 @@ export const groupHelp: Record<string, string> = {
   create [--draft]        make a change from the current branch
                           title = last commit, base = default branch
                           run again to add a patch set
+                          --addresses cmt_1,cmt_2  threads the patch set fixes
+                          in an agent run (SX_RUN), adds a Run-Id: trailer
+  timeline [number]       everything that happened to it, oldest first
+  presence [number]       who else is looking, and at which file
+                          --here [--path f] says you are; --leave that you left
+  guide [number]          what it does and the order to read its files in
+                          --set '{"summary":…,"order":[{"path","why","risk"}]}'
   land [number]           land exactly the tree it just read, if policy allows
   checkout <number>       print the git command to switch to its branch
 `,
@@ -59,6 +66,8 @@ export const groupHelp: Record<string, string> = {
 
   list [--state all]      open issues by default
   view <n>
+  timeline <n>            comments, runs, linked changes, oldest first
+  presence <n>            who else is looking (--here, --leave)
   create <title>          --label bug,docs. Same title twice returns the open one.
   close <n>
 `,
