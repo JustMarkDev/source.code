@@ -94,7 +94,7 @@ curl "https://api.source.code/v1/auth/principal" \
 
 ```http
 HTTP/1.1 200
-etag: W/"DlTHkFCyFcn7Wer6"
+etag: W/"JBZclRTQeCCMEPtp"
 ```
 
 ```json
@@ -104,7 +104,7 @@ etag: W/"DlTHkFCyFcn7Wer6"
   "login": "dana",
   "acting_as": "dana",
   "class": "human",
-  "scopes": ["issues:comment", "issues:read", "…and 13 more"],
+  "scopes": ["issues:comment", "issues:read", "…and 14 more"],
   "repos": null,
   "expires_at": "2027-11-07T10:00:00.000Z",
   "pools": [
@@ -171,7 +171,7 @@ ratelimit: "read";r=1176;t=60
       "id": "change",
       "status": 200,
       "headers": {
-        "etag": "W/\"chg_01m6dqs9m0g7q74420.4.9.chg_01m6dqs9m0g7q74420.1.0-fO5srwqXgL0SP04m\"",
+        "etag": "W/\"chg_01m6dqs9m0g7q74420.5.10.chg_01m6dqs9m0g7q74420.1.0-TAZrvTwOUiZCY4ZO\"",
         "ratelimit": "\"read\";r=1175;t=60"
       },
       "body": {
@@ -180,8 +180,8 @@ ratelimit: "read";r=1176;t=60
         "number": 216,
         "title": "Cache negative ref lookups",
         "policy": {
-          "state": "met",
-          "blocking": 0
+          "state": "pending",
+          "blocking": 2
         }
       }
     },
@@ -261,7 +261,7 @@ curl "https://api.source.code/v1/errors"
 
 ```http
 HTTP/1.1 200
-etag: W/"o1Q9CNgPDEXwfBPv"
+etag: W/"vhQ3CMmQrYgwCgXE"
 ```
 
 ```json
@@ -284,7 +284,7 @@ etag: W/"o1Q9CNgPDEXwfBPv"
       "exit_code": 2,
       "hint": "Start again without a cursor. A cursor only works with the filter and sort that produced it."
     },
-    "…and 29 more"
+    "…and 31 more"
   ],
   "has_more": false,
   "next_cursor": null
@@ -380,7 +380,7 @@ curl "https://api.source.code/v1/openapi.json"
 
 ```http
 HTTP/1.1 200
-etag: W/"XW261dUjDPVE6860"
+etag: W/"chf6UBwgYD6BW9XI"
 ```
 
 ```json

@@ -209,6 +209,26 @@ export function buildOpenApi(
                 },
               }),
         },
+        ...(op.accepted
+          ? {
+              '202': {
+                description: op.accepted.description,
+                headers: {
+                  'Sx-Request-Id': { schema: { type: 'string' } },
+                  Location: { schema: { type: 'string' } },
+                },
+                content: {
+                  'application/json': {
+                    schema: jsonSchema(
+                      op.accepted.response,
+                      'output',
+                      outputDefs,
+                    ),
+                  },
+                },
+              },
+            }
+          : {}),
         ...(op.method === 'GET' && op.conditional !== false
           ? {
               '304': {

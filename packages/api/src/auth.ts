@@ -25,6 +25,7 @@ export const allScopes = [
   'webhooks:read',
   'webhooks:write',
   'tokens:manage',
+  'runs:transcripts',
 ] as const
 export type Scope = (typeof allScopes)[number]
 

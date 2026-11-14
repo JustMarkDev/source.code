@@ -20,6 +20,26 @@ export function gitContext() {
   }
 }
 
+/** The commit HEAD is, with its whole message. */
+export function headCommit(): { sha: string; message: string } | undefined {
+  const sha = git(['rev-parse', 'HEAD'])
+  const message = git(['log', '-1', '--format=%B'])
+  return sha && message !== undefined ? { sha, message } : undefined
+}
+
+/** Rewrites HEAD's message, keeping its tree. Answers the new commit. */
+export function amendHead(message: string): string | undefined {
+  try {
+    const r = Bun.spawnSync(
+      ['git', 'commit', '--amend', '--no-verify', '--allow-empty', '-F', '-'],
+      { stdin: new TextEncoder().encode(message), stderr: 'ignore' },
+    )
+    return r.exitCode === 0 ? git(['rev-parse', 'HEAD']) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export type RepoRef = {
   slug: string
   owner: string

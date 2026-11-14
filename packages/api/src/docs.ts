@@ -339,6 +339,26 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
       body: { body: 'Done in patch set 3.', reply_to: tid },
     })
     await call('change_comments.list', 'GET', `${R}/changes/216/comments`)
+    // A fix for the thread: the same file with the answer in it.
+    const ps3 = (await call(null, 'GET', `${R}/changes/216/patch-sets/3/files`))
+      .json as Json
+    const refs = (ps3.files as Array<Json>).find(
+      (f) => f.path === 'src/refs.rs',
+    )!.content as string
+    await call(null, 'POST', `${R}/changes/216/patch-sets`, {
+      body: {
+        kind: 'update',
+        files: {
+          'src/refs.rs': `// Packed refs go through the same lookup.\n${refs}`,
+        },
+      },
+    })
+    await call(
+      'change_comments.address',
+      'POST',
+      `${R}/changes/216/comments/${tid}/address`,
+      { body: { note: 'Packed refs go through the same lookup now.' } },
+    )
     await call(
       'change_comments.update',
       'PATCH',
@@ -540,6 +560,72 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
       token: runToken,
       body: { text: 'Reproduced the failure on patch set 2' },
     })
+    await call('runs.update', 'PATCH', `${R}/runs/${runId}`, {
+      token: runToken,
+      body: {
+        issue: 4,
+        harness: 'claude-code',
+        links: ['https://delta.example/threads/8c1f'],
+      },
+    })
+    await call(null, 'PATCH', R, { body: { transcripts: 'on' } })
+    const transcript = new TextEncoder().encode(
+      'user: why does the cache test flake?\nassistant: SX_TOKEN=sxp_Ab3dEf7hIj9kLm1nOp5qRs was set; the test reads a stale ref.\n',
+    )
+    const tu = (
+      await call(null, 'POST', '/uploads', {
+        body: {
+          filename: 'transcript.txt',
+          content_type: 'text/plain',
+          size: transcript.length,
+          purpose: 'transcript',
+        },
+      })
+    ).json as Json
+    await call(
+      null,
+      'PUT',
+      `/uploads/${tu.id}/data?${String(tu.upload_url).split('?')[1]}`,
+      {
+        token: null,
+        headers: { 'content-type': 'text/plain' },
+        bytes: transcript,
+      },
+    )
+    await call('runs.transcript.put', 'PUT', `${R}/runs/${runId}/transcript`, {
+      token: runToken,
+      body: { upload: tu.id },
+    })
+    await call('runs.transcript.get', 'GET', `${R}/runs/${runId}/transcript`)
+    await call('changes.guide.put', 'PUT', `${R}/changes/216/guide`, {
+      body: {
+        summary: 'Caches missing refs so a lookup reads the disk once.',
+        order: [
+          {
+            path: 'src/refs.rs',
+            why: 'The cache, and where a miss fills it.',
+            risk: 'medium',
+          },
+          { path: 'tests/refs_test.rs', why: 'Proves one read.', risk: 'low' },
+        ],
+      },
+    })
+    await call('changes.guide.get', 'GET', `${R}/changes/216/guide`)
+    await call('changes.seen.put', 'PUT', `${R}/changes/216/seen`, {
+      body: { paths: ['src/refs.rs'] },
+    })
+    await call('changes.seen.get', 'GET', `${R}/changes/216/seen`)
+    await call('changes.landability', 'GET', `${R}/changes/216/landability`)
+    await call('changes.presence.put', 'PUT', `${R}/changes/216/presence`, {
+      body: { session: 'tab-7f3a91c2', path: 'src/refs.rs' },
+    })
+    await call('changes.presence.get', 'GET', `${R}/changes/216/presence`)
+    await call('issues.presence.put', 'PUT', `${R}/issues/4/presence`, {
+      body: { session: 'tab-7f3a91c2' },
+    })
+    await call('issues.presence.get', 'GET', `${R}/issues/4/presence`)
+    await call('changes.timeline', 'GET', `${R}/changes/216/timeline?limit=5`)
+    await call('issues.timeline', 'GET', `${R}/issues/4/timeline`)
     await call('runs.list', 'GET', `${R}/runs`)
     await call('runs.get', 'GET', `${R}/runs/${runId}`)
     await call('runs.finish', 'POST', `${R}/runs/${runId}/finish`, {
@@ -611,6 +697,19 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
       'DELETE',
       `${R}/policy/exceptions/${(exception.json as Json).id as string}`,
     )
+    await call('policy.proposals.create', 'POST', `${R}/policy/proposals`, {
+      body: {
+        edits: [
+          { op: 'set_mode', rule: 'big-change', mode: 'enforce' },
+          {
+            op: 'set_landing',
+            fresh_approvals: true,
+            steps: [{ wait_checks: ['ci/test'] }],
+          },
+        ],
+      },
+      headers: { 'idempotency-key': '7a1e3c9b-2d4f-4b6a-8e0c-1f5d7b9a3c62' },
+    })
     await call('pipelines.list', 'GET', `${R}/pipelines?limit=2`)
     await call('pipelines.get', 'GET', `${R}/pipelines/1839`)
     await call('pipelines.log', 'GET', `${R}/pipelines/1839/jobs/1/steps/2/log`)
@@ -845,6 +944,11 @@ export async function captureExamples(): Promise<Map<string, Recorded>> {
     await call('git.blob', 'GET', `${R}/git/blob?path=README.md`)
     await call('git.raw', 'GET', `${R}/git/raw?path=README.md`)
     await call('git.commits', 'GET', `${R}/git/commits?limit=1`)
+    await call(
+      'repos.provenance',
+      'GET',
+      `${R}/provenance?path=src/refs.rs&line=3&change=216`,
+    )
     const sha = ((out.get('git.commits')!.json as Json).data as Array<Json>)[0]
       .sha as string
     await call('git.commit', 'GET', `${R}/git/commits/${sha}`)
@@ -1276,6 +1380,11 @@ function section(op: Op, doc: Json, examples: Map<string, Recorded>) {
     'Success',
     `\`${op.status ?? 200}\`, ${responseName(doc, item, op)}`,
   ])
+  if (op.accepted)
+    meta.push([
+      'Or',
+      `\`202\`, ${responseName(doc, item, { ...op, status: 202, accepted: undefined })}: ${op.accepted.description}`,
+    ])
   out.push(table(meta, ['About', '']), '')
 
   const params = (item.parameters ?? []) as Array<Json>
@@ -1401,6 +1510,8 @@ const ERROR_GROUPS: Array<[string, Array<string>]> = [
       'version_mismatch',
       'limit_reached',
       'upload_incomplete',
+      'transcripts_disabled',
+      'transcript_has_secrets',
     ],
   ],
   [

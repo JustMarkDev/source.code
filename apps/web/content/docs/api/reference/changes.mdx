@@ -63,7 +63,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes?limit=2&fields=number,
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.0.1.0-h4U1kaCVgkjadzHL"
+etag: W/"rep_01m3kkw4m0zvf3zfc9.0.1.0-sRrnTkkI_ONzQQsq"
 ratelimit: "read";r=1193;t=60
 ```
 
@@ -143,14 +143,16 @@ Naturally idempotent: asking again for a branch that already has an open change 
 
 **Request body**
 
-| Member        | Type                            | Notes     |
-| ------------- | ------------------------------- | --------- |
-| `branch`      | string (at least 1)             | Required. |
-| `base`        | string                          |           |
-| `title`       | string (up to 300 characters)   |           |
-| `description` | string (up to 65536 characters) |           |
-| `draft`       | boolean                         |           |
-| `sha`         | string (pattern)                |           |
+| Member        | Type                            | Notes                                                                                                                         |
+| ------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `branch`      | string (at least 1)             | Required.                                                                                                                     |
+| `base`        | string                          |                                                                                                                               |
+| `title`       | string (up to 300 characters)   |                                                                                                                               |
+| `description` | string (up to 65536 characters) |                                                                                                                               |
+| `draft`       | boolean                         |                                                                                                                               |
+| `sha`         | string (pattern)                |                                                                                                                               |
+| `message`     | string (up to 65536 characters) | The head commit's message. A `Run-Id:` trailer in it names the run that made the commit, when the token is not that run's own |
+| `addresses`   | array of object                 | When this adds a patch set: the review threads it answers, marked in the same write                                           |
 
 **Errors**
 
@@ -296,7 +298,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216" \
 
 ```http
 HTTP/1.1 200
-etag: W/"chg_01m6dqs9m0g7q74420.1.3.chg_01m6dqs9m0g7q74420.1.0-D3Lrc5m2y9MlPj1a"
+etag: W/"chg_01m6dqs9m0g7q74420.1.3.chg_01m6dqs9m0g7q74420.1.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1192;t=60
 ```
 
@@ -912,7 +914,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/comments" \
 
 ```http
 HTTP/1.1 200
-etag: W/"chg_01m6dqs9m0g7q74420.rc2.0-D3Lrc5m2y9MlPj1a"
+etag: W/"chg_01m6dqs9m0g7q74420.rc2.0-KO3isrAOBKaFndKd"
 ratelimit: "read";r=1180;t=60
 ```
 
@@ -936,6 +938,16 @@ ratelimit: "read";r=1180;t=60
       "patch_set": 3,
       "reply_to": null,
       "resolved": false,
+      "anchor": {
+        "quote": "    neg: NegCache,",
+        "before": ["pub struct Refs {", "    disk: Disk,"],
+        "after": ["}", "", "…and 1 more"],
+        "side": "head"
+      },
+      "current_line": 3,
+      "outdated": false,
+      "addressed": null,
+      "run": null,
       "created_at": "2026-11-07T10:00:00.000Z",
       "updated_at": "2026-11-07T10:00:00.000Z",
       "version": 1
@@ -956,6 +968,16 @@ ratelimit: "read";r=1180;t=60
       "patch_set": 3,
       "reply_to": "cmt_01m6tq6r8053g0xt2b",
       "resolved": false,
+      "anchor": {
+        "quote": "    neg: NegCache,",
+        "before": ["pub struct Refs {", "    disk: Disk,"],
+        "after": ["}", "", "…and 1 more"],
+        "side": "head"
+      },
+      "current_line": 3,
+      "outdated": false,
+      "addressed": null,
+      "run": null,
       "created_at": "2026-11-07T10:00:00.000Z",
       "updated_at": "2026-11-07T10:00:00.000Z",
       "version": 1
@@ -999,13 +1021,14 @@ Give `file` and `line` for a line, `file` alone for a file, neither for the whol
 
 **Request body**
 
-| Member      | Type                                        | Notes                                                         |
-| ----------- | ------------------------------------------- | ------------------------------------------------------------- |
-| `body`      | string (up to 65536 characters, at least 1) | Required.                                                     |
-| `file`      | string (up to 1000 characters, at least 1)  |                                                               |
-| `line`      | integer (min 1, max 9007199254740991)       |                                                               |
-| `patch_set` | integer (min 1, max 9007199254740991)       |                                                               |
-| `reply_to`  | string                                      | A comment to answer; `file`, `line` and `patch_set` follow it |
+| Member      | Type                                        | Notes                                                                                                                               |
+| ----------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `body`      | string (up to 65536 characters, at least 1) | Required.                                                                                                                           |
+| `file`      | string (up to 1000 characters, at least 1)  |                                                                                                                                     |
+| `line`      | integer (min 1, max 9007199254740991)       |                                                                                                                                     |
+| `patch_set` | integer (min 1, max 9007199254740991)       |                                                                                                                                     |
+| `reply_to`  | string                                      | A comment to answer; `file`, `line` and `patch_set` follow it                                                                       |
+| `quote`     | string (up to 4000 characters, at least 1)  | The text the comment is about, starting on `line`. Without it, the line itself. The comment follows this text into newer patch sets |
 
 **Errors**
 
@@ -1043,6 +1066,16 @@ ratelimit: "write";r=101;t=60
   "patch_set": 3,
   "reply_to": null,
   "resolved": false,
+  "anchor": {
+    "quote": "    neg: NegCache,",
+    "before": ["pub struct Refs {", "    disk: Disk,"],
+    "after": ["}", "", "…and 1 more"],
+    "side": "head"
+  },
+  "current_line": 3,
+  "outdated": false,
+  "addressed": null,
+  "run": null,
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 1
@@ -1094,7 +1127,7 @@ curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/changes/216/comments
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=98;t=60
+ratelimit: "write";r=96;t=60
 ```
 
 ### `change_comments.update`
@@ -1151,7 +1184,7 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/changes/216/comments/
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=99;t=60
+ratelimit: "write";r=97;t=60
 ```
 
 ```json
@@ -1171,6 +1204,126 @@ ratelimit: "write";r=99;t=60
   "patch_set": 3,
   "reply_to": null,
   "resolved": true,
+  "anchor": {
+    "quote": "    neg: NegCache,",
+    "before": ["pub struct Refs {", "    disk: Disk,"],
+    "after": ["}", "", "…and 1 more"],
+    "side": "head"
+  },
+  "current_line": 4,
+  "outdated": false,
+  "addressed": {
+    "patch_set": 4,
+    "by": {
+      "object": "actor",
+      "id": "acc_01m203xrm0bw4d69nd",
+      "handle": "dana",
+      "class": "human"
+    },
+    "note": "Packed refs go through the same lookup now.",
+    "at": "2026-11-07T10:00:00.000Z"
+  },
+  "run": null,
+  "created_at": "2026-11-07T10:00:00.000Z",
+  "updated_at": "2026-11-07T10:00:00.000Z",
+  "version": 3
+}
+```
+
+### `change_comments.address`
+
+`POST /repos/{owner}/{repo}/changes/{number}/comments/{comment}/address`
+
+**Say which patch set answers a review thread**
+
+Links a fix to the comment it answers. The thread's author is told, and the change page can show what changed in that comment's file between the patch set it was written on and the fix. It does not resolve the thread. Send `addresses` with a new patch set to push a fix and mark its threads in one write.
+
+| About      |                           |
+| ---------- | ------------------------- |
+| Safety     | `write`, safe to repeat   |
+| Needs      | a token                   |
+| Scopes     | `pulls:write`             |
+| Rate limit | `write` pool, 1 unit      |
+| Dry run    | `?dry_run=true`           |
+| Success    | `200`, a `change_comment` |
+
+**Path parameters**
+
+| Name      | Type   | Notes |
+| --------- | ------ | ----- |
+| `owner`   | string |       |
+| `repo`    | string |       |
+| `number`  | string |       |
+| `comment` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member      | Type                                  | Notes                                           |
+| ----------- | ------------------------------------- | ----------------------------------------------- |
+| `patch_set` | integer (min 1, max 9007199254740991) | The patch set with the fix. Default: the newest |
+| `note`      | string (up to 2000 characters)        | What changed                                    |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/changes/216/comments/cmt_01m6tq6r8053g0xt2b/address" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"note":"Packed refs go through the same lookup now."}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=98;t=60
+```
+
+```json
+{
+  "object": "change_comment",
+  "id": "cmt_01m6tq6r8053g0xt2b",
+  "change": 216,
+  "author": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "body": "Does this still hold when the ref is packed?",
+  "file": "src/refs.rs",
+  "line": 3,
+  "patch_set": 3,
+  "reply_to": null,
+  "resolved": false,
+  "anchor": {
+    "quote": "    neg: NegCache,",
+    "before": ["pub struct Refs {", "    disk: Disk,"],
+    "after": ["}", "", "…and 1 more"],
+    "side": "head"
+  },
+  "current_line": 4,
+  "outdated": false,
+  "addressed": {
+    "patch_set": 4,
+    "by": {
+      "object": "actor",
+      "id": "acc_01m203xrm0bw4d69nd",
+      "handle": "dana",
+      "class": "human"
+    },
+    "note": "Packed refs go through the same lookup now.",
+    "at": "2026-11-07T10:00:00.000Z"
+  },
+  "run": null,
   "created_at": "2026-11-07T10:00:00.000Z",
   "updated_at": "2026-11-07T10:00:00.000Z",
   "version": 2
@@ -1284,7 +1437,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/findings?state=ope
 
 ```http
 HTTP/1.1 200
-etag: W/"faI1ksBb9UoF06nx"
+etag: W/"5Klg720r8Pj-at6F"
 ratelimit: "read";r=1189;t=60
 ```
 
@@ -1316,6 +1469,7 @@ ratelimit: "read";r=1189;t=60
         ]
       },
       "prompt": "NegCache in src/refs.rs never evicts, while the positive cache in src/cache.rs stops at 10,000 entries. Bound it to the same size with LRU eviction: add put_…",
+      "run": null,
       "created_at": "2026-11-06T13:00:00.000Z"
     },
     {
@@ -1340,6 +1494,7 @@ ratelimit: "read";r=1189;t=60
         "lines": ["        if self.neg.peek(name) {"]
       },
       "prompt": "In src/refs.rs, lookup() calls self.neg.contains(name), which takes the cache lock on every call even for repeat hits. Read from a lock-free snapshot instead…",
+      "run": null,
       "created_at": "2026-11-06T13:00:00.000Z"
     },
     "…and 1 more"
@@ -1414,7 +1569,7 @@ ratelimit: "write";r=118;t=60
 ```json
 {
   "object": "finding",
-  "id": "fnd_01m6tq6r80nxze0tsw",
+  "id": "fnd_01m6tq6r80szwv5hyb",
   "label": "F-5",
   "by": "hollis",
   "severity": "medium",
@@ -1424,10 +1579,11 @@ ratelimit: "write";r=118;t=60
   "line": 3,
   "title": "The cache is never bounded",
   "body": "A long-running mount keeps every missing ref forever.",
-  "patch_set": 3,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/findings/fnd_01m6tq6r80nxze0tsw",
+  "patch_set": 4,
+  "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/findings/fnd_01m6tq6r80szwv5hyb",
   "suggestion": null,
   "prompt": null,
+  "run": null,
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -1509,6 +1665,7 @@ ratelimit: "write";r=117;t=60
     "lines": ["        if self.neg.peek(name) {"]
   },
   "prompt": "In src/refs.rs, lookup() calls self.neg.contains(name), which takes the cache lock on every call even for repeat hits. Read from a lock-free snapshot instead…",
+  "run": null,
   "created_at": "2026-11-06T13:00:00.000Z"
 }
 ```
@@ -1584,7 +1741,166 @@ ratelimit: "write";r=118;t=60
     ]
   },
   "prompt": "NegCache in src/refs.rs never evicts, while the positive cache in src/cache.rs stops at 10,000 entries. Bound it to the same size with LRU eviction: add put_…",
+  "run": null,
   "created_at": "2026-11-06T13:00:00.000Z"
+}
+```
+
+### `changes.guide.get`
+
+`GET /repos/{owner}/{repo}/changes/{number}/guide`
+
+**A change's guide**
+
+What the change does and the order to read its files in, each with why and how risky. `current` is false when it was written for an older patch set.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `pulls:read`                               |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `change_guide`                    |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/guide" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"u1fVgWEfhE-zVFvn"
+ratelimit: "read";r=1160;t=60
+```
+
+```json
+{
+  "object": "change_guide",
+  "change": 216,
+  "patch_set": 4,
+  "current": true,
+  "summary": "Caches missing refs so a lookup reads the disk once.",
+  "order": [
+    {
+      "path": "src/refs.rs",
+      "why": "The cache, and where a miss fills it.",
+      "risk": "medium"
+    },
+    {
+      "path": "tests/refs_test.rs",
+      "why": "Proves one read.",
+      "risk": "low"
+    }
+  ],
+  "by": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "run": null,
+  "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `changes.guide.put`
+
+`PUT /repos/{owner}/{repo}/changes/{number}/guide`
+
+**Write the guide for a change**
+
+For the agent or person who knows the change best: a summary and every file worth reading, in order, with why and how risky. It replaces the guide there was, and says which run wrote it when a run token wrote it. The change page's files follow its order.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `pulls:write`           |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `change_guide` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member      | Type                                       | Notes                                                                |
+| ----------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| `summary`   | string (up to 4000 characters, at least 1) | Required.                                                            |
+| `order`     | array of object                            | Required. Files of the newest patch set, each once, in reading order |
+| `patch_set` | integer (min 1, max 9007199254740991)      | The patch set it is for. Default: the newest                         |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/changes/216/guide" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"summary":"Caches missing refs so a lookup reads the disk once.","order":[{"path":"src/refs.rs","why":"The cache, and where a miss fills it.","risk":"medium"},{"path":"tests/refs_test.rs","why":"Proves one read.","risk":"low"}]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=76;t=60
+```
+
+```json
+{
+  "object": "change_guide",
+  "change": 216,
+  "patch_set": 4,
+  "current": true,
+  "summary": "Caches missing refs so a lookup reads the disk once.",
+  "order": [
+    {
+      "path": "src/refs.rs",
+      "why": "The cache, and where a miss fills it.",
+      "risk": "medium"
+    },
+    {
+      "path": "tests/refs_test.rs",
+      "why": "Proves one read.",
+      "risk": "low"
+    }
+  ],
+  "by": {
+    "object": "actor",
+    "id": "acc_01m203xrm0bw4d69nd",
+    "handle": "dana",
+    "class": "human"
+  },
+  "run": null,
+  "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
 
@@ -1594,16 +1910,17 @@ ratelimit: "write";r=118;t=60
 
 **Land a change**
 
-Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting.
+Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting. When the policy file has landing steps after the change lands, it answers `202` with the operation that lands it and runs them.
 
-| About      |                                           |
-| ---------- | ----------------------------------------- |
-| Safety     | `destructive`, not safe to repeat blindly |
-| Needs      | a token                                   |
-| Scopes     | `pulls:merge`                             |
-| Rate limit | `write` pool, 1 unit                      |
-| Dry run    | `?dry_run=true`                           |
-| Success    | `200`, a `change`                         |
+| About      |                                                                                                                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Safety     | `destructive`, not safe to repeat blindly                                                                                                                                                      |
+| Needs      | a token                                                                                                                                                                                        |
+| Scopes     | `pulls:merge`                                                                                                                                                                                  |
+| Rate limit | `write` pool, 1 unit                                                                                                                                                                           |
+| Dry run    | `?dry_run=true`                                                                                                                                                                                |
+| Success    | `200`, a `change`                                                                                                                                                                              |
+| Or         | `202`, a `operation`: When the policy file has landing steps after the change lands (`run_pipeline`, `webhook`): the operation that lands it and runs them, one step at a time. Poll its `url` |
 
 **Path parameters**
 
@@ -1738,6 +2055,116 @@ ratelimit: "write";r=119;t=60
 }
 ```
 
+### `changes.landability`
+
+`GET /repos/{owner}/{repo}/changes/{number}/landability`
+
+**What stops a change from landing**
+
+Each failed or pending requirement and each landing step it waits on, with why, and how it will land (the policy file's `landing:`). `tree` is what to send as `expected_tree`.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `pulls:read`                               |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a `landability`                     |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/landability" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"3mO68082t2P6K6IW"
+ratelimit: "read";r=1158;t=60
+```
+
+```json
+{
+  "object": "landability",
+  "change": 216,
+  "patch_set": 4,
+  "tree": "3361c86",
+  "landable": false,
+  "blockers": [
+    {
+      "id": "core-paths",
+      "rule": "Core paths need a maintainer",
+      "state": "pending",
+      "detail": "src/** needs 1 human approval from a maintainer.",
+      "needs": {
+        "approval": {
+          "min": 1,
+          "class": "human",
+          "from": "maintainers"
+        }
+      },
+      "blocking": []
+    },
+    {
+      "id": "ci-evidence",
+      "rule": "Tests pass on the tree that will land",
+      "state": "pending",
+      "detail": "No ci/test result for tree 3361c86 yet.",
+      "needs": {
+        "check": "ci/test",
+        "bound_to": "tree",
+        "tree": "3361c86"
+      },
+      "blocking": []
+    }
+  ],
+  "requirements": [
+    {
+      "id": "core-paths",
+      "rule": "Core paths need a maintainer",
+      "state": "pending",
+      "detail": "src/** needs 1 human approval from a maintainer.",
+      "needs": {
+        "approval": {
+          "min": 1,
+          "class": "human",
+          "from": "maintainers"
+        }
+      },
+      "blocking": []
+    },
+    {
+      "id": "agent-authored",
+      "rule": "Agent-authored changes need a human",
+      "state": "na",
+      "detail": "The author is a person.",
+      "needs": null,
+      "blocking": []
+    },
+    "…and 3 more"
+  ],
+  "landing": {
+    "strategy": "squash",
+    "fresh_approvals": false,
+    "resolve": "any_reviewer",
+    "steps": []
+  }
+}
+```
+
 ### `patch_sets.list`
 
 `GET /repos/{owner}/{repo}/changes/{number}/patch-sets`
@@ -1773,7 +2200,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets" \
 
 ```http
 HTTP/1.1 200
-etag: W/"yiwYCmZD9hllquQj"
+etag: W/"jWSVIQS5u5d_Cejv"
 ratelimit: "read";r=1191;t=60
 ```
 
@@ -1796,6 +2223,7 @@ ratelimit: "read";r=1191;t=60
       },
       "files": 2,
       "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/1",
+      "run": null,
       "created_at": "2026-11-04T09:00:00.000Z"
     },
     {
@@ -1813,6 +2241,7 @@ ratelimit: "read";r=1191;t=60
       },
       "files": 2,
       "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/2",
+      "run": null,
       "created_at": "2026-11-05T09:00:00.000Z"
     },
     "…and 1 more"
@@ -1855,12 +2284,13 @@ ratelimit: "read";r=1191;t=60
 
 **Request body**
 
-| Member  | Type                                                | Notes                                                                                                                                                                     |
-| ------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sha`   | string (pattern)                                    | The commit. Required unless `files` is sent                                                                                                                               |
-| `kind`  | `update` or `rebase`                                | Default `"update"`.                                                                                                                                                       |
-| `note`  | string (up to 500 characters)                       |                                                                                                                                                                           |
-| `files` | object of string (up to 1000000 characters) or null | Edited files, whole, by path; null deletes. Only files the change already touches. The patch set is the head with these on top, and its commit id is a hash of the result |
+| Member      | Type                                                | Notes                                                                                                                                                                     |
+| ----------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sha`       | string (pattern)                                    | The commit. Required unless `files` is sent                                                                                                                               |
+| `kind`      | `update` or `rebase`                                | Default `"update"`.                                                                                                                                                       |
+| `note`      | string (up to 500 characters)                       |                                                                                                                                                                           |
+| `files`     | object of string (up to 1000000 characters) or null | Edited files, whole, by path; null deletes. Only files the change already touches. The patch set is the head with these on top, and its commit id is a hash of the result |
+| `addresses` | array of object                                     | Review threads this patch set answers. They are marked addressed in the same write and their authors are told; they stay open until someone resolves them                 |
 
 **Errors**
 
@@ -1897,6 +2327,7 @@ ratelimit: "write";r=115;t=60
   },
   "files": 2,
   "url": "https://api.source.code/v1/repos/dana/gitfs/changes/212/patch-sets/3",
+  "run": null,
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -1937,7 +2368,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/3" \
 
 ```http
 HTTP/1.1 200
-etag: W/"kUcMYw5gH4_-ho7W"
+etag: W/"VGTZnrq5A8rOz7EA"
 ratelimit: "read";r=1190;t=60
 ```
 
@@ -1957,6 +2388,7 @@ ratelimit: "read";r=1190;t=60
   },
   "files": 2,
   "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/3",
+  "run": null,
   "created_at": "2026-11-06T09:00:00.000Z"
 }
 ```
@@ -2019,6 +2451,139 @@ ratelimit: "heavy";r=119;t=60
       "path": "tests/refs_test.rs",
       "base": "#[test]\nfn lookup_reads_disk_once() {\n}\n",
       "content": "#[test]\nfn lookup_reads_disk_once() {\n    let refs = Refs::with_counter();\n    assert!(refs.lookup(\"refs/heads/missing\").is_none());\n    assert!(refs.lookup(…"
+    }
+  ]
+}
+```
+
+### `changes.presence.get`
+
+`GET /repos/{owner}/{repo}/changes/{number}/presence`
+
+**Who is looking at a change**
+
+The people and agents with the change open now, and the file each is on. It changes by the second, so it is never cached.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `pulls:read`           |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `presence`    |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/presence" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"vSeNM3tjahL7Cjuf"
+ratelimit: "read";r=1157;t=60
+```
+
+```json
+{
+  "object": "presence",
+  "kind": "change",
+  "number": 216,
+  "interval": 20,
+  "viewers": [
+    {
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "path": "src/refs.rs",
+      "seen_at": "2026-11-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `changes.presence.put`
+
+`PUT /repos/{owner}/{repo}/changes/{number}/presence`
+
+**Say you are looking at a change**
+
+A heartbeat: send one every `interval` seconds while the change is open, with the file you are on, and `leave` when you close it. The MCP server sends one for an agent while its run works on a change. Answers who is looking, you included. Not an event, and nothing is kept once you stop.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `pulls:read`            |
+| Rate limit | `write` pool, 1 unit    |
+| Success    | `200`, a `presence`     |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Request body**
+
+| Member    | Type                                               | Notes                                                                                                  |
+| --------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `session` | string (up to 128 characters, at least 8)          | Required. One per open tab or agent process, so two of yours count once and leaving one leaves only it |
+| `path`    | string (up to 1000 characters, at least 1) or null | Default `null`. The file you have open                                                                 |
+| `leave`   | boolean                                            | Default `false`. Leave now instead of once the heartbeats stop                                         |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/changes/216/presence" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"session":"tab-7f3a91c2","path":"src/refs.rs"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=74;t=60
+```
+
+```json
+{
+  "object": "presence",
+  "kind": "change",
+  "number": 216,
+  "interval": 20,
+  "viewers": [
+    {
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "path": "src/refs.rs",
+      "seen_at": "2026-11-07T10:00:00.000Z"
     }
   ]
 }
@@ -2369,7 +2934,276 @@ ratelimit: "write";r=119;t=60
   "patch_set": 2,
   "carries_to_head": true,
   "body": "The regression test covers it. One question inline.",
+  "run": null,
   "created_at": "2026-11-07T10:00:00.000Z"
+}
+```
+
+### `changes.seen.get`
+
+`GET /repos/{owner}/{repo}/changes/{number}/seen`
+
+**Which files of a change you have seen**
+
+Yours alone. A file counts as seen while it is the same as when you marked it; a newer patch set that changes it says `changed_since` instead.
+
+| About      |                        |
+| ---------- | ---------------------- |
+| Safety     | `read`, safe to repeat |
+| Needs      | a token                |
+| Scopes     | `pulls:read`           |
+| Rate limit | `read` pool, 1 unit    |
+| Success    | `200`, a `change_seen` |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/seen" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"2gyNy_i00YgjnTZx"
+ratelimit: "read";r=1159;t=60
+```
+
+```json
+{
+  "object": "change_seen",
+  "change": 216,
+  "patch_set": 4,
+  "seen": 1,
+  "total": 2,
+  "files": [
+    {
+      "path": "src/refs.rs",
+      "seen": true,
+      "patch_set": 4,
+      "changed_since": false
+    },
+    {
+      "path": "tests/refs_test.rs",
+      "seen": false,
+      "patch_set": null,
+      "changed_since": false
+    }
+  ]
+}
+```
+
+### `changes.seen.put`
+
+`PUT /repos/{owner}/{repo}/changes/{number}/seen`
+
+**Mark files of a change as seen**
+
+For a reviewer working through a change file by file, and for an agent or the CLI keeping track the same way. The mark is yours alone and changes nothing anyone else sees. It holds for the files as they are at the newest patch set.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `pulls:read`            |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `change_seen`  |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member  | Type                                                | Notes                                                                 |
+| ------- | --------------------------------------------------- | --------------------------------------------------------------------- |
+| `paths` | array of string (up to 1000 characters, at least 1) | Required.                                                             |
+| `seen`  | boolean                                             | Default `true`. False takes the mark off, so the files read as unseen |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/changes/216/seen" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"paths":["src/refs.rs"]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=75;t=60
+```
+
+```json
+{
+  "object": "change_seen",
+  "change": 216,
+  "patch_set": 4,
+  "seen": 1,
+  "total": 2,
+  "files": [
+    {
+      "path": "src/refs.rs",
+      "seen": true,
+      "patch_set": 4,
+      "changed_since": false
+    },
+    {
+      "path": "tests/refs_test.rs",
+      "seen": false,
+      "patch_set": null,
+      "changed_since": false
+    }
+  ]
+}
+```
+
+### `changes.timeline`
+
+`GET /repos/{owner}/{repo}/changes/{number}/timeline`
+
+**A change's timeline**
+
+Everything that happened to a change, oldest first: patch sets, review comments, reviews, findings, checks, evidence, the notes of the agent runs that worked on it, and its state changes. Each entry names the run that made it, if one did, and carries the object itself in `item`.
+
+| About      |                                            |
+| ---------- | ------------------------------------------ |
+| Safety     | `read`, safe to repeat                     |
+| Needs      | nothing for public data, a token otherwise |
+| Scopes     | `pulls:read`                               |
+| Rate limit | `read` pool, 1 unit                        |
+| Success    | `200`, a list of `timeline_entry`          |
+
+**Path parameters**
+
+| Name     | Type   | Notes |
+| -------- | ------ | ----- |
+| `owner`  | string |       |
+| `repo`   | string |       |
+| `number` | string |       |
+
+**Query parameters**
+
+| Name     | Type                     | Notes                                                              |
+| -------- | ------------------------ | ------------------------------------------------------------------ |
+| `limit`  | integer (min 1, max 200) | Default `50`. Items per page, 1 to 200. Larger values are clamped. |
+| `cursor` | string                   | `next_cursor` from the previous page, exactly as returned          |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`cursor_mismatch`](/docs/api/errors#cursor_mismatch), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/timeline?limit=5" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"iw9MPrqPZ7QTO8lA"
+ratelimit: "read";r=1155;t=60
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "timeline_entry",
+      "id": "patch_set:1",
+      "kind": "patch_set",
+      "created_at": "2026-11-04T09:00:00.000Z",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "run": null,
+      "summary": "Patch set 1: Initial version",
+      "item": {
+        "object": "patch_set",
+        "number": 1,
+        "change": 216,
+        "sha": "41ac9e2000000000000000000000000000000000",
+        "tree": "41ac9e2",
+        "note": "Initial version",
+        "author": {
+          "object": "actor",
+          "id": "acc_01m203xrm0bw4d69nd",
+          "handle": "dana",
+          "class": "human"
+        },
+        "files": 2,
+        "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/1",
+        "run": null,
+        "created_at": "2026-11-04T09:00:00.000Z"
+      }
+    },
+    {
+      "object": "timeline_entry",
+      "id": "patch_set:2",
+      "kind": "patch_set",
+      "created_at": "2026-11-05T09:00:00.000Z",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0bw4d69nd",
+        "handle": "dana",
+        "class": "human"
+      },
+      "run": null,
+      "summary": "Patch set 2: Address review: rename hit() to contains()",
+      "item": {
+        "object": "patch_set",
+        "number": 2,
+        "change": 216,
+        "sha": "5d02b8f000000000000000000000000000000000",
+        "tree": "5d02b8f",
+        "note": "Address review: rename hit() to contains()",
+        "author": {
+          "object": "actor",
+          "id": "acc_01m203xrm0bw4d69nd",
+          "handle": "dana",
+          "class": "human"
+        },
+        "files": 2,
+        "url": "https://api.source.code/v1/repos/dana/gitfs/changes/216/patch-sets/2",
+        "run": null,
+        "created_at": "2026-11-05T09:00:00.000Z"
+      }
+    },
+    "…and 3 more"
+  ],
+  "has_more": true,
+  "next_cursor": "c_WzE3OTM5NzAwMDAwMDAwMDAsInJldmlldzpyZXZfMDFtNnJmM200MHF0eXJ2c3I5IiwicDV4MGI5Il0"
 }
 ```
 
@@ -2426,15 +3260,15 @@ curl -X POST "https://api.source.code/v1/repos/dana/stacky/stacks/stk_stacky0000
 
 ```http
 HTTP/1.1 202
-location: https://api.source.code/v1/operations/op_01m6tq6r80afbfkr4h
+location: https://api.source.code/v1/operations/op_01m6tq6r80tgf8fc46
 retry-after: 1
-ratelimit: "write";r=16;t=60
+ratelimit: "write";r=7;t=60
 ```
 
 ```json
 {
   "object": "operation",
-  "id": "op_01m6tq6r80afbfkr4h",
+  "id": "op_01m6tq6r80tgf8fc46",
   "kind": "stack.land",
   "state": "queued",
   "progress": {
@@ -2443,8 +3277,27 @@ ratelimit: "write";r=16;t=60
   },
   "result": null,
   "error": null,
-  "url": "https://api.source.code/v1/operations/op_01m6tq6r80afbfkr4h",
+  "url": "https://api.source.code/v1/operations/op_01m6tq6r80tgf8fc46",
   "created_at": "2026-11-07T10:00:00.000Z",
-  "finished_at": null
+  "finished_at": null,
+  "steps": [
+    {
+      "name": "Land #1",
+      "kind": "land",
+      "target": "1",
+      "state": "pending",
+      "detail": "",
+      "finished_at": null
+    },
+    {
+      "name": "Land #2",
+      "kind": "land",
+      "target": "2",
+      "state": "pending",
+      "detail": "",
+      "finished_at": null
+    },
+    "…and 1 more"
+  ]
 }
 ```

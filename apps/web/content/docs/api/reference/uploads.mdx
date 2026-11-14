@@ -45,7 +45,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/changes/216/evidence" \
 
 ```http
 HTTP/1.1 200
-etag: W/"tyb0rC-xAOmXJGx7"
+etag: W/"fFxA9jgoEFM154Ei"
 ratelimit: "read";r=1164;t=60
 ```
 
@@ -55,16 +55,16 @@ ratelimit: "read";r=1164;t=60
   "data": [
     {
       "object": "evidence",
-      "id": "evd_01m6tq6r80ek7tytw9",
+      "id": "evd_01m6tq6r8060d2gg0y",
       "change": 216,
       "kind": "image",
       "caption": "After: the cache stats line",
       "upload": {
-        "id": "upl_01m6tq6r8061m99gwd",
+        "id": "upl_01m6tq6r80kvv5vp7w",
         "content_type": "image/png",
         "size": 48,
         "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
-        "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/content"
+        "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/content"
       },
       "created_by": {
         "object": "actor",
@@ -129,27 +129,27 @@ Evidence shows what a change does: before and after images, a recording, an inte
 curl -X POST "https://api.source.code/v1/repos/dana/gitfs/changes/216/evidence" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"upload":"upl_01m6tq6r8061m99gwd","kind":"image","caption":"After: the cache stats line"}'
+  -d '{"upload":"upl_01m6tq6r80kvv5vp7w","kind":"image","caption":"After: the cache stats line"}'
 ```
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=85;t=60
+ratelimit: "write";r=83;t=60
 ```
 
 ```json
 {
   "object": "evidence",
-  "id": "evd_01m6tq6r80ek7tytw9",
+  "id": "evd_01m6tq6r8060d2gg0y",
   "change": 216,
   "kind": "image",
   "caption": "After: the cache stats line",
   "upload": {
-    "id": "upl_01m6tq6r8061m99gwd",
+    "id": "upl_01m6tq6r80kvv5vp7w",
     "content_type": "image/png",
     "size": 48,
     "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
-    "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/content"
+    "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/content"
   },
   "created_by": {
     "object": "actor",
@@ -196,7 +196,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/issues/4/evidence" \
 
 ```http
 HTTP/1.1 200
-etag: W/"bkR3c8C6ozYOg-DO"
+etag: W/"TBfLw2SUss2QLxXf"
 ratelimit: "read";r=1162;t=60
 ```
 
@@ -206,16 +206,16 @@ ratelimit: "read";r=1162;t=60
   "data": [
     {
       "object": "issue_evidence",
-      "id": "evd_01m6tq6r8068bjz002",
+      "id": "evd_01m6tq6r80kntdrydv",
       "issue": 4,
       "kind": "image",
       "caption": "The error on an empty repo",
       "upload": {
-        "id": "upl_01m6tq6r80azfnwzw0",
+        "id": "upl_01m6tq6r80nxze0tsw",
         "content_type": "image/png",
         "size": 48,
         "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
-        "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80azfnwzw0/content"
+        "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80nxze0tsw/content"
       },
       "created_by": {
         "object": "actor",
@@ -280,27 +280,27 @@ What someone saw, shown on the issue. Anyone who can read the repository may att
 curl -X POST "https://api.source.code/v1/repos/dana/gitfs/issues/4/evidence" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"upload":"upl_01m6tq6r80azfnwzw0","kind":"image","caption":"The error on an empty repo"}'
+  -d '{"upload":"upl_01m6tq6r80nxze0tsw","kind":"image","caption":"The error on an empty repo"}'
 ```
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=83;t=60
+ratelimit: "write";r=81;t=60
 ```
 
 ```json
 {
   "object": "issue_evidence",
-  "id": "evd_01m6tq6r8068bjz002",
+  "id": "evd_01m6tq6r80kntdrydv",
   "issue": 4,
   "kind": "image",
   "caption": "The error on an empty repo",
   "upload": {
-    "id": "upl_01m6tq6r80azfnwzw0",
+    "id": "upl_01m6tq6r80nxze0tsw",
     "content_type": "image/png",
     "size": 48,
     "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
-    "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80azfnwzw0/content"
+    "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80nxze0tsw/content"
   },
   "created_by": {
     "object": "actor",
@@ -337,12 +337,12 @@ Say what the file is. The response has an `upload_url`: PUT the bytes there with
 
 **Request body**
 
-| Member         | Type                                                                                                                                                                                                                    | Notes                                                                                                  |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `filename`     | string (up to 200 characters, at least 1)                                                                                                                                                                               | Required.                                                                                              |
-| `content_type` | `image/png` or `image/jpeg` or `image/gif` or `image/webp` or `video/mp4` or `video/webm` or `application/json` or `text/plain` or `text/html` or `application/octet-stream` or `application/zip` or `application/gzip` | Required.                                                                                              |
-| `size`         | integer (min 1, max 104857600)                                                                                                                                                                                          | Required.                                                                                              |
-| `purpose`      | `evidence` or `release`                                                                                                                                                                                                 | Default `"evidence"`. `release` for a file of a release; binaries, zip and gzip are only allowed there |
+| Member         | Type                                                                                                                                                                                                                    | Notes                                                                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `filename`     | string (up to 200 characters, at least 1)                                                                                                                                                                               | Required.                                                                                                                                   |
+| `content_type` | `image/png` or `image/jpeg` or `image/gif` or `image/webp` or `video/mp4` or `video/webm` or `application/json` or `text/plain` or `text/html` or `application/octet-stream` or `application/zip` or `application/gzip` | Required.                                                                                                                                   |
+| `size`         | integer (min 1, max 104857600)                                                                                                                                                                                          | Required.                                                                                                                                   |
+| `purpose`      | `evidence` or `release` or `transcript`                                                                                                                                                                                 | Default `"evidence"`. `release` for a file of a release; binaries, zip and gzip are only allowed there. `transcript` for a run's transcript |
 
 **Errors**
 
@@ -359,24 +359,24 @@ curl -X POST "https://api.source.code/v1/uploads" \
 
 ```http
 HTTP/1.1 201
-location: https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd
-ratelimit: "write";r=86;t=60
+location: https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w
+ratelimit: "write";r=84;t=60
 ```
 
 ```json
 {
   "object": "upload",
-  "id": "upl_01m6tq6r8061m99gwd",
+  "id": "upl_01m6tq6r80kvv5vp7w",
   "filename": "after.png",
   "content_type": "image/png",
   "size": 48,
   "purpose": "evidence",
   "state": "pending",
   "sha256": null,
-  "upload_url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/data?exp=1794049200000&sig=…",
+  "upload_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/data?exp=1794049200000&sig=…",
   "content_url": null,
   "expires_at": "2026-11-07T11:00:00.000Z",
-  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -408,20 +408,20 @@ ratelimit: "write";r=86;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd" \
+curl "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"xd5-siW71L4k0owk"
+etag: W/"37mTV1H8WQ_ChIGN"
 ratelimit: "read";r=1165;t=60
 ```
 
 ```json
 {
   "object": "upload",
-  "id": "upl_01m6tq6r8061m99gwd",
+  "id": "upl_01m6tq6r80kvv5vp7w",
   "filename": "after.png",
   "content_type": "image/png",
   "size": 48,
@@ -429,9 +429,9 @@ ratelimit: "read";r=1165;t=60
   "state": "uploaded",
   "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
   "upload_url": null,
-  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/content",
+  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/content",
   "expires_at": "2026-11-07T11:00:00.000Z",
-  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```
@@ -465,7 +465,7 @@ You can read your own uploads with a token that has `repo:read`; without it the 
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/content" \
+curl "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/content" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
@@ -511,7 +511,7 @@ The address comes from `uploads.create`. It carries its own signature in `exp` a
 **Example**
 
 ```bash
-curl -X PUT "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/data?exp=1794049200000&sig=…" \
+curl -X PUT "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/data?exp=1794049200000&sig=…" \
   -H "content-type: image/png" \
   --data-binary @after.png
 ```
@@ -524,7 +524,7 @@ ratelimit: "anonymous";r=58;t=60
 ```json
 {
   "object": "upload",
-  "id": "upl_01m6tq6r8061m99gwd",
+  "id": "upl_01m6tq6r80kvv5vp7w",
   "filename": "after.png",
   "content_type": "image/png",
   "size": 48,
@@ -532,9 +532,9 @@ ratelimit: "anonymous";r=58;t=60
   "state": "uploaded",
   "sha256": "33c6c1549803ca3c04149dbbaf110943e9d6d4e5b4b19fb6ad44ca68f2b3d607",
   "upload_url": null,
-  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd/content",
+  "content_url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w/content",
   "expires_at": "2026-11-07T11:00:00.000Z",
-  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r8061m99gwd",
+  "url": "https://api.source.code/v1/uploads/upl_01m6tq6r80kvv5vp7w",
   "created_at": "2026-11-07T10:00:00.000Z"
 }
 ```

@@ -113,6 +113,12 @@ export class ConvexUploads implements UploadPort {
     for (const id of gone) await this.blobs.delete?.(id)
   }
 
+  async remove(id: string) {
+    uploadScope.getStore()?.delete(id)
+    await run(this.call, 'mutation', 'forge/uploads:remove', { id }, 'system')
+    await this.blobs.delete?.(id)
+  }
+
   async sweepNow() {
     const gone = await run<Array<string>>(
       this.call,

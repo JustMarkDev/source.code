@@ -109,6 +109,18 @@ export abstract class DomainNotifications extends DomainSync {
       return
     }
     const author = d.author?.handle
+    // A fix that answers a thread tells whoever started the thread.
+    const addressed = (data as { addressed?: unknown } | null)?.addressed
+    if (Array.isArray(addressed)) {
+      for (const x of addressed as Array<{ author: string; patch_set: number }>)
+        tell(
+          x.author,
+          'review',
+          `${by.handle} addressed your comment on #${n} in patch set ${x.patch_set}`,
+          `/${full}/changes?n=${n}`,
+        )
+      if (type === 'change.comment_addressed') return
+    }
     if (type === 'change.commented') {
       const t = data as { body?: string; thread?: Array<string> } | null
       const told = new Set<string>()

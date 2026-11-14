@@ -198,7 +198,8 @@
                         "secrets:decrypt",
                         "webhooks:read",
                         "webhooks:write",
-                        "tokens:manage"
+                        "tokens:manage",
+                        "runs:transcripts"
                       ]
                     }
                   }
@@ -3908,7 +3909,8 @@
                         "secrets:decrypt",
                         "webhooks:read",
                         "webhooks:write",
-                        "tokens:manage"
+                        "tokens:manage",
+                        "runs:transcripts"
                       ]
                     }
                   }
@@ -6901,6 +6903,153 @@
         "x-sx-secret-response": false
       }
     },
+    "/repos/{owner}/{repo}/changes/{number}/comments/{comment}/address": {
+      "post": {
+        "operationId": "change_comments.address",
+        "summary": "Say which patch set answers a review thread",
+        "description": "Links a fix to the comment it answers. The thread's author is told, and the change page can show what changed in that comment's file between the patch set it was written on and the fix. It does not resolve the thread. Send `addresses` with a new patch set to push a fix and mark its threads in one write.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          },
+          {
+            "name": "comment",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The comment `cmt_` id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "patch_set": {
+                    "description": "The patch set with the fix. Default: the newest",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "note": {
+                    "description": "What changed",
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeComment"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:write"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:write"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "forbidden",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
     "/repos/{owner}/{repo}/changes/{number}/comments/{comment}": {
       "delete": {
         "operationId": "change_comments.delete",
@@ -7399,6 +7548,12 @@
                   "reply_to": {
                     "description": "A comment to answer; `file`, `line` and `patch_set` follow it",
                     "type": "string"
+                  },
+                  "quote": {
+                    "description": "The text the comment is about, starting on `line`. Without it, the line itself. The comment follows this text into newer patch sets",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
                   }
                 },
                 "required": [
@@ -8506,11 +8661,401 @@
         "x-sx-secret-response": false
       }
     },
+    "/repos/{owner}/{repo}/changes/{number}/guide": {
+      "get": {
+        "operationId": "changes.guide.get",
+        "summary": "A change's guide",
+        "description": "What the change does and the order to read its files in, each with why and how risky. `current` is false when it was written for an older patch set.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeGuide"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "put": {
+        "operationId": "changes.guide.put",
+        "summary": "Write the guide for a change",
+        "description": "For the agent or person who knows the change best: a summary and every file worth reading, in order, with why and how risky. It replaces the guide there was, and says which run wrote it when a run token wrote it. The change page's files follow its order.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "order": {
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "why": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "risk": {
+                          "default": "low",
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Files of the newest patch set, each once, in reading order"
+                  },
+                  "patch_set": {
+                    "description": "The patch set it is for. Default: the newest",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "summary",
+                  "order"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeGuide"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:write"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:write"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "forbidden",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/changes/{number}/landability": {
+      "get": {
+        "operationId": "changes.landability",
+        "summary": "What stops a change from landing",
+        "description": "Each failed or pending requirement and each landing step it waits on, with why, and how it will land (the policy file's `landing:`). `tree` is what to send as `expected_tree`.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Landability"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
     "/repos/{owner}/{repo}/changes/{number}/land": {
       "post": {
         "operationId": "changes.land",
         "summary": "Land a change",
-        "description": "Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting.",
+        "description": "Lands exactly the tree you name. If the change moved, it is stale_head. If policy blocks, it is policy_blocked with every requirement; `retryable` is true only when nothing has failed and the rest is waiting. When the policy file has landing steps after the change lands, it answers `202` with the operation that lands it and runs them.",
         "tags": [
           "changes"
         ],
@@ -8586,6 +9131,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Change"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "When the policy file has landing steps after the change lands (`run_pipeline`, `webhook`): the operation that lands it and runs them, one step at a time. Poll its `url`",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Operation"
                 }
               }
             }
@@ -9101,6 +9668,29 @@
                         }
                       ]
                     }
+                  },
+                  "addresses": {
+                    "description": "Review threads this patch set answers. They are marked addressed in the same write and their authors are told; they stay open until someone resolves them",
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "comment": {
+                          "type": "string",
+                          "description": "The `cmt_` id that starts a thread"
+                        },
+                        "note": {
+                          "description": "What changed",
+                          "type": "string",
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "comment"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -9436,6 +10026,257 @@
           "token_expired",
           "token_invalid",
           "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/changes/{number}/presence": {
+      "get": {
+        "operationId": "changes.presence.get",
+        "summary": "Who is looking at a change",
+        "description": "The people and agents with the change open now, and the file each is on. It changes by the second, so it is never cached.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Presence"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "put": {
+        "operationId": "changes.presence.put",
+        "summary": "Say you are looking at a change",
+        "description": "A heartbeat: send one every `interval` seconds while the change is open, with the file you are on, and `leave` when you close it. The MCP server sends one for an agent while its run works on a change. Answers who is looking, you included. Not an event, and nothing is kept once you stop.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "One per open tab or agent process, so two of yours count once and leaving one leaves only it"
+                  },
+                  "path": {
+                    "default": null,
+                    "description": "The file you have open",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "leave": {
+                    "default": false,
+                    "description": "Leave now instead of once the heartbeats stop",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "session"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Presence"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
           "unsupported_version"
         ],
         "x-sx-async": false,
@@ -9809,6 +10650,413 @@
           "token_revoked",
           "unauthenticated",
           "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/changes/{number}/seen": {
+      "get": {
+        "operationId": "changes.seen.get",
+        "summary": "Which files of a change you have seen",
+        "description": "Yours alone. A file counts as seen while it is the same as when you marked it; a newer patch set that changes it says `changed_since` instead.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSeen"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "put": {
+        "operationId": "changes.seen.put",
+        "summary": "Mark files of a change as seen",
+        "description": "For a reviewer working through a change file by file, and for an agent or the CLI keeping track the same way. The mark is yours alone and changes nothing anyone else sees. It holds for the files as they are at the newest patch set.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paths": {
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    }
+                  },
+                  "seen": {
+                    "default": true,
+                    "description": "False takes the mark off, so the files read as unseen",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "paths"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSeen"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/changes/{number}/timeline": {
+      "get": {
+        "operationId": "changes.timeline",
+        "summary": "A change's timeline",
+        "description": "Everything that happened to a change, oldest first: patch sets, review comments, reviews, findings, checks, evidence, the notes of the agent runs that worked on it, and its state changes. Each entry names the run that made it, if one did, and carries the object itself in `item`.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The change number, or its `chg_` id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Items per page, 1 to 200. Larger values are clamped.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "`next_cursor` from the previous page, exactly as returned",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TimelineEntry"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor"
+                  ]
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": [
+              "pulls:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "pulls:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "cursor_mismatch",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
           "unsupported_version"
         ],
         "x-sx-async": false,
@@ -10389,6 +11637,33 @@
                   "sha": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{7,40}$"
+                  },
+                  "message": {
+                    "description": "The head commit's message. A `Run-Id:` trailer in it names the run that made the commit, when the token is not that run's own",
+                    "type": "string",
+                    "maxLength": 65536
+                  },
+                  "addresses": {
+                    "description": "When this adds a patch set: the review threads it answers, marked in the same write",
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "comment": {
+                          "type": "string",
+                          "description": "The `cmt_` id that starts a thread"
+                        },
+                        "note": {
+                          "type": "string",
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "comment"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -13827,6 +15102,420 @@
         "x-sx-secret-response": false
       }
     },
+    "/repos/{owner}/{repo}/issues/{number}/presence": {
+      "get": {
+        "operationId": "issues.presence.get",
+        "summary": "Who is looking at an issue",
+        "description": "The people and agents with the issue open now, and the file each is on. It changes by the second, so it is never cached.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "The issue number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Presence"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "issues:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "issues:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "put": {
+        "operationId": "issues.presence.put",
+        "summary": "Say you are looking at an issue",
+        "description": "A heartbeat: send one every `interval` seconds while the issue is open, with the file you are on, and `leave` when you close it. The MCP server sends one for an agent while its run works on a change. Answers who is looking, you included. Not an event, and nothing is kept once you stop.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "The issue number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "description": "One per open tab or agent process, so two of yours count once and leaving one leaves only it"
+                  },
+                  "path": {
+                    "default": null,
+                    "description": "The file you have open",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "leave": {
+                    "default": false,
+                    "description": "Leave now instead of once the heartbeats stop",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "session"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Presence"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "issues:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "issues:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/issues/{number}/timeline": {
+      "get": {
+        "operationId": "issues.timeline",
+        "summary": "An issue's timeline",
+        "description": "Everything that happened to an issue, oldest first: comments, evidence, the notes of the agent runs working on it (a run names its issue with `runs.update`), the changes that link it (`Fixes #n`, `Closes #n`, `Resolves #n`, or `Refs #n`), and its state changes.",
+        "tags": [
+          "issues"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "The issue number"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Items per page, 1 to 200. Larger values are clamped.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "`next_cursor` from the previous page, exactly as returned",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "const": "list"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TimelineEntry"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "object",
+                    "data",
+                    "has_more",
+                    "next_cursor"
+                  ]
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": [
+              "issues:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "issues:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "cursor_mismatch",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
     "/repos/{owner}/{repo}/issues/{number}": {
       "get": {
         "operationId": "issues.get",
@@ -17054,6 +18743,7 @@
       "delete": {
         "operationId": "policy.remove_exception",
         "summary": "End an exception now",
+        "description": "When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.",
         "tags": [
           "changes"
         ],
@@ -17095,6 +18785,28 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "When the rules live in the policy file: the edit, as a change to the file that applies once it lands",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No content",
             "headers": {
@@ -17157,7 +18869,7 @@
       "post": {
         "operationId": "policy.add_exception",
         "summary": "Let a rule bend for one person, for a while",
-        "description": "Up to 90 days. For core-paths the person counts as a maintainer; for the other rules their own changes pass it. Send an `Idempotency-Key` to retry safely.",
+        "description": "Up to 90 days. For core-paths the person counts as a maintainer; for the other rules their own changes pass it. Send an `Idempotency-Key` to retry safely. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.",
         "tags": [
           "changes"
         ],
@@ -17243,6 +18955,28 @@
               }
             }
           },
+          "202": {
+            "description": "When the rules live in the policy file: the edit, as a change to the file that applies once it lands",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error",
             "content": {
@@ -17293,11 +19027,393 @@
         "x-sx-secret-response": false
       }
     },
+    "/repos/{owner}/{repo}/policy/proposals": {
+      "post": {
+        "operationId": "policy.proposals.create",
+        "summary": "Propose edits to the rules",
+        "description": "The edits, made to `.source/policy/main.yml` as a change: it keeps the file's comments and layout, puts the policy owners on review, and applies once it lands. Your open policy change takes further edits as patch sets, so you have one at a time. In a repository whose rules are still settings, the first proposal moves them into the file. A dry run answers the diff and opens nothing. Send an `Idempotency-Key` to retry safely.",
+        "tags": [
+          "changes"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "edits": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "set_mode"
+                            },
+                            "rule": {
+                              "type": "string"
+                            },
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "enforce",
+                                "dry-run",
+                                "off"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "rule",
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "create_rule"
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9][a-z0-9-]{1,39}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "required_check",
+                                "path_approval",
+                                "max_lines"
+                              ]
+                            },
+                            "check": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "paths": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              }
+                            },
+                            "approvals": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            "from": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "max_lines": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            },
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "enforce",
+                                "dry-run",
+                                "off"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "id",
+                            "name",
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "delete_rule"
+                            },
+                            "rule": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "rule"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "add_exception"
+                            },
+                            "rule": {
+                              "type": "string"
+                            },
+                            "who": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "expires_at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "rule",
+                            "who",
+                            "reason",
+                            "expires_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "remove_exception"
+                            },
+                            "exception": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "exception"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "const": "set_landing"
+                            },
+                            "strategy": {
+                              "type": "string",
+                              "enum": [
+                                "squash",
+                                "rebase",
+                                "merge"
+                              ]
+                            },
+                            "fresh_approvals": {
+                              "type": "boolean"
+                            },
+                            "resolve": {
+                              "type": "string",
+                              "enum": [
+                                "author",
+                                "any_reviewer"
+                              ]
+                            },
+                            "steps": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "wait_checks": {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 100
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "wait_checks"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "run_pipeline": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      }
+                                    },
+                                    "required": [
+                                      "run_pipeline"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "webhook": {
+                                        "type": "string",
+                                        "format": "starts_with",
+                                        "pattern": "^https:\\/\\/.*"
+                                      }
+                                    },
+                                    "required": [
+                                      "webhook"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "op"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "edits"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "repo:write"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": false,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "repo:write"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "forbidden",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "invalid_state",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
     "/repos/{owner}/{repo}/policy/rules/{rule}": {
       "delete": {
         "operationId": "policy.delete_rule",
         "summary": "Delete a rule the repository wrote",
-        "description": "Its exceptions go with it. A built-in rule cannot be deleted; turn it off instead.",
+        "description": "Its exceptions go with it. A built-in rule cannot be deleted; turn it off instead. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.",
         "tags": [
           "changes"
         ],
@@ -17340,6 +19456,28 @@
           }
         ],
         "responses": {
+          "202": {
+            "description": "When the rules live in the policy file: the edit, as a change to the file that applies once it lands",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
           "204": {
             "description": "No content",
             "headers": {
@@ -17401,7 +19539,7 @@
       "patch": {
         "operationId": "policy.update_rule",
         "summary": "Enforce a rule, dry-run it, or turn it off",
-        "description": "Every open change's requirements are worked out again, so a change can become landable, or stop being.",
+        "description": "Every open change's requirements are worked out again, so a change can become landable, or stop being. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.",
         "tags": [
           "changes"
         ],
@@ -17563,6 +19701,28 @@
               }
             }
           },
+          "202": {
+            "description": "When the rules live in the policy file: the edit, as a change to the file that applies once it lands",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error",
             "content": {
@@ -17617,7 +19777,7 @@
       "post": {
         "operationId": "policy.create_rule",
         "summary": "Write a rule of the repository's own",
-        "description": "Three kinds. `required_check`: `check` has to pass on the tree that lands. `path_approval`: a change touching `paths` (globs, `**` crosses folders) needs `approvals` human approvals, from the people in `from` if given. `max_lines`: a change may add and remove at most `max_lines`. Sending the same `id` again replaces the rule. Every open change's requirements are worked out again.",
+        "description": "Three kinds. `required_check`: `check` has to pass on the tree that lands. `path_approval`: a change touching `paths` (globs, `**` crosses folders) needs `approvals` human approvals, from the people in `from` if given. `max_lines`: a change may add and remove at most `max_lines`. Sending the same `id` again replaces the rule. Every open change's requirements are worked out again. When the policy lives in the repository, this proposes instead of applying: it answers `202` with a `PolicyProposal`, a change to the policy file that applies once it lands.",
         "tags": [
           "changes"
         ],
@@ -17821,6 +19981,28 @@
               }
             }
           },
+          "202": {
+            "description": "When the rules live in the policy file: the edit, as a change to the file that applies once it lands",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyProposal"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error",
             "content": {
@@ -17958,6 +20140,150 @@
           "insufficient_scope",
           "internal",
           "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
+    "/repos/{owner}/{repo}/provenance": {
+      "get": {
+        "operationId": "repos.provenance",
+        "summary": "Where a line of code came from",
+        "description": "Follows a line to the conversation that produced it: the commit that wrote it (by blame, up to 200 commits back), the change it landed through, the patch set, and the agent run that pushed that patch set, with its task, summary, links and transcript. With `change`, the line is read in that change's newest patch set instead, and the answer is the patch set of the change that wrote it; a line that was on the base already is followed there.",
+        "tags": [
+          "git",
+          "runs"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "A file, without a leading slash"
+            }
+          },
+          {
+            "name": "line",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "1-based"
+            }
+          },
+          {
+            "name": "ref",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "A branch, or a commit id. Default: the default branch",
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "change",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Read the line in this change's newest patch set",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Provenance"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": [
+              "repo:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "repo:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "invalid_state",
           "moved",
           "not_found",
           "rate_limited",
@@ -19247,6 +21573,263 @@
         "x-sx-secret-response": false
       }
     },
+    "/repos/{owner}/{repo}/runs/{id}/transcript": {
+      "get": {
+        "operationId": "runs.transcript.get",
+        "summary": "Read a run's transcript",
+        "description": "What the agent saw and said, with secrets masked. Anyone who can read the repository can read it, with a token that has the runs:transcripts scope. Repositories that stopped keeping transcripts answer `transcripts_disabled`.",
+        "tags": [
+          "runs"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The run `run_` id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunTranscript"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified. Costs no rate-limit units."
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "repo:read",
+              "runs:transcripts"
+            ]
+          }
+        ],
+        "x-sx-safety": "read",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": false,
+        "x-sx-pool": "read",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "repo:read",
+          "runs:transcripts"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "rate_limited",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "transcripts_disabled",
+          "unauthenticated",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "put": {
+        "operationId": "runs.transcript.put",
+        "summary": "Attach a run's transcript",
+        "description": "Upload the transcript first (`uploads.create`, text/plain or application/json), then name it here. It is checked for secrets before anyone can read it: known token formats, and long random values next to words like key, secret or token. With `mode=mask`, the default, each is replaced with `[redacted:<kind>]` and the response counts them. With `mode=block` a transcript with secrets is refused with `transcript_has_secrets`, which names the kinds. Either way the upload as sent is deleted. Only for repositories that keep transcripts (`transcripts: on`); others answer `transcripts_disabled`. A second transcript replaces the first.",
+        "tags": [
+          "runs"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The run `run_` id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "upload": {
+                    "type": "string",
+                    "description": "The `upl_` id"
+                  },
+                  "mode": {
+                    "default": "mask",
+                    "description": "What to do with secrets: mask them, or refuse the transcript",
+                    "type": "string",
+                    "enum": [
+                      "mask",
+                      "block"
+                    ]
+                  }
+                },
+                "required": [
+                  "upload"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "repo:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "repo:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "forbidden",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "invalid_state",
+          "limit_reached",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "transcript_has_secrets",
+          "transcripts_disabled",
+          "unauthenticated",
+          "unsupported_media_type",
+          "unsupported_version",
+          "upload_incomplete"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      }
+    },
     "/repos/{owner}/{repo}/runs/{id}": {
       "get": {
         "operationId": "runs.get",
@@ -19348,6 +21931,165 @@
           "token_expired",
           "token_invalid",
           "token_revoked",
+          "unsupported_version"
+        ],
+        "x-sx-async": false,
+        "x-sx-secret-response": false
+      },
+      "patch": {
+        "operationId": "runs.update",
+        "summary": "Say what a run belongs to",
+        "description": "Link the run to an issue, say what drove the agent (`harness`), and list conversations about it elsewhere (`links`), such as a Delta thread. The run's own token, the person who started it, or an admin can do it, while the run is going or after it ended. A field you leave out keeps its value; `links` replaces the whole list.",
+        "tags": [
+          "runs"
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Account handle. A repository `rep_` id can stand in for owner and repo."
+            }
+          },
+          {
+            "name": "repo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository name"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The run `run_` id"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "issue": {
+                    "description": "The issue the run works on; null to unlink it",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "harness": {
+                    "description": "Such as claude-code, delta or sx",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9._-]{0,49}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "links": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 500,
+                      "pattern": "^https?:\\/\\/[^\\s<>\"']+$"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "Sx-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "repo:read"
+            ]
+          }
+        ],
+        "x-sx-safety": "write",
+        "x-sx-idempotent": true,
+        "x-sx-dry-run": true,
+        "x-sx-pool": "write",
+        "x-sx-cost": 1,
+        "x-sx-scopes": [
+          "repo:read"
+        ],
+        "x-sx-errors": [
+          "backend_unavailable",
+          "concurrency_limited",
+          "forbidden",
+          "idempotency_key_reused",
+          "insufficient_scope",
+          "internal",
+          "invalid_request",
+          "moved",
+          "not_found",
+          "payload_too_large",
+          "rate_limited",
+          "request_in_progress",
+          "token_expired",
+          "token_invalid",
+          "token_revoked",
+          "unauthenticated",
+          "unsupported_media_type",
           "unsupported_version"
         ],
         "x-sx-async": false,
@@ -19581,7 +22323,7 @@
                   },
                   "scopes": {
                     "description": "Default: read, comment on issues and changes, read the env schema",
-                    "maxItems": 15,
+                    "maxItems": 16,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -19600,7 +22342,8 @@
                         "secrets:decrypt",
                         "webhooks:read",
                         "webhooks:write",
-                        "tokens:manage"
+                        "tokens:manage",
+                        "runs:transcripts"
                       ]
                     }
                   },
@@ -21990,6 +24733,23 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "transcripts": {
+                    "description": "Let agent runs attach their transcripts",
+                    "type": "string",
+                    "enum": [
+                      "off",
+                      "on"
+                    ]
+                  },
+                  "run_trailer": {
+                    "description": "Keep the `Run-Id:` commit trailer. `auto`: in private repositories only",
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "on",
+                      "off"
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -22981,7 +25741,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 15,
+                    "maxItems": 16,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -23000,7 +25760,8 @@
                         "secrets:decrypt",
                         "webhooks:read",
                         "webhooks:write",
-                        "tokens:manage"
+                        "tokens:manage",
+                        "runs:transcripts"
                       ]
                     }
                   },
@@ -23451,11 +26212,12 @@
                   },
                   "purpose": {
                     "default": "evidence",
-                    "description": "`release` for a file of a release; binaries, zip and gzip are only allowed there",
+                    "description": "`release` for a file of a release; binaries, zip and gzip are only allowed there. `transcript` for a run's transcript",
                     "type": "string",
                     "enum": [
                       "evidence",
-                      "release"
+                      "release",
+                      "transcript"
                     ]
                   }
                 },
@@ -25666,6 +28428,23 @@
             },
             "description": "People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant."
           },
+          "transcripts": {
+            "type": "string",
+            "enum": [
+              "off",
+              "on"
+            ],
+            "description": "Whether agent runs may attach their transcripts. Off unless an owner turns it on"
+          },
+          "run_trailer": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "description": "Whether commits keep a `Run-Id:` trailer naming the run that made them. `auto` keeps it in private repositories and removes it in public ones"
+          },
           "open_changes": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -25717,6 +28496,8 @@
           "website",
           "docs_url",
           "maintainers",
+          "transcripts",
+          "run_trailer",
           "open_changes",
           "open_issues",
           "url",
@@ -26044,6 +28825,62 @@
                 "type": "null"
               }
             ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "land",
+                    "run_pipeline",
+                    "webhook"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "description": "The change number, the pipeline's workflow, or the URL"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "running",
+                    "succeeded",
+                    "failed",
+                    "skipped"
+                  ]
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "finished_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "RFC 3339 time, UTC"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "kind",
+                "target",
+                "state",
+                "detail",
+                "finished_at"
+              ]
+            },
+            "description": "For a landing: each change it lands, then the policy file's landing steps, with how each went. Empty for other operations"
           }
         },
         "required": [
@@ -26056,7 +28893,8 @@
           "error",
           "url",
           "created_at",
-          "finished_at"
+          "finished_at",
+          "steps"
         ]
       },
       "Person": {
@@ -26209,6 +29047,94 @@
               "null"
             ]
           },
+          "issue": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The issue this run works on, if any"
+          },
+          "harness": {
+            "description": "What drove the agent, such as claude-code, delta or sx",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Conversations about this run elsewhere, such as a Delta thread"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "size": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Bytes, after masking"
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "redactions": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "How many secrets were masked when it was attached"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Read it here, with the runs:transcripts scope"
+                  }
+                },
+                "required": [
+                  "size",
+                  "sha256",
+                  "redactions",
+                  "url"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the agent saw and said, when the repository keeps it"
+          },
+          "patch_sets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "change": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "patch_set": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "change",
+                "patch_set"
+              ]
+            },
+            "description": "The patch sets this run pushed, oldest first"
+          },
           "url": {
             "type": "string"
           },
@@ -26250,6 +29176,11 @@
           "token_id",
           "notes",
           "summary",
+          "issue",
+          "harness",
+          "links",
+          "transcript",
+          "patch_sets",
           "url",
           "started_at",
           "expires_at",
@@ -26956,6 +29887,18 @@
               "null"
             ]
           },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that made it; null when no run did"
+          },
           "created_at": {
             "type": "string",
             "description": "RFC 3339 time, UTC"
@@ -26977,6 +29920,7 @@
           "url",
           "suggestion",
           "prompt",
+          "run",
           "created_at"
         ]
       },
@@ -27148,6 +30092,114 @@
             "type": "boolean",
             "description": "For the comment that starts a thread: whether it is settled"
           },
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "quote": {
+                    "type": "string",
+                    "description": "The text the comment is about"
+                  },
+                  "before": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Up to three lines above it"
+                  },
+                  "after": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Up to three lines below it"
+                  },
+                  "side": {
+                    "type": "string",
+                    "enum": [
+                      "head",
+                      "base"
+                    ]
+                  }
+                },
+                "required": [
+                  "quote",
+                  "before",
+                  "after",
+                  "side"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a comment on a line is about, so it follows the code into newer patch sets. A reply has its thread's"
+          },
+          "current_line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where its thread is in the newest patch set; null when it is not on a line or its code is gone"
+          },
+          "outdated": {
+            "type": "boolean",
+            "description": "Its code is gone from the newest patch set. `line` and `patch_set` still say where it was written"
+          },
+          "addressed": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "patch_set": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "The patch set that answers it"
+                  },
+                  "by": {
+                    "$ref": "#/components/schemas/Actor"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "string",
+                    "description": "RFC 3339 time, UTC"
+                  }
+                },
+                "required": [
+                  "patch_set",
+                  "by",
+                  "note",
+                  "at"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "On the comment that starts a thread: the fix that answers it. Addressed is not resolved; someone still settles the thread"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that made it; null when no run did"
+          },
           "created_at": {
             "type": "string",
             "description": "RFC 3339 time, UTC"
@@ -27173,6 +30225,11 @@
           "patch_set",
           "reply_to",
           "resolved",
+          "anchor",
+          "current_line",
+          "outdated",
+          "addressed",
+          "run",
           "created_at",
           "updated_at",
           "version"
@@ -27327,6 +30384,238 @@
           "created_at"
         ]
       },
+      "ChangeGuide": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "change_guide"
+          },
+          "change": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "patch_set": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "The patch set it was written for"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "It was written for the newest patch set"
+          },
+          "summary": {
+            "type": "string",
+            "description": "What the change does, for a reviewer"
+          },
+          "order": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "why": {
+                  "type": "string",
+                  "description": "Why to read it, and what to look for"
+                },
+                "risk": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "why",
+                "risk"
+              ]
+            },
+            "description": "The files in the order to read them"
+          },
+          "by": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that wrote it, if any"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "RFC 3339 time, UTC"
+          }
+        },
+        "required": [
+          "object",
+          "change",
+          "patch_set",
+          "current",
+          "summary",
+          "order",
+          "by",
+          "run",
+          "created_at"
+        ]
+      },
+      "Landability": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "landability"
+          },
+          "change": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "patch_set": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "tree": {
+            "type": "string",
+            "description": "Send it as `expected_tree` to land"
+          },
+          "landable": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Requirement"
+            },
+            "description": "What stops it now: failed or pending requirements, and landing steps it waits on"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Requirement"
+            }
+          },
+          "landing": {
+            "$ref": "#/components/schemas/Landing"
+          }
+        },
+        "required": [
+          "object",
+          "change",
+          "patch_set",
+          "tree",
+          "landable",
+          "blockers",
+          "requirements",
+          "landing"
+        ]
+      },
+      "Requirement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "pending",
+              "na"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "needs": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blocking": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "rule",
+          "state",
+          "detail",
+          "needs",
+          "blocking"
+        ]
+      },
+      "Landing": {
+        "type": "object",
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "squash",
+              "rebase",
+              "merge"
+            ]
+          },
+          "fresh_approvals": {
+            "type": "boolean",
+            "description": "Approvals count only on the newest patch set, not carried over a rebase"
+          },
+          "resolve": {
+            "type": "string",
+            "enum": [
+              "author",
+              "any_reviewer"
+            ],
+            "description": "Who may settle a review thread"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            },
+            "description": "`{wait_checks: [...]}`, `{run_pipeline: name}` or `{webhook: url}`, in order"
+          }
+        },
+        "required": [
+          "strategy",
+          "fresh_approvals",
+          "resolve",
+          "steps"
+        ]
+      },
       "PatchSetFiles": {
         "type": "object",
         "properties": {
@@ -27424,6 +30713,18 @@
           "url": {
             "type": "string"
           },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that made it; null when no run did"
+          },
           "created_at": {
             "type": "string",
             "description": "RFC 3339 time, UTC"
@@ -27439,6 +30740,7 @@
           "author",
           "files",
           "url",
+          "run",
           "created_at"
         ]
       },
@@ -27487,55 +30789,66 @@
           "assumed"
         ]
       },
-      "Requirement": {
+      "Presence": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
+          "object": {
+            "type": "string",
+            "const": "presence"
           },
-          "rule": {
-            "type": "string"
-          },
-          "state": {
+          "kind": {
             "type": "string",
             "enum": [
-              "pass",
-              "fail",
-              "pending",
-              "na"
+              "change",
+              "issue"
             ]
           },
-          "detail": {
-            "type": "string"
+          "number": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
-          "needs": {
-            "anyOf": [
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "interval": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Seconds between heartbeats. A viewer who sends none for two and a half intervals is gone"
           },
-          "blocking": {
+          "viewers": {
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "object",
+              "properties": {
+                "actor": {
+                  "$ref": "#/components/schemas/Actor"
+                },
+                "path": {
+                  "description": "The file they have open; null on the overview",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "seen_at": {
+                  "type": "string",
+                  "description": "Their last heartbeat"
+                }
+              },
+              "required": [
+                "actor",
+                "path",
+                "seen_at"
+              ]
+            },
+            "description": "People and agents looking at it now, agents marked by class"
           }
         },
         "required": [
-          "id",
-          "rule",
-          "state",
-          "detail",
-          "needs",
-          "blocking"
+          "object",
+          "kind",
+          "number",
+          "interval",
+          "viewers"
         ]
       },
       "Review": {
@@ -27571,6 +30884,18 @@
           "body": {
             "type": "string"
           },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that made it; null when no run did"
+          },
           "created_at": {
             "type": "string",
             "description": "RFC 3339 time, UTC"
@@ -27584,7 +30909,412 @@
           "patch_set",
           "carries_to_head",
           "body",
+          "run",
           "created_at"
+        ]
+      },
+      "ChangeSeen": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "change_seen"
+          },
+          "change": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "patch_set": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "The newest patch set"
+          },
+          "seen": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Files you have seen as they are now"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Files the change touches"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "seen": {
+                  "type": "boolean",
+                  "description": "You marked it seen and it has not changed since"
+                },
+                "patch_set": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The patch set you marked it seen on; null if never"
+                },
+                "changed_since": {
+                  "type": "boolean",
+                  "description": "You saw it, then a newer patch set changed it"
+                }
+              },
+              "required": [
+                "path",
+                "seen",
+                "patch_set",
+                "changed_since"
+              ]
+            }
+          }
+        },
+        "required": [
+          "object",
+          "change",
+          "patch_set",
+          "seen",
+          "total",
+          "files"
+        ]
+      },
+      "TimelineEntry": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "timeline_entry"
+          },
+          "id": {
+            "type": "string",
+            "description": "Stable: the kind and the id of what it shows"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "patch_set",
+              "comment",
+              "review",
+              "finding",
+              "check",
+              "guide",
+              "evidence",
+              "run_note",
+              "state_change",
+              "reference"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "RFC 3339 time, UTC"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Actor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Starts with run_"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that made it; null when no run did"
+          },
+          "summary": {
+            "type": "string",
+            "description": "One line, for reading the story at a glance"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatchSet"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeComment"
+              },
+              {
+                "$ref": "#/components/schemas/Review"
+              },
+              {
+                "$ref": "#/components/schemas/Finding"
+              },
+              {
+                "$ref": "#/components/schemas/CheckRun"
+              },
+              {
+                "$ref": "#/components/schemas/IssueComment"
+              },
+              {
+                "$ref": "#/components/schemas/Evidence"
+              },
+              {
+                "$ref": "#/components/schemas/IssueEvidence"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeGuide"
+              },
+              {
+                "$ref": "#/components/schemas/RunNote"
+              },
+              {
+                "$ref": "#/components/schemas/StateChange"
+              },
+              {
+                "$ref": "#/components/schemas/Reference"
+              }
+            ],
+            "description": "What happened, as its own object"
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "kind",
+          "created_at",
+          "actor",
+          "run",
+          "summary",
+          "item"
+        ]
+      },
+      "IssueComment": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "issue_comment"
+          },
+          "id": {
+            "type": "string",
+            "description": "Starts with cmt_"
+          },
+          "issue": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "author": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "RFC 3339 time, UTC"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "RFC 3339 time, UTC"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "issue",
+          "author",
+          "body",
+          "created_at",
+          "updated_at",
+          "version"
+        ]
+      },
+      "IssueEvidence": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "issue_evidence"
+          },
+          "id": {
+            "type": "string",
+            "description": "Starts with evd_"
+          },
+          "issue": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "recording"
+            ]
+          },
+          "caption": {
+            "type": "string"
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Starts with upl_"
+              },
+              "content_type": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "content_url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "content_type",
+              "size",
+              "sha256",
+              "content_url"
+            ]
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/Actor"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "RFC 3339 time, UTC"
+          }
+        },
+        "required": [
+          "object",
+          "id",
+          "issue",
+          "kind",
+          "caption",
+          "upload",
+          "created_by",
+          "created_at"
+        ]
+      },
+      "RunNote": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "run_note"
+          },
+          "run": {
+            "type": "string",
+            "description": "Starts with run_"
+          },
+          "task": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "final": {
+            "type": "boolean",
+            "description": "The run's summary, said when it ended, rather than a note"
+          }
+        },
+        "required": [
+          "object",
+          "run",
+          "task",
+          "text",
+          "final"
+        ]
+      },
+      "StateChange": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "state_change"
+          },
+          "from": {
+            "description": "Null when it was opened",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "from",
+          "to"
+        ]
+      },
+      "Reference": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "reference"
+          },
+          "change": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "open",
+              "landed",
+              "abandoned"
+            ]
+          },
+          "closes": {
+            "type": "boolean",
+            "description": "It says it fixes the issue (Fixes, Closes or Resolves #n)"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "change",
+          "title",
+          "state",
+          "closes",
+          "url"
         ]
       },
       "Context": {
@@ -28620,128 +32350,6 @@
           "enabled"
         ]
       },
-      "IssueComment": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "type": "string",
-            "const": "issue_comment"
-          },
-          "id": {
-            "type": "string",
-            "description": "Starts with cmt_"
-          },
-          "issue": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "author": {
-            "$ref": "#/components/schemas/Actor"
-          },
-          "body": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "description": "RFC 3339 time, UTC"
-          },
-          "updated_at": {
-            "type": "string",
-            "description": "RFC 3339 time, UTC"
-          },
-          "version": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "object",
-          "id",
-          "issue",
-          "author",
-          "body",
-          "created_at",
-          "updated_at",
-          "version"
-        ]
-      },
-      "IssueEvidence": {
-        "type": "object",
-        "properties": {
-          "object": {
-            "type": "string",
-            "const": "issue_evidence"
-          },
-          "id": {
-            "type": "string",
-            "description": "Starts with evd_"
-          },
-          "issue": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "image",
-              "recording"
-            ]
-          },
-          "caption": {
-            "type": "string"
-          },
-          "upload": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Starts with upl_"
-              },
-              "content_type": {
-                "type": "string"
-              },
-              "size": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "sha256": {
-                "type": "string"
-              },
-              "content_url": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "content_type",
-              "size",
-              "sha256",
-              "content_url"
-            ]
-          },
-          "created_by": {
-            "$ref": "#/components/schemas/Actor"
-          },
-          "created_at": {
-            "type": "string",
-            "description": "RFC 3339 time, UTC"
-          }
-        },
-        "required": [
-          "object",
-          "id",
-          "issue",
-          "kind",
-          "caption",
-          "upload",
-          "created_by",
-          "created_at"
-        ]
-      },
       "Issue": {
         "type": "object",
         "properties": {
@@ -29378,6 +32986,73 @@
           "url"
         ]
       },
+      "PolicyProposal": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "policy_proposal"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The change that carries the edit; null for a dry run"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patch_set": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created": {
+            "type": "boolean",
+            "description": "True when a new change was opened; false when the edit went on your open policy change as a patch set"
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "diff": {
+            "type": "string",
+            "description": "What this edit does to the file, as a unified diff"
+          }
+        },
+        "required": [
+          "object",
+          "change",
+          "url",
+          "patch_set",
+          "created",
+          "edits",
+          "diff"
+        ]
+      },
       "PolicyException": {
         "type": "object",
         "properties": {
@@ -29539,6 +33214,98 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "settings",
+                  "file",
+                  "errors"
+                ],
+                "description": "`settings` until the rules move into the file; `file` once they live there; `errors` when the file that landed last does not read, and the last valid rules stay in force"
+              },
+              "sha": {
+                "description": "The commit the rules were read from",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Where in the file, like `rules[2].mode`"
+                    },
+                    "line": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "line",
+                    "message"
+                  ]
+                }
+              },
+              "pending": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "change": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "change",
+                    "title",
+                    "author",
+                    "url"
+                  ]
+                },
+                "description": "Open changes that edit the policy file"
+              }
+            },
+            "required": [
+              "state",
+              "sha",
+              "errors",
+              "pending"
+            ],
+            "description": "Where the rules come from"
+          },
+          "landing": {
+            "$ref": "#/components/schemas/Landing"
           }
         },
         "required": [
@@ -29549,7 +33316,151 @@
           "rules",
           "exceptions",
           "large_change_lines",
-          "version"
+          "version",
+          "source",
+          "landing"
+        ]
+      },
+      "Provenance": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "provenance"
+          },
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "ref": {
+            "type": "string",
+            "description": "The commit the line was read at, or the change it is in"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "sha": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "author": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "email": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "email"
+                    ]
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "RFC 3339 time, UTC"
+                  }
+                },
+                "required": [
+                  "sha",
+                  "message",
+                  "author",
+                  "date"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The commit that last wrote the line; null inside a change"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "number": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "open",
+                      "landed",
+                      "abandoned"
+                    ]
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "html_url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "number",
+                  "title",
+                  "state",
+                  "url",
+                  "html_url"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The change it came through; null when none of ours did"
+          },
+          "patch_set": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The patch set of that change that wrote the line"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Run"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent run that pushed that patch set, with its task, summary, links and transcript"
+          }
+        },
+        "required": [
+          "object",
+          "path",
+          "line",
+          "ref",
+          "commit",
+          "change",
+          "patch_set",
+          "run"
         ]
       },
       "Download": {
@@ -29785,6 +33696,54 @@
           "downloads",
           "sha256",
           "content_url"
+        ]
+      },
+      "RunTranscript": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "run_transcript"
+          },
+          "run": {
+            "type": "string",
+            "description": "Starts with run_"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": [
+              "text/plain",
+              "application/json"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Bytes"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "redactions": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "How many secrets were masked when it was attached"
+          },
+          "content": {
+            "type": "string",
+            "description": "The transcript, secrets masked"
+          }
+        },
+        "required": [
+          "object",
+          "run",
+          "content_type",
+          "size",
+          "sha256",
+          "redactions",
+          "content"
         ]
       },
       "Star": {
@@ -30560,7 +34519,8 @@
             "type": "string",
             "enum": [
               "evidence",
-              "release"
+              "release",
+              "transcript"
             ]
           },
           "state": {
@@ -30850,6 +34810,16 @@
     },
     "method_not_allowed": {
       "status": 405,
+      "retryable": false,
+      "exit_code": 2
+    },
+    "transcripts_disabled": {
+      "status": 409,
+      "retryable": false,
+      "exit_code": 2
+    },
+    "transcript_has_secrets": {
+      "status": 422,
       "retryable": false,
       "exit_code": 2
     },

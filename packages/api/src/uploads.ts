@@ -15,7 +15,7 @@ const randomBytes = (n: number) => Buffer.from(randomSource.bytes(n))
  *  - Files are served with `nosniff`, a sandboxing CSP, and as downloads unless
  *    they are images or video.
  */
-export type Purpose = 'evidence' | 'release'
+export type Purpose = 'evidence' | 'release' | 'transcript'
 
 export const ALLOWED: Record<
   string,
@@ -177,6 +177,8 @@ export interface UploadPort {
     contentType: string,
   ) => MaybePromise<string | null>
   dropRepo: (repoId: string) => MaybePromise<void>
+  /** Deletes one upload, its record and its bytes. */
+  remove: (id: string) => MaybePromise<void>
   sweepNow: () => MaybePromise<void>
   /** Saves records this request changed. */
   flush?: () => Promise<void>
@@ -365,6 +367,14 @@ export class UploadService implements UploadPort {
 
   get(id: string) {
     return this.uploads.get(id) ?? null
+  }
+
+  remove(id: string) {
+    const rec = this.uploads.get(id)
+    if (!rec) return
+    this.settle(rec)
+    this.uploads.delete(id)
+    void this.blobs.delete?.(id)
   }
 
   countPending(owner: string) {

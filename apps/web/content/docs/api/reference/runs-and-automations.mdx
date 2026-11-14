@@ -46,8 +46,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/automations" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.aut3.2-Ls2L4mD01M94JYWB"
-ratelimit: "read";r=1145;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.aut3.2-WdOLN6GXBXAABLSx"
+ratelimit: "read";r=1137;t=60
 ```
 
 ```json
@@ -66,7 +66,7 @@ ratelimit: "read";r=1145;t=60
       "enabled": true,
       "triggered": 216,
       "last_triggered_at": "2026-11-07T10:00:00.000Z",
-      "last_run": "run_01m6tq6r808znbevwd",
+      "last_run": "run_01m6tq6r8055g9qrxg",
       "every": null,
       "next_run_at": null,
       "created_at": "2026-10-08T09:00:00.000Z",
@@ -84,7 +84,7 @@ ratelimit: "read";r=1145;t=60
       "enabled": true,
       "triggered": 38,
       "last_triggered_at": "2026-11-07T10:00:00.000Z",
-      "last_run": "run_01m6tq6r80kntdrydv",
+      "last_run": "run_01m6tq6r80pb1by5pc",
       "every": null,
       "next_run_at": null,
       "created_at": "2026-10-08T09:00:00.000Z",
@@ -156,13 +156,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/automations" \
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=52;t=60
+ratelimit: "write";r=43;t=60
 ```
 
 ```json
 {
   "object": "automation",
-  "id": "aut_01m6tq6r80wywj89ps",
+  "id": "aut_01m6tq6r80pr251w3d",
   "name": "Review docs changes",
   "bot": "docs-bot",
   "triggers": ["change.opened", "change.updated"],
@@ -216,13 +216,13 @@ ratelimit: "write";r=52;t=60
 **Example**
 
 ```bash
-curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80wywj89ps" \
+curl -X DELETE "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80pr251w3d" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 204
-ratelimit: "write";r=49;t=60
+ratelimit: "write";r=40;t=60
 ```
 
 ### `automations.update`
@@ -273,7 +273,7 @@ ratelimit: "write";r=49;t=60
 **Example**
 
 ```bash
-curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80wywj89ps" \
+curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80pr251w3d" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"enabled":false}'
@@ -281,13 +281,13 @@ curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6t
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=51;t=60
+ratelimit: "write";r=42;t=60
 ```
 
 ```json
 {
   "object": "automation",
-  "id": "aut_01m6tq6r80wywj89ps",
+  "id": "aut_01m6tq6r80pr251w3d",
   "name": "Review docs changes",
   "bot": "docs-bot",
   "triggers": ["change.opened", "change.updated"],
@@ -336,20 +336,20 @@ Starts its run as if it had been triggered, for its bot to pick up with `runs.cl
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80wywj89ps/run" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/automations/aut_01m6tq6r80pr251w3d/run" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "idempotency-key: 9d4e2b7a-1c6f-4a3e-8b5d-7f0c2a9e4b61"
 ```
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=50;t=60
+ratelimit: "write";r=41;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r801hdgxkjp",
+  "id": "run_01m6tq6r80r620ptvq",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -367,10 +367,15 @@ ratelimit: "write";r=50;t=60
   "change": null,
   "scopes": ["repo:read", "pulls:read"],
   "token": null,
-  "token_id": "tok_01m6tq6r80e7gawwrq",
+  "token_id": "tok_01m6tq6r806ds90xx6",
   "notes": [],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r801hdgxkjp",
+  "issue": null,
+  "harness": null,
+  "links": [],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80r620ptvq",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
@@ -423,8 +428,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/pipelines?limit=2" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.p8.8.1-qzCxu2Ph0yKRWjww"
-ratelimit: "read";r=1152;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.p8.8.1-gkDorvdD3GFdu1JV"
+ratelimit: "read";r=1144;t=60
 ```
 
 ```json
@@ -552,13 +557,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/pipelines" \
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=65;t=60
+ratelimit: "write";r=56;t=60
 ```
 
 ```json
 {
   "object": "pipeline_run",
-  "id": "pip_01m6tq6r80bv0f7t2k",
+  "id": "pip_01m6tq6r80xm97k652",
   "number": 1844,
   "url": "https://api.source.code/v1/repos/dana/gitfs/pipelines/1844",
   "html_url": "https://source.code/dana/gitfs/pipelines?n=1844",
@@ -663,8 +668,8 @@ curl "https://api.source.code/v1/repos/dana/gitfs/pipelines/1839" \
 
 ```http
 HTTP/1.1 200
-etag: W/"rep_01m3kkw4m0zvf3zfc9.p8.8.1-UK0uOr-AnFY_ukOY"
-ratelimit: "read";r=1151;t=60
+etag: W/"rep_01m3kkw4m0zvf3zfc9.p8.8.1-cLCI7RmKurcgvlGP"
+ratelimit: "read";r=1143;t=60
 ```
 
 ```json
@@ -796,7 +801,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/pipelines/1840/cancel"
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=66;t=60
+ratelimit: "write";r=57;t=60
 ```
 
 ```json
@@ -926,7 +931,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/pipelines/1837/jobs/1/
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=63;t=60
+ratelimit: "write";r=54;t=60
 ```
 
 ```json
@@ -1040,7 +1045,7 @@ curl "https://api.source.code/v1/repos/dana/gitfs/pipelines/1839/jobs/1/steps/2/
 ```http
 HTTP/1.1 200
 etag: W/"zecNhX9CeaLpQ2Q_"
-ratelimit: "heavy";r=114;t=60
+ratelimit: "heavy";r=113;t=60
 ```
 
 ```json
@@ -1109,13 +1114,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/pipelines/1839/rerun" 
 
 ```http
 HTTP/1.1 201
-ratelimit: "write";r=67;t=60
+ratelimit: "write";r=58;t=60
 ```
 
 ```json
 {
   "object": "pipeline_run",
-  "id": "pip_01m6tq6r802a4hfhmk",
+  "id": "pip_01m6tq6r80sxhwmfce",
   "number": 1843,
   "url": "https://api.source.code/v1/repos/dana/gitfs/pipelines/1843",
   "html_url": "https://source.code/dana/gitfs/pipelines?n=1843",
@@ -1227,7 +1232,7 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/pipelines/claim" \
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=64;t=60
+ratelimit: "write";r=55;t=60
 ```
 
 ```json
@@ -1298,48 +1303,14 @@ curl "https://api.source.code/v1/repos/dana/gitfs/runs" \
 
 ```http
 HTTP/1.1 200
-etag: W/"GF2kft5mv0EExqUr"
-ratelimit: "read";r=1161;t=60
+etag: W/"mfVX9STqvKvhLYLp"
+ratelimit: "read";r=1153;t=60
 ```
 
 ```json
 {
   "object": "list",
   "data": [
-    {
-      "object": "run",
-      "id": "run_01m6tq6r80zk72kvyx",
-      "repo": {
-        "object": "repo",
-        "id": "rep_01m3kkw4m0zvf3zfc9",
-        "full_name": "dana/gitfs",
-        "url": "https://api.source.code/v1/repos/dana/gitfs"
-      },
-      "task": "Fix the flaky cache test",
-      "state": "running",
-      "actor": {
-        "object": "actor",
-        "id": "acc_01m6tq6r80mxzmx3x9",
-        "handle": "dana",
-        "class": "agent"
-      },
-      "change": 216,
-      "scopes": ["repo:read", "issues:read", "…and 4 more"],
-      "token": null,
-      "token_id": "tok_01m6tq6r800bjmwadt",
-      "notes": [
-        {
-          "at": "2026-11-07T10:00:00.000Z",
-          "text": "Reproduced the failure on patch set 2"
-        }
-      ],
-      "summary": null,
-      "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx",
-      "started_at": "2026-11-07T10:00:00.000Z",
-      "expires_at": "2026-11-07T11:00:00.000Z",
-      "finished_at": null,
-      "version": 2
-    },
     {
       "object": "run",
       "id": "run_01m6tq6r80pf3hv85s",
@@ -1363,7 +1334,46 @@ ratelimit: "read";r=1161;t=60
       "token_id": "tok_01m6tq6r80gvs2m6ma",
       "notes": [],
       "summary": null,
+      "issue": null,
+      "harness": null,
+      "links": [],
+      "transcript": null,
+      "patch_sets": [],
       "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80pf3hv85s",
+      "started_at": "2026-11-07T10:00:00.000Z",
+      "expires_at": "2026-11-07T11:00:00.000Z",
+      "finished_at": null,
+      "version": 1
+    },
+    {
+      "object": "run",
+      "id": "run_01m6tq6r80pb1by5pc",
+      "repo": {
+        "object": "repo",
+        "id": "rep_01m3kkw4m0zvf3zfc9",
+        "full_name": "dana/gitfs",
+        "url": "https://api.source.code/v1/repos/dana/gitfs"
+      },
+      "task": "Fix high-severity findings: finding.raised on change #216 by hollis.\n\nFor a high finding, open a draft change on top of the stack that fixes it and cite the …",
+      "state": "running",
+      "actor": {
+        "object": "actor",
+        "id": "acc_01m203xrm0mdzde249",
+        "handle": "fix-agent",
+        "class": "agent"
+      },
+      "change": 216,
+      "scopes": ["repo:read", "pulls:read", "…and 2 more"],
+      "token": null,
+      "token_id": "tok_01m6tq6r80ked51wxw",
+      "notes": [],
+      "summary": null,
+      "issue": null,
+      "harness": null,
+      "links": [],
+      "transcript": null,
+      "patch_sets": [],
+      "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80pb1by5pc",
       "started_at": "2026-11-07T10:00:00.000Z",
       "expires_at": "2026-11-07T11:00:00.000Z",
       "finished_at": null,
@@ -1408,12 +1418,12 @@ A run is one bounded piece of work by an agent. Starting one mints a token limit
 
 **Request body**
 
-| Member        | Type                                                                                                                                                                                                                                                                                   | Notes                                                             |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `task`        | string (up to 500 characters, at least 1)                                                                                                                                                                                                                                              | Required. What the run is for, in a sentence                      |
-| `change`      | integer (min 1, max 9007199254740991)                                                                                                                                                                                                                                                  | The change it works on                                            |
-| `scopes`      | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` | Default: read, comment on issues and changes, read the env schema |
-| `ttl_minutes` | integer (min 1, max 240)                                                                                                                                                                                                                                                               | Default `60`.                                                     |
+| Member        | Type                                                                                                                                                                                                                                                                                                         | Notes                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `task`        | string (up to 500 characters, at least 1)                                                                                                                                                                                                                                                                    | Required. What the run is for, in a sentence                      |
+| `change`      | integer (min 1, max 9007199254740991)                                                                                                                                                                                                                                                                        | The change it works on                                            |
+| `scopes`      | array of `repo:read` or `repo:write` or `issues:read` or `issues:comment` or `issues:write` or `pulls:read` or `pulls:comment` or `pulls:write` or `pulls:merge` or `secrets:schema` or `secrets:write` or `secrets:decrypt` or `webhooks:read` or `webhooks:write` or `tokens:manage` or `runs:transcripts` | Default: read, comment on issues and changes, read the env schema |
+| `ttl_minutes` | integer (min 1, max 240)                                                                                                                                                                                                                                                                                     | Default `60`.                                                     |
 
 **Errors**
 
@@ -1430,14 +1440,14 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs" \
 
 ```http
 HTTP/1.1 201
-location: https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx
-ratelimit: "write";r=81;t=60
+location: https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0
+ratelimit: "write";r=79;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80zk72kvyx",
+  "id": "run_01m6tq6r806naww1m0",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1455,10 +1465,15 @@ ratelimit: "write";r=81;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": "sxr_…",
-  "token_id": "tok_01m6tq6r800bjmwadt",
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
   "notes": [],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx",
+  "issue": null,
+  "harness": null,
+  "links": [],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
@@ -1495,20 +1510,20 @@ ratelimit: "write";r=81;t=60
 **Example**
 
 ```bash
-curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx" \
+curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-etag: W/"NgHuQLjEbDLMkQOQ"
-ratelimit: "read";r=1160;t=60
+etag: W/"WiBkKRcoVB8_NeKu"
+ratelimit: "read";r=1152;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80zk72kvyx",
+  "id": "run_01m6tq6r806naww1m0",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1526,7 +1541,7 @@ ratelimit: "read";r=1160;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r800bjmwadt",
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1534,11 +1549,120 @@ ratelimit: "read";r=1160;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx",
+  "issue": 4,
+  "harness": "claude-code",
+  "links": ["https://delta.example/threads/8c1f"],
+  "transcript": {
+    "size": 123,
+    "sha256": "97cfbf0bfd475a63b9aabb3a3eb465250caaa8b844fa71586f4c1d6a9124f104",
+    "redactions": 1,
+    "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/transcript"
+  },
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
-  "version": 2
+  "version": 4
+}
+```
+
+### `runs.update`
+
+`PATCH /repos/{owner}/{repo}/runs/{id}`
+
+**Say what a run belongs to**
+
+Link the run to an issue, say what drove the agent (`harness`), and list conversations about it elsewhere (`links`), such as a Delta thread. The run's own token, the person who started it, or an admin can do it, while the run is going or after it ended. A field you leave out keeps its value; `links` replaces the whole list.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:read`             |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `run`          |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member    | Type                                            | Notes                                         |
+| --------- | ----------------------------------------------- | --------------------------------------------- |
+| `issue`   | integer (min 1, max 9007199254740991) or null   | The issue the run works on; null to unlink it |
+| `harness` | string (pattern) or null                        | Such as claude-code, delta or sx              |
+| `links`   | array of string (up to 500 characters, pattern) |                                               |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl -X PATCH "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"issue":4,"harness":"claude-code","links":["https://delta.example/threads/8c1f"]}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=118;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r806naww1m0",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "running",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
+  "notes": [
+    {
+      "at": "2026-11-07T10:00:00.000Z",
+      "text": "Reproduced the failure on patch set 2"
+    }
+  ],
+  "summary": null,
+  "issue": 4,
+  "harness": "claude-code",
+  "links": ["https://delta.example/threads/8c1f"],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": null,
+  "version": 3
 }
 ```
 
@@ -1580,19 +1704,19 @@ The person who started it, or an admin of the account, can stop a run at any mom
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80rx5xg4dy/cancel" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806s18p7kt/cancel" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=78;t=60
+ratelimit: "write";r=70;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80rx5xg4dy",
+  "id": "run_01m6tq6r806s18p7kt",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1610,7 +1734,7 @@ ratelimit: "write";r=78;t=60
   "change": null,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r804sgncbs4",
+  "token_id": "tok_01m6tq6r80djs5h7g2",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1618,7 +1742,12 @@ ratelimit: "write";r=78;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80rx5xg4dy",
+  "issue": null,
+  "harness": null,
+  "links": [],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806s18p7kt",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": "2026-11-07T10:00:00.000Z",
@@ -1657,19 +1786,19 @@ For a bot or agent that an automation woke up: call it with the bot's own token 
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80rx5xg4dy/claim" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806s18p7kt/claim" \
   -H "Authorization: Bearer $SX_TOKEN"
 ```
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=79;t=60
+ratelimit: "write";r=71;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80rx5xg4dy",
+  "id": "run_01m6tq6r806s18p7kt",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1687,7 +1816,7 @@ ratelimit: "write";r=79;t=60
   "change": null,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": "sxr_…",
-  "token_id": "tok_01m6tq6r804sgncbs4",
+  "token_id": "tok_01m6tq6r80djs5h7g2",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1695,7 +1824,12 @@ ratelimit: "write";r=79;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80rx5xg4dy",
+  "issue": null,
+  "harness": null,
+  "links": [],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806s18p7kt",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
@@ -1748,7 +1882,7 @@ The run's token stops working. Repeating it with the same outcome returns the ru
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx/finish" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/finish" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"state":"succeeded","summary":"Fixed in #217"}'
@@ -1756,13 +1890,13 @@ curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk7
 
 ```http
 HTTP/1.1 200
-ratelimit: "write";r=118;t=60
+ratelimit: "write";r=116;t=60
 ```
 
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80zk72kvyx",
+  "id": "run_01m6tq6r806naww1m0",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1780,7 +1914,7 @@ ratelimit: "write";r=118;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r800bjmwadt",
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1788,11 +1922,21 @@ ratelimit: "write";r=118;t=60
     }
   ],
   "summary": "Fixed in #217",
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx",
+  "issue": 4,
+  "harness": "claude-code",
+  "links": ["https://delta.example/threads/8c1f"],
+  "transcript": {
+    "size": 123,
+    "sha256": "97cfbf0bfd475a63b9aabb3a3eb465250caaa8b844fa71586f4c1d6a9124f104",
+    "redactions": 1,
+    "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/transcript"
+  },
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": "2026-11-07T10:00:00.000Z",
-  "version": 3
+  "version": 5
 }
 ```
 
@@ -1840,7 +1984,7 @@ A line of progress for whoever is watching. The last 50 are kept. Not idempotent
 **Example**
 
 ```bash
-curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx/notes" \
+curl -X POST "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/notes" \
   -H "Authorization: Bearer $SX_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text":"Reproduced the failure on patch set 2"}'
@@ -1854,7 +1998,7 @@ ratelimit: "write";r=119;t=60
 ```json
 {
   "object": "run",
-  "id": "run_01m6tq6r80zk72kvyx",
+  "id": "run_01m6tq6r806naww1m0",
   "repo": {
     "object": "repo",
     "id": "rep_01m3kkw4m0zvf3zfc9",
@@ -1872,7 +2016,7 @@ ratelimit: "write";r=119;t=60
   "change": 216,
   "scopes": ["repo:read", "issues:read", "…and 4 more"],
   "token": null,
-  "token_id": "tok_01m6tq6r800bjmwadt",
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
   "notes": [
     {
       "at": "2026-11-07T10:00:00.000Z",
@@ -1880,10 +2024,171 @@ ratelimit: "write";r=119;t=60
     }
   ],
   "summary": null,
-  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r80zk72kvyx",
+  "issue": null,
+  "harness": null,
+  "links": [],
+  "transcript": null,
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
   "started_at": "2026-11-07T10:00:00.000Z",
   "expires_at": "2026-11-07T11:00:00.000Z",
   "finished_at": null,
   "version": 2
+}
+```
+
+### `runs.transcript.get`
+
+`GET /repos/{owner}/{repo}/runs/{id}/transcript`
+
+**Read a run's transcript**
+
+What the agent saw and said, with secrets masked. Anyone who can read the repository can read it, with a token that has the runs:transcripts scope. Repositories that stopped keeping transcripts answer `transcripts_disabled`.
+
+| About      |                                 |
+| ---------- | ------------------------------- |
+| Safety     | `read`, safe to repeat          |
+| Needs      | a token                         |
+| Scopes     | `repo:read`, `runs:transcripts` |
+| Rate limit | `read` pool, 1 unit             |
+| Success    | `200`, a `run_transcript`       |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`transcripts_disabled`](/docs/api/errors#transcripts_disabled), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_version`](/docs/api/errors#unsupported_version)
+
+**Example**
+
+```bash
+curl "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/transcript" \
+  -H "Authorization: Bearer $SX_TOKEN"
+```
+
+```http
+HTTP/1.1 200
+etag: W/"o9F8ioia2SWh6jqx"
+ratelimit: "read";r=1161;t=60
+```
+
+```json
+{
+  "object": "run_transcript",
+  "run": "run_01m6tq6r806naww1m0",
+  "content_type": "text/plain",
+  "size": 123,
+  "sha256": "97cfbf0bfd475a63b9aabb3a3eb465250caaa8b844fa71586f4c1d6a9124f104",
+  "redactions": 1,
+  "content": "user: why does the cache test flake?\nassistant: SX_TOKEN=[redacted:source_code_token] was set; the test reads a stale ref.\n"
+}
+```
+
+### `runs.transcript.put`
+
+`PUT /repos/{owner}/{repo}/runs/{id}/transcript`
+
+**Attach a run's transcript**
+
+Upload the transcript first (`uploads.create`, text/plain or application/json), then name it here. It is checked for secrets before anyone can read it: known token formats, and long random values next to words like key, secret or token. With `mode=mask`, the default, each is replaced with `[redacted:<kind>]` and the response counts them. With `mode=block` a transcript with secrets is refused with `transcript_has_secrets`, which names the kinds. Either way the upload as sent is deleted. Only for repositories that keep transcripts (`transcripts: on`); others answer `transcripts_disabled`. A second transcript replaces the first.
+
+| About      |                         |
+| ---------- | ----------------------- |
+| Safety     | `write`, safe to repeat |
+| Needs      | a token                 |
+| Scopes     | `repo:read`             |
+| Rate limit | `write` pool, 1 unit    |
+| Dry run    | `?dry_run=true`         |
+| Success    | `200`, a `run`          |
+
+**Path parameters**
+
+| Name    | Type   | Notes |
+| ------- | ------ | ----- |
+| `owner` | string |       |
+| `repo`  | string |       |
+| `id`    | string |       |
+
+**Query parameters**
+
+| Name      | Type    | Notes                                                                                                   |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `dry_run` | boolean | Run every check and change nothing. The answer is what would have been returned, with Sx-Dry-Run: true. |
+
+**Request body**
+
+| Member   | Type              | Notes                                                                          |
+| -------- | ----------------- | ------------------------------------------------------------------------------ |
+| `upload` | string            | Required. The `upl_` id                                                        |
+| `mode`   | `mask` or `block` | Default `"mask"`. What to do with secrets: mask them, or refuse the transcript |
+
+**Errors**
+
+[`backend_unavailable`](/docs/api/errors#backend_unavailable), [`concurrency_limited`](/docs/api/errors#concurrency_limited), [`forbidden`](/docs/api/errors#forbidden), [`idempotency_key_reused`](/docs/api/errors#idempotency_key_reused), [`insufficient_scope`](/docs/api/errors#insufficient_scope), [`invalid_request`](/docs/api/errors#invalid_request), [`invalid_state`](/docs/api/errors#invalid_state), [`limit_reached`](/docs/api/errors#limit_reached), [`moved`](/docs/api/errors#moved), [`not_found`](/docs/api/errors#not_found), [`payload_too_large`](/docs/api/errors#payload_too_large), [`request_in_progress`](/docs/api/errors#request_in_progress), [`token_expired`](/docs/api/errors#token_expired), [`token_invalid`](/docs/api/errors#token_invalid), [`token_revoked`](/docs/api/errors#token_revoked), [`transcript_has_secrets`](/docs/api/errors#transcript_has_secrets), [`transcripts_disabled`](/docs/api/errors#transcripts_disabled), [`unauthenticated`](/docs/api/errors#unauthenticated), [`unsupported_media_type`](/docs/api/errors#unsupported_media_type), [`unsupported_version`](/docs/api/errors#unsupported_version), [`upload_incomplete`](/docs/api/errors#upload_incomplete)
+
+**Example**
+
+```bash
+curl -X PUT "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/transcript" \
+  -H "Authorization: Bearer $SX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"upload":"upl_01m6tq6r80r867jsaw"}'
+```
+
+```http
+HTTP/1.1 200
+ratelimit: "write";r=117;t=60
+```
+
+```json
+{
+  "object": "run",
+  "id": "run_01m6tq6r806naww1m0",
+  "repo": {
+    "object": "repo",
+    "id": "rep_01m3kkw4m0zvf3zfc9",
+    "full_name": "dana/gitfs",
+    "url": "https://api.source.code/v1/repos/dana/gitfs"
+  },
+  "task": "Fix the flaky cache test",
+  "state": "running",
+  "actor": {
+    "object": "actor",
+    "id": "acc_01m6tq6r80mxzmx3x9",
+    "handle": "dana",
+    "class": "agent"
+  },
+  "change": 216,
+  "scopes": ["repo:read", "issues:read", "…and 4 more"],
+  "token": null,
+  "token_id": "tok_01m6tq6r80nk6jxzwc",
+  "notes": [
+    {
+      "at": "2026-11-07T10:00:00.000Z",
+      "text": "Reproduced the failure on patch set 2"
+    }
+  ],
+  "summary": null,
+  "issue": 4,
+  "harness": "claude-code",
+  "links": ["https://delta.example/threads/8c1f"],
+  "transcript": {
+    "size": 123,
+    "sha256": "97cfbf0bfd475a63b9aabb3a3eb465250caaa8b844fa71586f4c1d6a9124f104",
+    "redactions": 1,
+    "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0/transcript"
+  },
+  "patch_sets": [],
+  "url": "https://api.source.code/v1/repos/dana/gitfs/runs/run_01m6tq6r806naww1m0",
+  "started_at": "2026-11-07T10:00:00.000Z",
+  "expires_at": "2026-11-07T11:00:00.000Z",
+  "finished_at": null,
+  "version": 4
 }
 ```

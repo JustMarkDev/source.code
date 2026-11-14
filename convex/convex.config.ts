@@ -1,4 +1,5 @@
 import betterAuth from '@convex-dev/better-auth/convex.config'
+import presence from '@convex-dev/presence/convex.config'
 import { defineApp } from 'convex/server'
 import { v } from 'convex/values'
 
@@ -35,5 +36,7 @@ const app = defineApp({
 
 // Sign-in keeps its users, sessions and credentials in its own tables.
 app.use(betterAuth)
+// Who is looking at a change or an issue right now (`presence.ts`).
+app.use(presence)
 
 export default app

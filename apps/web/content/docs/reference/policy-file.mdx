@@ -1,58 +1,112 @@
 ---
 icon: ShieldCheckIcon
 title: Policy file
-description: The format of .source/policy/*.yml.
+description: The format of .source/policy/main.yml.
 ---
 
-<Callout type="warn" title="Design">
-  This is the proposed format. The Policies screen demonstrates it on sample
-  data.
-</Callout>
+The rules a repository lands changes under live in `.source/policy/main.yml`,
+next to its code. A change that edits the file is reviewed like any other, and
+the rules change when it lands.
 
-Files live in `.source/policy/`. All files are read together.
+```yaml
+rules:
+  - id: core-paths # a built-in rule: its mode only
+    mode: enforce
+  - id: big-change
+    mode: dry-run
+  - id: docs-review # a rule of the repository's own
+    name: Docs need a writer
+    when: { paths: ['docs/**'] }
+    require:
+      - approval: { min: 1, class: human, from: [hollis] }
+exceptions:
+  - id: exc_01J…
+    rule: core-paths
+    for: hollis
+    reason: On call this week
+    expires: 2026-12-01
+landing:
+  strategy: squash
+  fresh_approvals: true
+  resolve: author
+  steps:
+    - wait_checks: [ci/test, ci/build]
+```
 
 ## Top level
 
-| Key          | Type | Meaning              |
-| ------------ | ---- | -------------------- |
-| `rules`      | list | The rules            |
-| `exceptions` | list | Temporary exceptions |
+| Key          | Type | Meaning                         |
+| ------------ | ---- | ------------------------------- |
+| `rules`      | list | The rules                       |
+| `exceptions` | list | Temporary exceptions            |
+| `landing`    | map  | How a change lands, not whether |
 
 ## Rule
 
-| Key       | Type                            | Meaning                       |
-| --------- | ------------------------------- | ----------------------------- |
-| `id`      | string                          | Unique name                   |
-| `mode`    | `enforce` \| `dry-run` \| `off` | Default `enforce`             |
-| `when`    | object                          | What the rule applies to      |
-| `require` | list                            | What must hold before landing |
+| Key       | Type                            | Meaning                                     |
+| --------- | ------------------------------- | ------------------------------------------- |
+| `id`      | string                          | Unique name: lowercase letters, digits, `-` |
+| `mode`    | `enforce` \| `dry-run` \| `off` | Default `enforce`                           |
+| `name`    | string                          | For a rule of your own                      |
+| `when`    | object                          | What the rule applies to                    |
+| `require` | list                            | What must hold before landing: one item     |
+
+A built-in rule (`core-paths`, `agent-authored`, `ci-evidence`, `findings`,
+`big-change`) takes its `mode` only.
 
 ## when
 
-| Key            | Example                          | Meaning                    |
-| -------------- | -------------------------------- | -------------------------- |
-| `paths`        | `["src/**", "!src/**/tests/**"]` | Globs, with `!` to exclude |
-| `author_class` | `agent`                          | `human`, `agent` or `bot`  |
-| `size`         | `{ over: 400 }`                  | Changed lines              |
-| `labels`       | `["security"]`                   | Labels on the change       |
+| Key     | Example                | Meaning                                   |
+| ------- | ---------------------- | ----------------------------------------- |
+| `paths` | `["docs/**", "*.sql"]` | Globs: `**` crosses folders, `*` does not |
 
 ## require
 
-| Item                          | Example                                            | Meaning                                         |
-| ----------------------------- | -------------------------------------------------- | ----------------------------------------------- |
-| `approval`                    | `{ min: 1, class: human, from: team:maintainers }` | Approvals from a class, optionally from a group |
-| `evidence`                    | `{ check: ci/test, bound_to: tree }`               | A check on the tree that will land              |
-| `not_same_identity_as_author` | `true`                                             | The author cannot approve                       |
+| Item        | Example                                    | Meaning                                      |
+| ----------- | ------------------------------------------ | -------------------------------------------- |
+| `approval`  | `{ min: 1, class: human, from: [hollis] }` | Approvals from people, optionally named ones |
+| `evidence`  | `{ check: ci/test, bound_to: tree }`       | A check on the tree that will land           |
+| `max_lines` | `400`                                      | At most this many lines added and removed    |
 
 ## Exception
 
-| Key       | Meaning             |
-| --------- | ------------------- |
-| `rule`    | The rule it relaxes |
-| `for`     | Who it applies to   |
-| `reason`  | Required            |
-| `expires` | Required date       |
+| Key          | Meaning                        |
+| ------------ | ------------------------------ |
+| `id`         | Its id                         |
+| `rule`       | The rule it relaxes            |
+| `for`        | Who it applies to              |
+| `reason`     | Required                       |
+| `expires`    | Required date, at most 90 days |
+| `created_by` | Who granted it                 |
+
+## landing
+
+| Key               | Values                      | Meaning                                                                    |
+| ----------------- | --------------------------- | -------------------------------------------------------------------------- |
+| `strategy`        | `squash`, `rebase`, `merge` | How the change goes onto the base. Default `squash`                        |
+| `fresh_approvals` | `true`, `false`             | Approvals count only on the newest patch set, even after a rebase          |
+| `resolve`         | `author`, `any_reviewer`    | Who may settle a review thread. Default `any_reviewer`                     |
+| `steps`           | list                        | In order: `wait_checks: [...]`, `run_pipeline: name`, `webhook: https://…` |
+
+Approvals and required checks stay in `rules`. `GET
+/repos/{owner}/{repo}/changes/{n}/landability` says what stops a change now,
+landing steps included.
 
 ## Protecting the rules
 
-A change under `.source/policy/` always needs a human from the policy owners.
+A change under `.source/policy/` always needs a human maintainer's approval,
+and a file that reads. It is not a rule a repository can turn off or bend.
+
+If a file that does not read lands anyway, the last valid rules stay in force
+and the policy page says "Policy file has errors".
+
+## Editing from the settings page or the API
+
+Once the rules live in the file, the settings page and the policy endpoints
+propose instead of apply: saving opens a change to the file (or adds a patch
+set to your open one), and the API answers `202` with a `PolicyProposal`.
+Nothing applies until the change lands. The edit keeps the file's comments and
+layout. Before the move, the endpoints apply at once and answer `200`.
+
+The first proposal in a repository whose rules are still settings is the move
+itself: the file written from the settings, with the edit made.

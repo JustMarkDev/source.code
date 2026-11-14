@@ -1,11 +1,14 @@
 import * as React from 'react'
-import { ChatBubbleLeftIcon } from '@heroicons/react/24/outline'
+import { MultiFileDiff } from '@pierre/diffs/react'
+import { ChatBubbleLeftIcon, WrenchIcon } from '@heroicons/react/24/outline'
 import { Chip, EmptyState, Panel } from './bits'
 import type { ChangeComment } from '@source-code/sdk'
 import { Button } from '~/components/ui/button'
 import { Select, SelectItem } from '~/components/ui/select'
 import { Textarea } from '~/components/ui/input'
-import { useOp, useWrite } from '~/lib/forge'
+import { useOp, useOpMaybe, useWrite } from '~/lib/forge'
+import { codeTheme } from '~/lib/highlight'
+import { useIsDark } from '~/lib/theme'
 import { timeAgo } from '~/lib/repo'
 
 type At = { owner: string; repo: string; number: string }
@@ -24,27 +27,152 @@ const whereOf = (c: ChangeComment) =>
     ? 'The whole change'
     : c.line === null
       ? c.file
-      : `${c.file}:${c.line}`
+      : `${c.file}:${c.current_line ?? c.line}`
+
+/**
+ * The code a thread is about. Where it is now, when the code is still there;
+ * when it is gone, the code as it was written on, with the newest patch set
+ * near the same place a toggle away.
+ */
+function ThreadCode({
+  start,
+  files,
+  latest,
+}: {
+  start: ChangeComment
+  files: Record<string, string>
+  latest: number
+}) {
+  const [showLatest, setShowLatest] = React.useState(false)
+  if (start.file === null || start.line === null) return null
+  const now = (files[start.file] ?? '').split('\n')
+  const pre = (lines: Array<string>, mark?: number) => (
+    <pre className="overflow-x-auto rounded-md bg-muted px-3 py-1.5 font-mono text-xs">
+      {lines.map((l, i) => (
+        <div
+          key={i}
+          className={i === mark ? 'text-foreground' : 'text-muted-foreground'}
+        >
+          {l || ' '}
+        </div>
+      ))}
+    </pre>
+  )
+  if (!start.outdated) {
+    const at = start.current_line
+    if (at === null) return null
+    return pre([now[at - 1] ?? ''], 0)
+  }
+  const a = start.anchor
+  const near = Math.max(1, start.line - 3)
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>
+          {showLatest
+            ? `Patch set ${latest}, near line ${start.line}`
+            : `As written on patch set ${start.patch_set}`}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7"
+          onClick={() => setShowLatest((v) => !v)}
+        >
+          {showLatest ? 'View as written' : 'View latest'}
+        </Button>
+      </div>
+      {showLatest
+        ? pre(now.slice(near - 1, near + 6))
+        : a
+          ? pre(
+              [...a.before, ...a.quote.split('\n'), ...a.after],
+              a.before.length,
+            )
+          : null}
+    </div>
+  )
+}
+
+/**
+ * What the fix changed, for this thread only: its file, from the patch set
+ * the comment was written on to the one that addressed it.
+ */
+function FixDiff({
+  at,
+  file,
+  from,
+  to,
+}: {
+  at: At
+  file: string
+  from: number
+  to: number
+}) {
+  const dark = useIsDark()
+  const before = useOpMaybe('patch_sets.files', { ...at, patchSet: from })
+  const after = useOpMaybe('patch_sets.files', { ...at, patchSet: to })
+  if (before === undefined || after === undefined)
+    return <p className="text-xs text-muted-foreground">Loading the fix…</p>
+  const a = before?.files.find((f) => f.path === file)?.content ?? null
+  const b = after?.files.find((f) => f.path === file)?.content ?? null
+  if (!before?.available || !after?.available)
+    return (
+      <p className="text-xs text-muted-foreground">
+        These patch sets came without their files, so the fix cannot be shown
+        here.
+      </p>
+    )
+  return (
+    <div className="pierre overflow-hidden rounded-md border">
+      <MultiFileDiff
+        oldFile={{ name: file, contents: a ?? '' }}
+        newFile={{ name: file, contents: b ?? '' }}
+        options={{ theme: codeTheme(dark), diffStyle: 'unified' }}
+      />
+    </div>
+  )
+}
 
 function Thread({
   at,
   start,
   replies,
-  lineText,
+  files,
+  latest,
 }: {
   at: At
   start: ChangeComment
   replies: Array<ChangeComment>
-  lineText?: string
+  files: Record<string, string>
+  latest: number
 }) {
   const write = useWrite()
   const [reply, setReply] = React.useState('')
   const [error, setError] = React.useState('')
+  const [fix, setFix] = React.useState(false)
+  const addressed = start.addressed
   return (
     <Panel className="space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="font-mono text-foreground">{whereOf(start)}</span>
-        <span>on patch set {start.patch_set}</span>
+        <span>
+          {start.patch_set === latest || start.line === null
+            ? `on patch set ${start.patch_set}`
+            : `written on patch set ${start.patch_set}, line ${start.line}`}
+        </span>
+        {start.outdated && <Chip tone="muted">Outdated</Chip>}
+        {addressed && (
+          <button
+            type="button"
+            onClick={() => setFix((v) => !v)}
+            aria-expanded={fix}
+            className="inline-flex items-center gap-1 rounded-md bg-info/12 px-1.5 py-0.5 font-medium text-info hover:bg-info/20"
+          >
+            <WrenchIcon className="size-3" />
+            Addressed in patch set {addressed.patch_set}
+          </button>
+        )}
         {start.resolved ? (
           <Chip tone="success">Resolved</Chip>
         ) : (
@@ -65,10 +193,21 @@ function Thread({
           {start.resolved ? 'Reopen' : 'Resolve'}
         </Button>
       </div>
-      {lineText !== undefined && (
-        <pre className="overflow-x-auto rounded-md bg-muted px-3 py-1.5 font-mono text-xs">
-          {lineText || ' '}
-        </pre>
+      <ThreadCode start={start} files={files} latest={latest} />
+      {addressed && fix && start.file !== null && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            {addressed.by.handle}: {addressed.note || 'no note'}. What changed
+            in {start.file} from patch set {start.patch_set} to{' '}
+            {addressed.patch_set}:
+          </p>
+          <FixDiff
+            at={at}
+            file={start.file}
+            from={start.patch_set}
+            to={addressed.patch_set}
+          />
+        </div>
       )}
       <ul className="space-y-3">
         {[start, ...replies].map((c) => (
@@ -157,13 +296,8 @@ export function ChangeDiscussion({
               at={at}
               start={t.start}
               replies={t.replies}
-              lineText={
-                t.start.file !== null &&
-                t.start.line !== null &&
-                t.start.patch_set === latest
-                  ? (files[t.start.file] ?? '').split('\n')[t.start.line - 1]
-                  : undefined
-              }
+              files={files}
+              latest={latest}
             />
           ))
         )}

@@ -14,7 +14,11 @@ import type { QueryCtx } from '../_generated/server'
  */
 
 const TTL = 3_600_000
-const purpose = v.union(v.literal('evidence'), v.literal('release'))
+const purpose = v.union(
+  v.literal('evidence'),
+  v.literal('release'),
+  v.literal('transcript'),
+)
 
 const rec = (u: Doc<'uploads'>) => ({
   id: u.publicId,
@@ -91,6 +95,18 @@ export const save = mutation({
     await system(ctx)
     const u = await byId(ctx, id)
     if (u) await ctx.db.patch('uploads', u._id, fields)
+    return out(null)
+  },
+})
+
+/** Deletes one upload's record. The API drops its bytes. */
+export const remove = mutation({
+  args: { id: v.string() },
+  returns: v.string(),
+  handler: async (ctx, { id }) => {
+    await system(ctx)
+    const u = await byId(ctx, id)
+    if (u) await ctx.db.delete('uploads', u._id)
     return out(null)
   },
 })

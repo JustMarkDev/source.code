@@ -39,6 +39,13 @@ const SHAPE_PATHS: Record<string, string> = {
   'git.tree': `${REPO}/git/tree`,
   'git.blob': `${REPO}/git/blob?path=README.md`,
   'git.commits': `${REPO}/git/commits`,
+  'repos.provenance': `${REPO}/provenance?path=src/refs.rs&line=1`,
+  'changes.timeline': `${REPO}/changes/216/timeline`,
+  'changes.seen.get': `${REPO}/changes/216/seen`,
+  'changes.presence.get': `${REPO}/changes/216/presence`,
+  'changes.landability': `${REPO}/changes/216/landability`,
+  'issues.presence.get': `${REPO}/issues/4/presence`,
+  'issues.timeline': `${REPO}/issues/4/timeline`,
   'changes.list': `${REPO}/changes?state=all`,
   'changes.get': `${REPO}/changes/216?expand=repo,findings,check_runs`,
   'patch_sets.list': `${REPO}/changes/216/patch-sets`,
@@ -200,9 +207,11 @@ describe('shape', () => {
     // These need state the test builds itself, and have their own tests below.
     expect(unchecked.sort()).toEqual([
       'api.openapi',
+      'changes.guide.get',
       'events.stream',
       'git.raw',
       'operations.get',
+      'runs.transcript.get',
       'uploads.content',
     ])
   })

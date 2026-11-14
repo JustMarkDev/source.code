@@ -250,6 +250,10 @@ export const update = mutation({
       website: nullable(v.string()),
       docs_url: nullable(v.string()),
       install: nullable(v.string()),
+      transcripts: v.optional(v.union(v.literal('off'), v.literal('on'))),
+      run_trailer: v.optional(
+        v.union(v.literal('auto'), v.literal('on'), v.literal('off')),
+      ),
     }),
     ifMatch: v.optional(v.union(v.null(), v.string())),
     dry: v.optional(v.boolean()),
@@ -311,6 +315,20 @@ export const update = mutation({
     set('website', body.website, 'website')
     set('docsUrl', body.docs_url, 'docs_url')
     set('install', body.install, 'install')
+    if (
+      body.transcripts !== undefined &&
+      body.transcripts !== (repo.transcripts ?? 'off')
+    ) {
+      patch.transcripts = body.transcripts
+      changed.push('transcripts')
+    }
+    if (
+      body.run_trailer !== undefined &&
+      body.run_trailer !== (repo.runTrailer ?? 'auto')
+    ) {
+      patch.runTrailer = body.run_trailer
+      changed.push('run_trailer')
+    }
     if (maintainersChanged) {
       const grants = new Set(repo.maintainerGrants)
       const collaborators = new Set(repo.collaborators)

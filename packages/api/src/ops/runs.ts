@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { bodies } from '../bodies'
 import { Domain, defineOp, reply } from '../registry'
 import * as S from '../schemas'
+import { apiError } from '../problem'
+import { redactTranscript, transcriptUpload } from '../transcripts'
 import { afterOf, fp, listOf, pageShape, repoParams } from './common'
 
 const runParams = repoParams.extend({
@@ -256,6 +258,156 @@ export const cancelRun = defineOp({
     }),
 })
 
+const webAddress = z
+  .string()
+  .max(500)
+  .regex(/^https?:\/\/[^\s<>"']+$/, 'An http or https address')
+
+export const updateRun = defineOp({
+  ...report,
+  id: 'runs.update',
+  summary: 'Say what a run belongs to',
+  description:
+    "Link the run to an issue, say what drove the agent (`harness`), and list conversations about it elsewhere (`links`), such as a Delta thread. The run's own token, the person who started it, or an admin can do it, while the run is going or after it ended. A field you leave out keeps its value; `links` replaces the whole list.",
+  method: 'PATCH',
+  path: '/repos/{owner}/{repo}/runs/{id}',
+  idempotent: true,
+  params: runParams,
+  body: z.strictObject({
+    issue: z
+      .number()
+      .int()
+      .min(1)
+      .nullable()
+      .optional()
+      .describe('The issue the run works on; null to unlink it'),
+    harness: z
+      .string()
+      .regex(
+        /^[a-z0-9][a-z0-9._-]{0,49}$/,
+        'Lowercase letters, digits, dot, dash and underscore; up to 50',
+      )
+      .nullable()
+      .optional()
+      .describe('Such as claude-code, delta or sx'),
+    links: z.array(webAddress).max(20).optional(),
+  }),
+  response: S.Run,
+  errors: ['not_found', 'forbidden', 'invalid_request', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run((d) =>
+        d.updateRun(
+          ctx.params.owner,
+          ctx.params.repo,
+          ctx.params.id,
+          ctx.principal!,
+          ctx.body,
+          ctx.dryRun,
+        ),
+      )
+    }),
+})
+
+export const putRunTranscript = defineOp({
+  ...report,
+  id: 'runs.transcript.put',
+  summary: "Attach a run's transcript",
+  description:
+    'Upload the transcript first (`uploads.create`, text/plain or application/json), then name it here. It is checked for secrets before anyone can read it: known token formats, and long random values next to words like key, secret or token. With `mode=mask`, the default, each is replaced with `[redacted:<kind>]` and the response counts them. With `mode=block` a transcript with secrets is refused with `transcript_has_secrets`, which names the kinds. Either way the upload as sent is deleted. Only for repositories that keep transcripts (`transcripts: on`); others answer `transcripts_disabled`. A second transcript replaces the first.',
+  method: 'PUT',
+  path: '/repos/{owner}/{repo}/runs/{id}/transcript',
+  idempotent: true,
+  params: runParams,
+  body: z.strictObject({
+    upload: z.string().describe('The `upl_` id'),
+    mode: z
+      .enum(['mask', 'block'])
+      .default('mask')
+      .describe('What to do with secrets: mask them, or refuse the transcript'),
+  }),
+  response: S.Run,
+  errors: [
+    'not_found',
+    'forbidden',
+    'transcripts_disabled',
+    'transcript_has_secrets',
+    'upload_incomplete',
+    'invalid_state',
+    'invalid_request',
+    'limit_reached',
+    'moved',
+  ],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      return yield* run(async (d) => {
+        const p = ctx.principal!
+        const { owner, repo, id } = ctx.params
+        const target = await d.transcriptTarget(owner, repo, id, p)
+        const u = transcriptUpload(
+          await d.svc.uploads.get(ctx.body.upload),
+          p.handle,
+        )
+        const t = await redactTranscript(
+          d.svc.uploads,
+          u,
+          ctx.body.mode,
+          target,
+          ctx.dryRun,
+        )
+        const out = await d.attachTranscript(owner, repo, id, p, t, ctx.dryRun)
+        if (!ctx.dryRun && target.previous)
+          await d.svc.uploads.remove(target.previous)
+        return out
+      })
+    }),
+})
+
+export const getRunTranscript = defineOp({
+  id: 'runs.transcript.get',
+  summary: "Read a run's transcript",
+  description:
+    'What the agent saw and said, with secrets masked. Anyone who can read the repository can read it, with a token that has the runs:transcripts scope. Repositories that stopped keeping transcripts answer `transcripts_disabled`.',
+  method: 'GET',
+  path: '/repos/{owner}/{repo}/runs/{id}/transcript',
+  auth: 'required',
+  scopes: ['repo:read', 'runs:transcripts'],
+  pool: 'read',
+  safety: 'read',
+  idempotent: true,
+  tags: ['runs'],
+  params: runParams,
+  response: S.RunTranscript,
+  errors: ['not_found', 'transcripts_disabled', 'moved'],
+  handler: (ctx) =>
+    Effect.gen(function* () {
+      const { run } = yield* Domain
+      const out = yield* run(async (d) => {
+        const { owner, repo, id } = ctx.params
+        const t = await d.runTranscript(owner, repo, id, ctx.principal)
+        const u = await d.svc.uploads.get(t.uploadId)
+        const bytes = await d.svc.uploads.blobs.get(t.uploadId)
+        if (!u || !bytes)
+          throw apiError('not_found', `Run ${id} has no transcript.`)
+        return {
+          object: 'run_transcript' as const,
+          run: id,
+          content_type:
+            u.contentType === 'application/json'
+              ? ('application/json' as const)
+              : ('text/plain' as const),
+          size: t.size,
+          sha256: t.sha256,
+          redactions: t.redactions,
+          content: new TextDecoder().decode(bytes),
+        }
+      })
+      return reply(out, { headers: { 'cache-control': 'private, no-store' } })
+    }),
+})
+
 export const runOps = [
   startRun,
   listRuns,
@@ -264,4 +416,7 @@ export const runOps = [
   noteRun,
   finishRun,
   cancelRun,
+  updateRun,
+  putRunTranscript,
+  getRunTranscript,
 ]

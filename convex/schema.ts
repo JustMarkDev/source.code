@@ -151,6 +151,12 @@ export default defineSchema({
     ),
     // Sample data only: invent believable facts for commits no change landed.
     sampleFacts: v.optional(v.boolean()),
+    // Whether agent runs may attach transcripts. Off when absent.
+    transcripts: v.optional(v.union(v.literal('off'), v.literal('on'))),
+    // The `Run-Id:` commit trailer: `auto` (private only) when absent.
+    runTrailer: v.optional(
+      v.union(v.literal('auto'), v.literal('on'), v.literal('off')),
+    ),
     created: v.number(),
     updated: v.number(),
     version: v.number(),
@@ -273,6 +279,29 @@ export default defineSchema({
     .index('by_stream_and_seq', ['stream', 'seq'])
     .index('by_sequence', ['sequence'])
     .index('by_created', ['created']),
+
+  // State changes of changes and issues (opened, landed, closed...), by what
+  // they happened to, so a timeline reads them without reading the feed.
+  stateChanges: defineTable({
+    repoId: v.id('repos'),
+    // `change:216` or `issue:4`.
+    subject: v.string(),
+    to: v.string(),
+    at: v.number(),
+    eventId: v.string(),
+    actor: actorRef,
+  }).index('by_repoId_and_subject_and_at', ['repoId', 'subject', 'at']),
+
+  // The issues a change names (`Fixes #4`, `Refs #4`), kept on every write
+  // of the change, so an issue's timeline finds the changes that link it.
+  issueRefs: defineTable({
+    repoId: v.id('repos'),
+    issue: v.number(),
+    changeId: v.id('changes'),
+    closes: v.boolean(),
+  })
+    .index('by_repoId_and_issue', ['repoId', 'issue'])
+    .index('by_changeId', ['changeId']),
 
   // The feed's head: the last sequence handed out. Only the sequencer writes it.
   eventHead: defineTable({ head: v.number() }),
@@ -419,6 +448,7 @@ export default defineSchema({
       v.literal('check'),
       v.literal('comment'),
       v.literal('evidence'),
+      v.literal('guide'),
     ),
     // The part's own id (a patch set's number), unique within its kind.
     key: v.string(),
@@ -428,6 +458,25 @@ export default defineSchema({
     json: v.string(),
   }).index('by_changeId_and_kind_and_seq', ['changeId', 'kind', 'seq']),
 
+  // Which files of a change each reviewer has seen. A file counts as seen
+  // only while its hash matches the file at the head patch set, so a new
+  // patch set that touches it clears the mark. Personal state, no event.
+  reviewSeen: defineTable({
+    changeId: v.id('changes'),
+    handle: v.string(),
+    path: v.string(),
+    patchSet: v.number(),
+    contentHash: v.string(),
+  }).index('by_changeId_and_handle_and_path', ['changeId', 'handle', 'path']),
+
+  // The presence component's token for listing a room, kept so a reader
+  // who has not sent a heartbeat yet can still see who is there. A room is
+  // `change:<id>` or `issue:<id>`.
+  presenceRooms: defineTable({
+    room: v.string(),
+    token: v.string(),
+  }).index('by_room', ['room']),
+
   // A repository's policy settings: rule modes, its own rules, exceptions.
   repoPolicy: defineTable({
     repoId: v.id('repos'),
@@ -435,6 +484,14 @@ export default defineSchema({
     // JSON text of `CustomRuleRec[]` and `PolicyExceptionRec[]`.
     customRules: v.string(),
     exceptions: v.string(),
+    // JSON text of the `landing:` section, when the file gave one.
+    landing: v.optional(v.string()),
+    // Once the rules live in .source/policy/main.yml: the file as last
+    // landed, the commit it came from, and (JSON) why it did not read, if it
+    // did not. The fields above are then the file's last valid rules.
+    sourceSha: v.optional(v.string()),
+    sourceText: v.optional(v.string()),
+    errors: v.optional(v.string()),
   }).index('by_repoId', ['repoId']),
 
   // Long operations (landing a stack), watched with GET /operations/{id}.
@@ -459,6 +516,12 @@ export default defineSchema({
     error: v.union(v.null(), v.string()),
     created: v.number(),
     finished: v.union(v.null(), v.number()),
+    // A landing: JSON text of its plan (`LandingStepRec[]`), each step with
+    // how it went, and the result it gives once every step succeeded.
+    steps: v.optional(v.string()),
+    pending: v.optional(
+      v.object({ object: v.string(), id: v.string(), url: v.string() }),
+    ),
   })
     .index('by_publicId', ['publicId'])
     .index('by_finished', ['finished']),
@@ -484,6 +547,21 @@ export default defineSchema({
     tokenId: v.string(),
     notes: v.array(v.object({ at: v.number(), text: v.string() })),
     summary: v.union(v.null(), v.string()),
+    // Absent on runs from before these were kept; read as null and [].
+    issue: v.optional(v.union(v.null(), v.number())),
+    harness: v.optional(v.union(v.null(), v.string())),
+    links: v.optional(v.array(v.string())),
+    transcript: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          uploadId: v.string(),
+          size: v.number(),
+          sha256: v.string(),
+          redactions: v.number(),
+        }),
+      ),
+    ),
     started: v.number(),
     expires: v.number(),
     finished: v.union(v.null(), v.number()),
@@ -495,9 +573,20 @@ export default defineSchema({
       'publicId',
     ])
     .index('by_publicId', ['publicId'])
+    .index('by_tokenId', ['tokenId'])
     .index('by_handle_and_state', ['handle', 'state'])
     .index('by_state_and_expires', ['state', 'expires'])
     .index('by_finished', ['finished']),
+
+  // The patch sets a run pushed, so a line of code leads back to the run
+  // that wrote it, and a run lists what it produced.
+  runPatchSets: defineTable({
+    runId: v.id('runs'),
+    changeId: v.id('changes'),
+    patchSet: v.number(),
+  })
+    .index('by_runId', ['runId'])
+    .index('by_changeId_and_patchSet', ['changeId', 'patchSet']),
 
   // ---- Pipelines ---------------------------------------------------------------
   // A pipeline run, its jobs and steps, as JSON text without the logs. Each
@@ -704,7 +793,11 @@ export default defineSchema({
     filename: v.string(),
     contentType: v.string(),
     size: v.number(),
-    purpose: v.union(v.literal('evidence'), v.literal('release')),
+    purpose: v.union(
+      v.literal('evidence'),
+      v.literal('release'),
+      v.literal('transcript'),
+    ),
     state: v.union(v.literal('pending'), v.literal('uploaded')),
     sha256: v.union(v.null(), v.string()),
     expires: v.number(),

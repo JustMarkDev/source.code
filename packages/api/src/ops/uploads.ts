@@ -73,10 +73,10 @@ export const createUpload = defineOp({
       .min(1)
       .max(100 << 20),
     purpose: z
-      .enum(['evidence', 'release'])
+      .enum(['evidence', 'release', 'transcript'])
       .default('evidence')
       .describe(
-        '`release` for a file of a release; binaries, zip and gzip are only allowed there',
+        "`release` for a file of a release; binaries, zip and gzip are only allowed there. `transcript` for a run's transcript",
       ),
   }),
   response: S.Upload,

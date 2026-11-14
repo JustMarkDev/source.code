@@ -3,6 +3,8 @@ import { internalMutation } from '../_generated/server'
 import { emit } from '../lib/events'
 import { branchOwner, hydrate, saveChange } from '../lib/changes'
 import { counters } from '../lib/events'
+import { recordRunPatchSet } from '../lib/runs'
+import { runIdOf } from '@source-code/api/trailers'
 
 /**
  * A push code.storage told us about. Recorded once, however many times the
@@ -23,9 +25,10 @@ export const recordPush = internalMutation({
     before: v.string(),
     after: v.string(),
     pushedAt: v.number(),
+    message: v.optional(v.string()),
   },
   returns: v.string(),
-  handler: async (ctx, a) => {
+  handler: async (ctx, { message, ...a }) => {
     const seen = await ctx.db
       .query('pushes')
       .withIndex('by_storeId_and_ref_and_after', (q) =>
@@ -50,6 +53,18 @@ export const recordPush = internalMutation({
         const c = l.rec
         const prev = c.patchSets[c.patchSets.length - 1]
         if (prev.sha !== a.after) {
+          // A git push carries no run token, so the trailer is all there is.
+          const named = runIdOf(message ?? '')
+          const run = named
+            ? await ctx.db
+                .query('runs')
+                .withIndex('by_publicId', (q) => q.eq('publicId', named))
+                .unique()
+            : null
+          const via = {
+            run: run && run.repoId === repo._id ? run.publicId : null,
+            tokenKind: 'push' as const,
+          }
           c.patchSets.push({
             n: prev.n + 1,
             sha: a.after,
@@ -59,12 +74,14 @@ export const recordPush = internalMutation({
             created: a.pushedAt,
             files: prev.files,
             kind: 'update',
+            via,
           })
           // An approval follows a rewrite only when the code did not change.
           for (const r of c.reviews) r.carries = false
           c.updated = Math.max(Date.now(), c.updated + 1)
           c.version++
           await saveChange(ctx, l)
+          await recordRunPatchSet(ctx, doc._id, prev.n + 1, via.run)
           const k = await counters(ctx, repo)
           await ctx.db.patch('repoCounters', k._id, {
             changeRev: k.changeRev + 1,

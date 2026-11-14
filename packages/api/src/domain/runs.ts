@@ -7,6 +7,14 @@ import type { z } from 'zod'
 import type * as S from '../schemas'
 import { iso } from './records'
 import type { RepoRec, RunRec, Viewer } from './records'
+import type { TranscriptRec } from '../transcripts'
+
+/** What may change on a run after it started. */
+export type RunUpdate = {
+  issue?: number | null
+  harness?: string | null
+  links?: Array<string>
+}
 import { DomainTeams } from './teams'
 
 /** Agent runs and the long operations they start. */
@@ -53,6 +61,21 @@ export abstract class DomainRuns extends DomainTeams {
       token_id: r.tokenId,
       notes: r.notes.map((n) => ({ at: iso(n.at), text: n.text })),
       summary: r.summary,
+      issue: r.issue ?? null,
+      harness: r.harness ?? null,
+      links: r.links ?? [],
+      transcript: r.transcript
+        ? {
+            size: r.transcript.size,
+            sha256: r.transcript.sha256,
+            redactions: r.transcript.redactions,
+            url: `${this.urls.api}/repos/${r.repo}/runs/${r.id}/transcript`,
+          }
+        : null,
+      patch_sets: (r.patchSets ?? []).map((x) => ({
+        change: x.change,
+        patch_set: x.patchSet,
+      })),
       url: `${this.urls.api}/repos/${r.repo}/runs/${r.id}`,
       started_at: iso(r.started),
       expires_at: iso(r.expires),
@@ -389,6 +412,108 @@ export abstract class DomainRuns extends DomainTeams {
       )
     }
     return this.presentRun(r)
+  }
+
+  async updateRun(
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    body: RunUpdate,
+    dry: boolean,
+  ) {
+    const repo = this.resolve(owner, name, p, 'read')
+    const r = this.runRec(repo, id)
+    this.assertRunOwner(repo, r, p)
+    if (
+      body.issue !== undefined &&
+      body.issue !== null &&
+      !repo.issues.has(body.issue)
+    )
+      throw apiError(
+        'invalid_request',
+        `No issue #${body.issue} in ${repo.owner}/${repo.name}.`,
+        {
+          errors: [
+            {
+              pointer: '/body/issue',
+              code: 'unknown',
+              message: 'Name an issue in this repository.',
+            },
+          ],
+        },
+      )
+    const next = {
+      issue: body.issue === undefined ? (r.issue ?? null) : body.issue,
+      harness: body.harness === undefined ? (r.harness ?? null) : body.harness,
+      links:
+        body.links === undefined ? (r.links ?? []) : [...new Set(body.links)],
+    }
+    const same =
+      next.issue === (r.issue ?? null) &&
+      next.harness === (r.harness ?? null) &&
+      JSON.stringify(next.links) === JSON.stringify(r.links ?? [])
+    if (same) return this.presentRun(r)
+    if (dry) return this.presentRun({ ...r, ...next })
+    Object.assign(r, next)
+    r.version++
+    return this.presentRun(r)
+  }
+
+  /**
+   * Where a run's transcript may go: the caller may act on the run and the
+   * repository keeps transcripts. Answers the transcript it replaces.
+   */
+  async transcriptTarget(
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+  ) {
+    const repo = this.resolve(owner, name, p, 'read')
+    const r = this.runRec(repo, id)
+    this.assertRunOwner(repo, r, p)
+    if ((repo.transcripts ?? 'off') !== 'on')
+      throw apiError(
+        'transcripts_disabled',
+        `${repo.owner}/${repo.name} does not keep agent transcripts.`,
+      )
+    return {
+      full: `${repo.owner}/${repo.name}`,
+      repoId: repo.id,
+      previous: r.transcript?.uploadId ?? null,
+    }
+  }
+
+  async attachTranscript(
+    owner: string,
+    name: string,
+    id: string,
+    p: Principal,
+    t: TranscriptRec,
+    dry: boolean,
+  ) {
+    await this.transcriptTarget(owner, name, id, p)
+    const repo = this.resolve(owner, name, p, 'read')
+    const r = this.runRec(repo, id)
+    if (dry) return this.presentRun({ ...r, transcript: t })
+    r.transcript = t
+    r.version++
+    return this.presentRun(r)
+  }
+
+  /** A run's transcript, for someone who may read the repository. */
+  async runTranscript(owner: string, name: string, id: string, p: Viewer) {
+    const repo = this.resolve(owner, name, p)
+    const r = this.runRec(repo, id)
+    if ((repo.transcripts ?? 'off') !== 'on')
+      throw apiError(
+        'transcripts_disabled',
+        `${repo.owner}/${repo.name} does not keep agent transcripts.`,
+      )
+    if (!r.transcript)
+      throw apiError('not_found', `Run ${id} has no transcript.`)
+    return r.transcript
   }
 
   /** Drop finished runs and operations after a week. */

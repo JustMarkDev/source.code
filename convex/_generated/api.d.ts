@@ -28,6 +28,7 @@ import type * as forge_oauth from "../forge/oauth.js";
 import type * as forge_people from "../forge/people.js";
 import type * as forge_pipelines from "../forge/pipelines.js";
 import type * as forge_policy from "../forge/policy.js";
+import type * as forge_presence from "../forge/presence.js";
 import type * as forge_pushes from "../forge/pushes.js";
 import type * as forge_releases from "../forge/releases.js";
 import type * as forge_repos from "../forge/repos.js";
@@ -36,6 +37,7 @@ import type * as forge_search from "../forge/search.js";
 import type * as forge_stackLanding from "../forge/stackLanding.js";
 import type * as forge_sync from "../forge/sync.js";
 import type * as forge_teams from "../forge/teams.js";
+import type * as forge_timelines from "../forge/timelines.js";
 import type * as forge_tokens from "../forge/tokens.js";
 import type * as forge_uploads from "../forge/uploads.js";
 import type * as forge_webhooks from "../forge/webhooks.js";
@@ -54,6 +56,7 @@ import type * as lib_issues from "../lib/issues.js";
 import type * as lib_mail from "../lib/mail.js";
 import type * as lib_paginate from "../lib/paginate.js";
 import type * as lib_pierre from "../lib/pierre.js";
+import type * as lib_policyFile from "../lib/policyFile.js";
 import type * as lib_present from "../lib/present.js";
 import type * as lib_runs from "../lib/runs.js";
 import type * as lib_time from "../lib/time.js";
@@ -89,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   "forge/people": typeof forge_people;
   "forge/pipelines": typeof forge_pipelines;
   "forge/policy": typeof forge_policy;
+  "forge/presence": typeof forge_presence;
   "forge/pushes": typeof forge_pushes;
   "forge/releases": typeof forge_releases;
   "forge/repos": typeof forge_repos;
@@ -97,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   "forge/stackLanding": typeof forge_stackLanding;
   "forge/sync": typeof forge_sync;
   "forge/teams": typeof forge_teams;
+  "forge/timelines": typeof forge_timelines;
   "forge/tokens": typeof forge_tokens;
   "forge/uploads": typeof forge_uploads;
   "forge/webhooks": typeof forge_webhooks;
@@ -115,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   "lib/mail": typeof lib_mail;
   "lib/paginate": typeof lib_paginate;
   "lib/pierre": typeof lib_pierre;
+  "lib/policyFile": typeof lib_policyFile;
   "lib/present": typeof lib_present;
   "lib/runs": typeof lib_runs;
   "lib/time": typeof lib_time;
@@ -152,4 +158,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };

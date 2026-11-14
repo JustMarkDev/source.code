@@ -17,13 +17,33 @@ import {
 import { fail, finish, out } from '../lib/errors'
 import { actorFor, counters, emit } from '../lib/events'
 import { keysetPage } from '../lib/paginate'
-import { iso, urls } from '../lib/present'
+import { changeBlame } from '@source-code/api/provenance'
+import { landingWaits } from '@source-code/api/policy-file'
+import {
+  hasAfterSteps,
+  landingPlan,
+  presentSteps,
+} from '@source-code/api/landing'
+import type { LandingStepRec } from '@source-code/api/landing'
+import { readLandedPolicy } from '../lib/policyFile'
+import { issueRefs } from '@source-code/api/references'
+import { fileKey, presentSeen } from '@source-code/api/seen'
+import { checkGuide, presentGuide } from '@source-code/api/guides'
+import {
+  addressThreads,
+  anchorAt,
+  placeThreads,
+} from '@source-code/api/anchors'
+import type { Anchor } from '@source-code/api/anchors'
+import { presentRun, recordRunPatchSet, viaOf, viaOfCommit } from '../lib/runs'
+import { iso, repoUrl, urls } from '../lib/present'
 import {
   branchOwner,
   findChange,
   hydrate,
   insertChange,
   loadChange,
+  loadPolicy,
   saveChange,
   stackMembers,
   viewFor,
@@ -40,6 +60,7 @@ import type {
   FindingRec,
   ReviewCommentRec,
   ReviewRec,
+  ViaRec,
 } from '../lib/changeTypes'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
@@ -60,6 +81,31 @@ function touch(c: ChangeRec) {
   c.version++
 }
 
+/** Keeps the issues a change names in step with its title and description. */
+async function syncIssueRefs(
+  ctx: MutationCtx,
+  repo: Doc<'repos'>,
+  changeId: Doc<'changes'>['_id'],
+  c: ChangeRec,
+) {
+  const want = issueRefs(`${c.title}\n${c.description}`)
+  const have = await ctx.db
+    .query('issueRefs')
+    .withIndex('by_changeId', (q) => q.eq('changeId', changeId))
+    .take(100)
+  for (const h of have)
+    if (!want.some((w) => w.issue === h.issue && w.closes === h.closes))
+      await ctx.db.delete('issueRefs', h._id)
+  for (const w of want.slice(0, 100))
+    if (!have.some((h) => h.issue === w.issue && h.closes === w.closes))
+      await ctx.db.insert('issueRefs', {
+        repoId: repo._id,
+        issue: w.issue,
+        changeId,
+        closes: w.closes,
+      })
+}
+
 /** Writes the change, keeps the open count, and emits its one event. */
 async function commit(
   ctx: MutationCtx,
@@ -71,11 +117,15 @@ async function commit(
     by: ActorRef
     changes: Array<string>
     data?: unknown
+    extra?: Record<string, unknown>
   } | null,
 ) {
   if (wasState === null)
     l.doc = (await ctx.db.get('changes', await insertChange(ctx, repo, l.rec)))!
   else await saveChange(ctx, l)
+  const head = l.rec.patchSets[l.rec.patchSets.length - 1]
+  await recordRunPatchSet(ctx, l.doc._id, head.n, head.via?.run ?? null)
+  await syncIssueRefs(ctx, repo, l.doc._id, l.rec)
   const c = await counters(ctx, repo)
   const open =
     (isOpen(l.rec.state) ? 1 : 0) - (wasState && isOpen(wasState) ? 1 : 0)
@@ -93,7 +143,7 @@ async function commit(
     event.by,
     { object: 'change', id: l.rec.id, number: l.rec.number },
     event.changes,
-    event.data ?? view.presentChange(l.rec, 'event'),
+    event.data ?? { ...view.presentChange(l.rec, 'event'), ...event.extra },
   )
 }
 
@@ -255,6 +305,77 @@ export const version = query({
   },
 })
 
+// ---- where a line came from -------------------------------------------------------
+
+export const provenance = query({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    path: v.string(),
+    line: v.number(),
+    change: v.optional(v.number()),
+    sha: v.optional(v.string()),
+    at: v.number(),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await actorOf(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    let c: ChangeRec | undefined
+    let ps: ChangeRec['patchSets'][number] | undefined
+    if (a.change !== undefined) {
+      c = (await loadChange(ctx, repo, String(a.change))).rec
+      const at = changeBlame(c, a.path, a.line, (code, detail, more) =>
+        fail(code, detail, more),
+      )
+      if (at === 'base')
+        return out({
+          change: null,
+          patch_set: null,
+          run: null,
+          on_base: c.base,
+        })
+      ps = c.patchSets[at - 1]
+    } else if (a.sha) {
+      const sha = a.sha
+      for (const doc of await ctx.db
+        .query('changes')
+        .withIndex('by_repoId_and_headSha', (q) =>
+          q.eq('repoId', repo._id).eq('headSha', sha),
+        )
+        .take(10)) {
+        const { rec } = await hydrate(ctx, doc)
+        const hit = rec.patchSets.find((y) => y.sha === sha)
+        if (hit && (!c || rec.state === 'landed')) {
+          c = rec
+          ps = hit
+        }
+      }
+    }
+    const runId = ps?.via?.run
+    const run = runId
+      ? await ctx.db
+          .query('runs')
+          .withIndex('by_publicId', (q) => q.eq('publicId', runId))
+          .unique()
+      : null
+    return out({
+      change: c
+        ? {
+            number: c.number,
+            title: c.title,
+            state: c.state,
+            url: `${urls().api}/repos/${repo.owner}/${repo.name}/changes/${c.number}`,
+            html_url: `${urls().html}/${repo.owner}/${repo.name}/changes/${c.number}`,
+          }
+        : null,
+      patch_set: ps?.n ?? null,
+      run: run ? await presentRun(ctx, run, a.at) : null,
+      on_base: null,
+    })
+  },
+})
+
 // ---- opening and updating ----------------------------------------------------------
 
 function patchFiles(prev: ChangeRec['patchSets'][number]) {
@@ -276,6 +397,8 @@ function pushPatchSet(
     tree?: string
     files?: Record<string, FileStat>
     contents?: Record<string, string | null>
+    via?: ViaRec
+    addresses?: Array<{ comment: string; note?: string }>
   },
 ) {
   const prev = c.patchSets[c.patchSets.length - 1]
@@ -294,6 +417,7 @@ function pushPatchSet(
         ? prev.files
         : patchFiles(prev),
     kind: ps.kind,
+    ...(ps.via ? { via: ps.via } : {}),
     ...(ps.contents
       ? { contents: ps.contents }
       : ps.kind === 'rebase' && prev.contents
@@ -302,13 +426,47 @@ function pushPatchSet(
   })
   // An approval follows a rewrite only when the code did not change.
   if (ps.kind === 'update') for (const r of c.reviews) r.carries = false
+  // Comments follow the code they are about into the new patch set.
+  if (
+    placeThreads(
+      c.comments ?? [],
+      c.patchSets,
+      c.patchSets[c.patchSets.length - 1],
+    )
+  )
+    c.commentRev = (c.commentRev ?? 0) + 1
+  // And the threads it answers say so, in the same write.
+  let addressed: ReturnType<typeof addressThreads> = []
+  if (ps.addresses?.length) {
+    addressed = addressThreads(
+      c.comments ?? [],
+      ps.addresses,
+      prev.n + 1,
+      by,
+      Date.now(),
+      (code, detail) => fail(code, detail),
+      '/body/addresses',
+      true,
+    )
+    c.commentRev = (c.commentRev ?? 0) + 1
+  }
   touch(c)
+  return addressed
 }
 
-const patchSetEvent = (by: ActorRef) => ({
+const patchSetEvent = (
+  by: ActorRef,
+  addressed: ReturnType<typeof addressThreads> = [],
+) => ({
   type: 'change.updated',
   by,
-  changes: ['head.patch_set', 'policy.state', 'checks.state'],
+  changes: [
+    'head.patch_set',
+    'policy.state',
+    'checks.state',
+    ...(addressed.length ? ['comments.addressed'] : []),
+  ],
+  extra: addressed.length ? { addressed } : undefined,
 })
 
 export const create = mutation({
@@ -321,6 +479,10 @@ export const create = mutation({
     description: v.optional(v.string()),
     draft: v.optional(v.boolean()),
     sha: v.optional(v.string()),
+    message: v.optional(v.string()),
+    addresses: v.optional(
+      v.array(v.object({ comment: v.string(), note: v.optional(v.string()) })),
+    ),
     dry: v.optional(v.boolean()),
   },
   returns: v.string(),
@@ -328,6 +490,7 @@ export const create = mutation({
     const p = await signedIn(ctx)
     const repo = await resolve(ctx, a.owner, a.name, p, 'write')
     const by = await actorFor(ctx, p.handle, p.class)
+    const via = await viaOfCommit(ctx, repo, p, a.message)
     const at = Date.now()
     const sha =
       a.sha ?? hex(`${repo.publicId}/${a.branch}/${at}/${Math.random()}`)
@@ -340,17 +503,29 @@ export const create = mutation({
           outcome: 'unchanged',
         })
       const was = l.rec.state
-      pushPatchSet(l.rec, by, {
+      const addressed = pushPatchSet(l.rec, by, {
         sha,
         kind: 'update',
         note: 'Updated from branch',
+        via,
+        addresses: a.addresses,
       })
-      await commit(ctx, repo, l, was, patchSetEvent(by))
+      await commit(ctx, repo, l, was, patchSetEvent(by, addressed))
       return finish(a.dry, {
         change: await shown(ctx, repo, l.rec, p, at),
         outcome: 'patch_set_added',
       })
     }
+    if (a.addresses?.length)
+      fail('invalid_request', 'A new change has no comments to answer.', {
+        errors: [
+          {
+            pointer: '/body/addresses',
+            code: 'unknown',
+            message: 'Address threads once the change has them.',
+          },
+        ],
+      })
     const c = await counters(ctx, repo)
     await ctx.db.patch('repoCounters', c._id, { nextNumber: c.nextNumber + 1 })
     const rec: ChangeRec = {
@@ -378,6 +553,7 @@ export const create = mutation({
             },
           },
           kind: 'initial',
+          via,
         },
       ],
       reviews: [],
@@ -519,6 +695,9 @@ export const addPatchSet = mutation({
     note: v.optional(v.string()),
     // Edited files as `[path, text or null]`: paths are not field names.
     files: v.optional(v.array(v.array(v.union(v.string(), v.null())))),
+    addresses: v.optional(
+      v.array(v.object({ comment: v.string(), note: v.optional(v.string()) })),
+    ),
     dry: v.optional(v.boolean()),
   },
   returns: v.string(),
@@ -531,6 +710,8 @@ export const addPatchSet = mutation({
       fail('invalid_state', `Change #${c.number} is ${c.state}.`)
     const by = await actorFor(ctx, p.handle, p.class)
     const view = await viewFor(ctx, repo, p, Date.now(), [])
+    const addresses = a.addresses ?? []
+    let addressed: ReturnType<typeof addressThreads> = []
     if (a.files) {
       // A patch set made from files edited in the browser: the head's files with
       // these on top. Its commit id is a hash of what it holds.
@@ -566,12 +747,14 @@ export const addPatchSet = mutation({
         const { add, del } = lineCounts(onBase[path] ?? null, text)
         files[path] = { hash: hex(text ?? '').slice(0, 8), add, del }
       }
-      pushPatchSet(c, by, {
+      addressed = pushPatchSet(c, by, {
+        addresses,
         sha,
         kind: 'update',
         note: a.note ?? 'Edited in the browser',
         files,
         contents,
+        via: await viaOf(ctx, p),
       })
     } else {
       if (!a.sha)
@@ -585,13 +768,15 @@ export const addPatchSet = mutation({
             },
           ],
         })
-      pushPatchSet(c, by, {
+      addressed = pushPatchSet(c, by, {
+        addresses,
         sha: a.sha,
         kind: a.kind,
         note: a.note ?? (a.kind === 'rebase' ? 'Rebased' : 'Updated'),
+        via: await viaOf(ctx, p),
       })
     }
-    await commit(ctx, repo, l, c.state, patchSetEvent(by))
+    await commit(ctx, repo, l, c.state, patchSetEvent(by, addressed))
     return finish(
       a.dry,
       view.presentPatchSet(c, c.patchSets[c.patchSets.length - 1]),
@@ -735,6 +920,7 @@ export const review = mutation({
       carries: patchSet === headN,
       body: a.body ?? '',
       created: Date.now(),
+      via: await viaOf(ctx, p),
     }
     c.reviews.push(r)
     touch(c)
@@ -751,6 +937,7 @@ export const review = mutation({
       patch_set: r.patchSet,
       carries_to_head: r.carries,
       body: r.body,
+      run: r.via?.run ?? null,
       created_at: iso(r.created),
     })
   },
@@ -845,6 +1032,7 @@ export const raiseFinding = mutation({
       created: at,
       ...(a.suggestion ? { suggestion: a.suggestion } : {}),
       ...(a.prompt ? { prompt: a.prompt } : {}),
+      via: await viaOf(ctx, p),
     }
     c.findings.push(f)
     touch(c)
@@ -1120,7 +1308,7 @@ export const transition = mutation({
   },
 })
 
-export { presentOp, doLand }
+export { presentOp, doLand, commit, pushPatchSet, patchSetEvent, shown, hex }
 
 export function checkLandable(
   view: ChangeView,
@@ -1173,6 +1361,18 @@ export function checkLandable(
           : 'Wait for the pending requirements, then try again.',
       },
     )
+  // The policy file's landing steps: checks landing waits for.
+  const waits = landingWaits(view.policy.landing, c.checks, head)
+  if (waits.length)
+    fail(
+      'policy_blocked',
+      `#${c.number} cannot land yet: ${waits.map((w) => w.detail.replace(/\.$/, '')).join('; ')}.`,
+      {
+        extra: { requirements: waits },
+        retryable: !waits.some((w) => w.state === 'fail'),
+        hint: 'The policy file says landing waits for these checks.',
+      },
+    )
 }
 
 async function doLand(
@@ -1191,6 +1391,8 @@ async function doLand(
     by,
     changes: ['state', 'landed_at'],
   })
+  // A change to the policy file that lands is the repository's rules now.
+  await readLandedPolicy(ctx, repo, c, by)
   // Changes above it are rebased onto the result. Their trees do not change,
   // so approvals and evidence stay valid.
   if (c.stackId) {
@@ -1211,6 +1413,66 @@ async function doLand(
   }
 }
 
+/** What stops a change from landing now, and how it will land. */
+export const landability = query({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    ref: v.string(),
+    at: v.number(),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await actorOf(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    const { rec: c } = await loadChange(ctx, repo, a.ref)
+    const view = await viewFor(ctx, repo, p, a.at, [c])
+    const head = c.patchSets[c.patchSets.length - 1]
+    const requirements = view.evaluate(c)
+    const blockers = [
+      ...(c.state === 'open'
+        ? []
+        : [
+            {
+              id: 'state',
+              rule: 'The change is open',
+              state: c.state === 'draft' ? 'pending' : 'fail',
+              detail:
+                c.state === 'draft'
+                  ? `#${c.number} is a draft. Mark it ready first.`
+                  : `#${c.number} is ${c.state}.`,
+              needs: null,
+              blocking: [],
+            },
+          ]),
+      ...requirements.filter(
+        (r) => r.state === 'fail' || r.state === 'pending',
+      ),
+      ...landingWaits(view.policy.landing, c.checks, head),
+    ]
+    const parent = view.parentOf(c)
+    if (parent && parent.state !== 'landed')
+      blockers.push({
+        id: 'stack',
+        rule: 'Lands after its parent',
+        state: 'pending',
+        detail: `#${parent.number} below #${c.number} has not landed.`,
+        needs: null,
+        blocking: [],
+      })
+    return out({
+      object: 'landability',
+      change: c.number,
+      patch_set: head.n,
+      tree: head.tree,
+      landable: blockers.length === 0,
+      blockers,
+      requirements,
+      landing: view.policy.landing,
+    })
+  },
+})
+
 export const land = mutation({
   args: {
     owner: v.string(),
@@ -1226,6 +1488,23 @@ export const land = mutation({
     const l = await loadChange(ctx, repo, a.ref)
     const view = await viewFor(ctx, repo, p, Date.now(), [l.rec])
     checkLandable(view, l.rec, p, a.expectedTree)
+    // With steps after landing, it is an operation: a stack of one.
+    if (hasAfterSteps(view.policy.landing))
+      return finish(a.dry, {
+        operation: await startLanding(
+          ctx,
+          repo,
+          p,
+          'change.land',
+          [l.rec.number],
+          [[String(l.rec.number), a.expectedTree]],
+          {
+            object: 'change',
+            id: l.rec.id,
+            url: `${urls().api}/repos/${repo.owner}/${repo.name}/changes/${l.rec.number}`,
+          },
+        ),
+      })
     await doLand(ctx, repo, l, await actorFor(ctx, p.handle, p.class))
     return finish(a.dry, await shown(ctx, repo, l.rec, p, Date.now()))
   },
@@ -1243,7 +1522,57 @@ function presentOp(o: Doc<'operations'>) {
     url: `${urls().api}/operations/${o.publicId}`,
     created_at: iso(o.created),
     finished_at: o.finished ? iso(o.finished) : null,
+    steps: presentSteps(
+      o.steps ? (JSON.parse(o.steps) as Array<LandingStepRec>) : [],
+      iso,
+    ),
   }
+}
+
+/**
+ * A landing as an operation: each change lands in its own step, then the
+ * policy file's landing steps run (`forge/stackLanding.ts`).
+ */
+async function startLanding(
+  ctx: MutationCtx,
+  repo: Doc<'repos'>,
+  p: Actor,
+  kind: string,
+  numbers: Array<number>,
+  trees: Array<Array<string>>,
+  pending: { object: string; id: string; url: string },
+) {
+  const at = Date.now()
+  const steps = landingPlan(numbers, (await loadPolicy(ctx, repo)).landing)
+  const id = await ctx.db.insert('operations', {
+    publicId: newId('operation', at),
+    kind,
+    repoId: repo.publicId,
+    state: 'queued',
+    done: 0,
+    total: steps.length,
+    result: null,
+    error: null,
+    created: at,
+    finished: null,
+    steps: JSON.stringify(steps),
+    pending,
+  })
+  await ctx.scheduler.runAfter(0, internal.forge.stackLanding.step, {
+    operation: id,
+    repo: repo._id,
+    trees,
+    i: 0,
+    as: {
+      handle: p.handle,
+      actingAs: p.actingAs,
+      class: p.class,
+      scopes: [...p.scopes],
+      repos: p.repos ? [...p.repos] : null,
+    },
+    by: await actorFor(ctx, p.handle, p.class),
+  })
+  return presentOp((await ctx.db.get('operations', id))!)
 }
 
 export const landStack = mutation({
@@ -1300,36 +1629,20 @@ export const landStack = mutation({
     }
     const view = await viewFor(ctx, repo, p, Date.now(), [loaded[0].rec])
     checkLandable(view, loaded[0].rec, p, trees[String(loaded[0].rec.number)])
-    const at = Date.now()
-    const id = await ctx.db.insert('operations', {
-      publicId: newId('operation', at),
-      kind: 'stack.land',
-      repoId: repo.publicId,
-      state: 'queued',
-      done: 0,
-      total: open.length,
-      result: null,
-      error: null,
-      created: at,
-      finished: null,
-    })
-    await ctx.scheduler.runAfter(0, internal.forge.stackLanding.step, {
-      operation: id,
-      repo: repo._id,
-      stackId: a.stackId,
-      numbers: open.map((c) => c.number),
-      trees: a.trees,
-      i: 0,
-      as: {
-        handle: p.handle,
-        actingAs: p.actingAs,
-        class: p.class,
-        scopes: [...p.scopes],
-        repos: p.repos ? [...p.repos] : null,
+    const op = await startLanding(
+      ctx,
+      repo,
+      p,
+      'stack.land',
+      open.map((c) => c.number),
+      a.trees,
+      {
+        object: 'stack',
+        id: a.stackId,
+        url: `${repoUrl(repo)}/stacks/${a.stackId}`,
       },
-      by: await actorFor(ctx, p.handle, p.class),
-    })
-    return finish(a.dry, presentOp((await ctx.db.get('operations', id))!))
+    )
+    return finish(a.dry, op)
   },
 })
 
@@ -1506,6 +1819,7 @@ export const createReviewComment = mutation({
     line: v.optional(v.number()),
     patch_set: v.optional(v.number()),
     reply_to: v.optional(v.string()),
+    quote: v.optional(v.string()),
     dry: v.optional(v.boolean()),
   },
   returns: v.string(),
@@ -1518,6 +1832,7 @@ export const createReviewComment = mutation({
         line: given.line,
         patch_set: given.patch_set,
         reply_to: given.reply_to,
+        quote: given.quote,
       })),
     }
     const p = await signedIn(ctx)
@@ -1531,6 +1846,7 @@ export const createReviewComment = mutation({
     let line = a.line ?? null
     let patchSet = a.patch_set ?? latest
     let replyTo: string | null = null
+    let anchor: Anchor | null = null
     if (a.reply_to) {
       const root = comments.find((x) => x.id === a.reply_to)
       if (!root) fail('not_found', `No comment ${a.reply_to} on #${c.number}.`)
@@ -1581,6 +1897,7 @@ export const createReviewComment = mutation({
           },
         )
       const text = file !== null ? ps.contents?.[file] : undefined
+      if (line !== null) anchor = anchorAt(text, line, a.quote)
       if (line !== null && typeof text === 'string') {
         const lines = text.split('\n').length
         if (line > lines)
@@ -1613,6 +1930,8 @@ export const createReviewComment = mutation({
       created: at,
       updated: at,
       version: 1,
+      via: await viaOf(ctx, p),
+      ...(anchor ? { anchor } : {}),
     }
     const view = await viewFor(ctx, repo, p, at, [])
     const shownComment = view.presentReviewComment(c, x)
@@ -1648,6 +1967,66 @@ function reviewCommentOf(c: ChangeRec, id: string) {
   if (!x) fail('not_found', `No comment ${id} on #${c.number}.`)
   return x
 }
+
+/** Marks a thread as answered by a patch set. It stays open. */
+export const addressReviewComment = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    ref: v.string(),
+    id: v.string(),
+    patch_set: v.optional(v.number()),
+    note: v.optional(v.string()),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p, 'write')
+    const l = await loadChange(ctx, repo, a.ref)
+    const c = l.rec
+    const x = reviewCommentOf(c, a.id)
+    const head = c.patchSets[c.patchSets.length - 1].n
+    const patchSet = a.patch_set ?? head
+    if (patchSet > head)
+      fail('invalid_request', `#${c.number} has no patch set ${patchSet}.`, {
+        errors: [
+          {
+            pointer: '/body/patch_set',
+            code: 'unknown',
+            message: `Patch sets run from 1 to ${head}.`,
+          },
+        ],
+      })
+    const by = await actorFor(ctx, p.handle, p.class)
+    const at = Date.now()
+    const addressed = addressThreads(
+      c.comments ?? [],
+      [{ comment: a.id, note: a.note }],
+      patchSet,
+      by,
+      at,
+      (code, detail, more) => fail(code, detail, more),
+      '/body/patch_set',
+      true,
+    )
+    c.commentRev = (c.commentRev ?? 0) + 1
+    const view = await viewFor(ctx, repo, p, at, [])
+    const shownComment = view.presentReviewComment(c, x)
+    await commit(ctx, repo, l, c.state, {
+      type: 'change.comment_addressed',
+      by,
+      changes: ['comments.addressed'],
+      data: {
+        ...shownComment,
+        title: c.title,
+        author: view.actor(c.author),
+        addressed,
+      },
+    })
+    return finish(a.dry, shownComment)
+  },
+})
 
 export const updateReviewComment = mutation({
   args: {
@@ -1699,6 +2078,15 @@ export const updateReviewComment = mutation({
           'forbidden',
           "Only the thread's author, the change's author or someone who can change the repository settles a thread.",
         )
+      // The policy file can narrow it to the person who started the thread.
+      if (
+        x.author.handle !== p.handle &&
+        (await loadPolicy(ctx, repo)).landing.resolve === 'author'
+      )
+        fail(
+          'forbidden',
+          `Only ${x.author.handle}, who started this thread, can settle it: the policy file says resolve: author.`,
+        )
     }
     const view = await viewFor(ctx, repo, p, Date.now(), [])
     const next = { body: a.body ?? x.body, resolved: a.resolved ?? x.resolved }
@@ -1738,5 +2126,201 @@ export const deleteReviewComment = mutation({
     c.commentRev = (c.commentRev ?? 0) + 1
     await commit(ctx, repo, l, c.state, null)
     return finish(a.dry, null)
+  },
+})
+
+// ---- what each reviewer has seen ---------------------------------------------------
+
+async function seenMarks(
+  ctx: QueryCtx,
+  changeId: Doc<'changes'>['_id'],
+  handle: string,
+) {
+  const rows = await ctx.db
+    .query('reviewSeen')
+    .withIndex('by_changeId_and_handle_and_path', (q) =>
+      q.eq('changeId', changeId).eq('handle', handle),
+    )
+    .take(2000)
+  return new Map(rows.map((r) => [r.path, r]))
+}
+
+export const seen = query({
+  args: { owner: v.string(), name: v.string(), ref: v.string() },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    const { doc, rec: c } = await loadChange(ctx, repo, a.ref)
+    const marks = await seenMarks(ctx, doc._id, p.handle)
+    return out(
+      presentSeen(
+        c.number,
+        c.patchSets[c.patchSets.length - 1],
+        new Map(
+          [...marks].map(([k, r]) => [
+            k,
+            { patchSet: r.patchSet, hash: r.contentHash },
+          ]),
+        ),
+      ),
+    )
+  },
+})
+
+/** Personal state: no event, and nobody else's answer changes. */
+export const setSeen = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    ref: v.string(),
+    paths: v.array(v.string()),
+    seen: v.optional(v.boolean()),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, given) => {
+    const a = {
+      ...given,
+      ...(await bodyOf(ctx, 'changes.seen.put', {
+        paths: given.paths,
+        seen: given.seen,
+      })),
+    }
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    const { doc, rec: c } = await loadChange(ctx, repo, a.ref)
+    const head = c.patchSets[c.patchSets.length - 1]
+    for (const [k, path] of a.paths.entries())
+      if (!(path in head.files))
+        fail(
+          'invalid_request',
+          `${path} is not in patch set ${head.n} of #${c.number}.`,
+          {
+            errors: [
+              {
+                pointer: `/body/paths/${k}`,
+                code: 'unknown',
+                message: 'Name a file the change touches.',
+              },
+            ],
+          },
+        )
+    const rows = await seenMarks(ctx, doc._id, p.handle)
+    for (const path of a.paths) {
+      const had = rows.get(path)
+      if (a.seen) {
+        const mark = { patchSet: head.n, contentHash: fileKey(head, path) }
+        if (had) await ctx.db.patch('reviewSeen', had._id, mark)
+        else
+          await ctx.db.insert('reviewSeen', {
+            changeId: doc._id,
+            handle: p.handle,
+            path,
+            ...mark,
+          })
+      } else if (had) await ctx.db.delete('reviewSeen', had._id)
+    }
+    const now = await seenMarks(ctx, doc._id, p.handle)
+    return finish(
+      a.dry,
+      presentSeen(
+        c.number,
+        head,
+        new Map(
+          [...now].map(([k, r]) => [
+            k,
+            { patchSet: r.patchSet, hash: r.contentHash },
+          ]),
+        ),
+      ),
+    )
+  },
+})
+
+// ---- change guides ---------------------------------------------------------------
+
+export const guide = query({
+  args: { owner: v.string(), name: v.string(), ref: v.string() },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await actorOf(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    const { rec: c } = await loadChange(ctx, repo, a.ref)
+    if (!c.guide) fail('not_found', `#${c.number} has no guide yet.`)
+    const view = await viewFor(ctx, repo, p, Date.now(), [])
+    return out(
+      presentGuide(
+        c.number,
+        c.patchSets[c.patchSets.length - 1].n,
+        c.guide,
+        (x) => view.actor(x),
+        iso,
+      ),
+    )
+  },
+})
+
+export const putGuide = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    ref: v.string(),
+    summary: v.string(),
+    order: v.array(
+      v.object({
+        path: v.string(),
+        why: v.optional(v.string()),
+        risk: v.optional(
+          v.union(v.literal('low'), v.literal('medium'), v.literal('high')),
+        ),
+      }),
+    ),
+    patch_set: v.optional(v.number()),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, given) => {
+    const a = {
+      ...given,
+      ...(await bodyOf(ctx, 'changes.guide.put', {
+        summary: given.summary,
+        order: given.order,
+        patch_set: given.patch_set,
+      })),
+    }
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p, 'write')
+    const l = await loadChange(ctx, repo, a.ref)
+    const c = l.rec
+    const n = checkGuide(c.patchSets, a, (code, detail, more) =>
+      fail(code, detail, more),
+    )
+    const by = await actorFor(ctx, p.handle, p.class)
+    c.guide = {
+      patchSet: n,
+      summary: a.summary,
+      order: a.order,
+      by,
+      run: (await viaOf(ctx, p)).run,
+      created: Date.now(),
+    }
+    touch(c)
+    await commit(ctx, repo, l, c.state, {
+      type: 'change.updated',
+      by,
+      changes: ['guide'],
+    })
+    const view = await viewFor(ctx, repo, p, Date.now(), [])
+    return finish(
+      a.dry,
+      presentGuide(
+        c.number,
+        c.patchSets[c.patchSets.length - 1].n,
+        c.guide,
+        (x) => view.actor(x),
+        iso,
+      ),
+    )
   },
 })

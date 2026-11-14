@@ -473,7 +473,7 @@ export const deleteLabel = mutation({
 
 // ---- comments ----------------------------------------------------------------
 
-function presentComment(
+export function presentComment(
   i: Doc<'issues'>,
   c: Doc<'issueComments'>,
   shown: Partial<Doc<'issueComments'>> = {},
@@ -674,7 +674,10 @@ export const deleteComment = mutation({
 
 // ---- evidence ----------------------------------------------------------------
 
-function presentIssueEvidence(i: Doc<'issues'>, e: Doc<'issueEvidence'>) {
+export function presentIssueEvidence(
+  i: Doc<'issues'>,
+  e: Doc<'issueEvidence'>,
+) {
   return {
     object: 'issue_evidence' as const,
     id: e.publicId,

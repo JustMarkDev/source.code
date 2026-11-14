@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Link } from '@tanstack/react-router'
 import { File } from '@pierre/diffs/react'
 import { PlusIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
 import { cn } from 'cn'
@@ -242,6 +243,22 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
   const exceptions = set.exceptions
   const done = (r: { error: { message: string } | null }) =>
     setError(r.error?.message ?? '')
+  // Once the rules live in the file, saving here proposes: a change to it.
+  const inFile = set.source.state !== 'settings'
+  const [proposed, setProposed] = React.useState<{
+    change: number
+    created: boolean
+  } | null>(null)
+  const propose = async (edit: PolicyEditBody) => {
+    const r = await write('policy.proposals.create', {
+      ...at,
+      body: { edits: [edit] },
+    })
+    done(r)
+    if (r.data?.change)
+      setProposed({ change: r.data.change, created: r.data.created })
+    return r
+  }
   const custom = new Set(set.rules.filter((r) => r.custom).map((r) => r.id))
   const [writing, setWriting] = React.useState(false)
   const [adding, setAdding] = React.useState(false)
@@ -265,6 +282,13 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
           {error && !adding && <p className="text-sm text-danger">{error}</p>}
         </div>
 
+        <PolicySource
+          repo={repo}
+          source={set.source}
+          proposed={proposed}
+          onMove={() => void propose({ op: 'set_landing' })}
+        />
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -281,18 +305,26 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
                 onDelete={
                   custom.has(r.id)
                     ? () =>
-                        void write('policy.delete_rule', {
-                          ...at,
-                          rule: r.id,
-                        }).then(done)
+                        void (
+                          inFile
+                            ? propose({ op: 'delete_rule', rule: r.id })
+                            : write('policy.delete_rule', {
+                                ...at,
+                                rule: r.id,
+                              })
+                        ).then(done)
                     : undefined
                 }
                 onMode={(mode) =>
-                  void write('policy.update_rule', {
-                    ...at,
-                    rule: r.id,
-                    body: { mode },
-                  }).then(done)
+                  void (
+                    inFile
+                      ? propose({ op: 'set_mode', rule: r.id, mode })
+                      : write('policy.update_rule', {
+                          ...at,
+                          rule: r.id,
+                          body: { mode },
+                        })
+                  ).then(done)
                 }
               />
             ))}
@@ -359,10 +391,17 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
                         size="sm"
                         variant="ghost"
                         onClick={() =>
-                          void write('policy.remove_exception', {
-                            ...at,
-                            exception: e.id,
-                          }).then(done)
+                          void (
+                            inFile
+                              ? propose({
+                                  op: 'remove_exception',
+                                  exception: e.id,
+                                })
+                              : write('policy.remove_exception', {
+                                  ...at,
+                                  exception: e.id,
+                                })
+                          ).then(done)
                         }
                       >
                         End now
@@ -392,8 +431,21 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Written from the settings on this page.
+            {inFile
+              ? 'The file on the default branch. Edit it in a change, or here: saving opens one.'
+              : 'Written from the settings on this page, as the move into the file would write it.'}
           </p>
+        </section>
+
+        <section className="space-y-3">
+          <SectionLabel>How changes land</SectionLabel>
+          <LandingSettings
+            landing={set.landing}
+            editable={inFile}
+            onChange={(landing) =>
+              void propose({ op: 'set_landing', ...landing })
+            }
+          />
         </section>
       </div>
 
@@ -401,7 +453,9 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
         open={writing}
         onClose={() => setWriting(false)}
         onSave={async (body) => {
-          const r = await write('policy.create_rule', { ...at, body })
+          const r = inFile
+            ? await propose({ op: 'create_rule', ...body })
+            : await write('policy.create_rule', { ...at, body })
           done(r)
           if (!r.error) setWriting(false)
           return r.error?.message ?? ''
@@ -465,30 +519,231 @@ export function PoliciesPage({ repo }: { repo: Repo }) {
           <Button
             variant="brand"
             disabled={!draft.who || !draft.reason}
-            onClick={() =>
-              void write('policy.add_exception', {
-                ...at,
-                body: {
-                  rule: draft.rule,
-                  who: draft.who.trim(),
-                  reason: draft.reason,
-                  expires_at: new Date(
-                    Date.now() + Number(draft.days) * 86_400_000,
-                  ).toISOString(),
-                },
-              }).then((r) => {
+            onClick={() => {
+              const body = {
+                rule: draft.rule,
+                who: draft.who.trim(),
+                reason: draft.reason,
+                expires_at: new Date(
+                  Date.now() + Number(draft.days) * 86_400_000,
+                ).toISOString(),
+              }
+              void (
+                inFile
+                  ? propose({ op: 'add_exception', ...body })
+                  : write('policy.add_exception', { ...at, body })
+              ).then((r) => {
                 done(r)
                 if (r.error) return
                 setDraft({ rule: 'core-paths', who: '', reason: '', days: '7' })
                 setAdding(false)
               })
-            }
+            }}
           >
             Add exception
           </Button>
         </div>
       </Modal>
     </>
+  )
+}
+
+type PolicyEditBody = Extract<
+  Parameters<ReturnType<typeof useWrite>>[1],
+  { body: { edits: Array<unknown> } }
+>['body']['edits'][number]
+
+type Landing = ReturnType<typeof useOp<'policy.rules'>>['landing']
+
+/** Where the rules come from, a file that does not read, and open policy changes. */
+function PolicySource({
+  repo,
+  source,
+  proposed,
+  onMove,
+}: {
+  repo: Repo
+  source: ReturnType<typeof useOp<'policy.rules'>>['source']
+  proposed: { change: number; created: boolean } | null
+  onMove: () => void
+}) {
+  const link = (n: number, text: React.ReactNode) => (
+    <Link
+      to="/$handle/$repo/$tab"
+      params={{ handle: repo.owner, repo: repo.name, tab: 'changes' }}
+      search={{ n }}
+      className="font-medium text-foreground hover:underline"
+    >
+      {text}
+    </Link>
+  )
+  return (
+    <Panel className="max-w-3xl space-y-3 p-4 text-sm">
+      {source.state === 'settings' ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="min-w-0 flex-1 text-muted-foreground">
+            These rules are repository settings for now. Move them into{' '}
+            <span className="font-mono text-xs">.source/policy/main.yml</span>{' '}
+            to review changes to them like code. They stay in force until that
+            change lands.
+          </p>
+          {!source.pending.length && (
+            <Button size="sm" variant="outline" onClick={onMove}>
+              Move into the file
+            </Button>
+          )}
+        </div>
+      ) : (
+        <p className="text-muted-foreground">
+          The rules live in{' '}
+          <span className="font-mono text-xs">.source/policy/main.yml</span>
+          {source.sha && (
+            <>
+              {' '}
+              at{' '}
+              <span className="font-mono text-xs">
+                {source.sha.slice(0, 7)}
+              </span>
+            </>
+          )}
+          . Saving here opens a change to it; nothing applies until it lands.
+        </p>
+      )}
+      {source.state === 'errors' && (
+        <div className="space-y-1 rounded-lg bg-danger/8 px-3 py-2 text-danger">
+          <p className="font-medium">Policy file has errors</p>
+          <p className="text-xs">The last valid rules stay in force.</p>
+          <ul className="list-disc pl-5 text-xs">
+            {source.errors.map((e) => (
+              <li key={`${e.path}:${e.line ?? ''}:${e.message}`}>
+                {e.path && <span className="font-mono">{e.path}</span>}
+                {e.line !== null && ` (line ${e.line})`}
+                {e.path || e.line !== null ? ': ' : ''}
+                {e.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {proposed && (
+        <p className="text-success">
+          {proposed.created ? 'Opened' : 'Added to'}{' '}
+          {link(proposed.change, `change #${proposed.change}`)}. It applies once
+          it lands.
+        </p>
+      )}
+      {source.pending.map((x) => (
+        <p key={x.change} className="flex flex-wrap items-center gap-2">
+          <Chip tone="warning">Pending</Chip>
+          {link(x.change, `#${x.change} ${x.title}`)}
+          <span className="text-xs text-muted-foreground">by {x.author}</span>
+        </p>
+      ))}
+    </Panel>
+  )
+}
+
+/** The policy file's `landing:` section, editable once the rules live in the file. */
+function LandingSettings({
+  landing,
+  editable,
+  onChange,
+}: {
+  landing: Landing
+  editable: boolean
+  /** Steps are edited in the file; the page sets the rest. */
+  onChange: (l: Partial<Omit<Landing, 'steps'>>) => void
+}) {
+  const steps = landing.steps.map((s) =>
+    'wait_checks' in s
+      ? `Wait for ${(s.wait_checks as Array<string>).join(', ')}`
+      : 'run_pipeline' in s
+        ? `Run the ${String(s.run_pipeline)} pipeline`
+        : `Call ${String(s.webhook)}`,
+  )
+  return (
+    <Panel className="max-w-3xl divide-y text-sm">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-medium">Strategy</p>
+          <p className="text-xs text-muted-foreground">
+            How a change goes onto the base branch.
+          </p>
+        </div>
+        {editable ? (
+          <Select
+            value={landing.strategy}
+            onValueChange={(v) =>
+              onChange({ strategy: v as Landing['strategy'] })
+            }
+          >
+            <SelectItem value="squash">Squash</SelectItem>
+            <SelectItem value="rebase">Rebase</SelectItem>
+            <SelectItem value="merge">Merge</SelectItem>
+          </Select>
+        ) : (
+          <Chip>{landing.strategy}</Chip>
+        )}
+      </div>
+      <label className="flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-medium">Fresh approvals</p>
+          <p className="text-xs text-muted-foreground">
+            Approvals count only on the newest patch set, even after a rebase.
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          checked={landing.fresh_approvals}
+          disabled={!editable}
+          onChange={(e) => onChange({ fresh_approvals: e.target.checked })}
+          className="size-4 accent-current"
+        />
+      </label>
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-medium">Who settles a thread</p>
+          <p className="text-xs text-muted-foreground">
+            The person who started it, or any reviewer.
+          </p>
+        </div>
+        {editable ? (
+          <Select
+            value={landing.resolve}
+            onValueChange={(v) =>
+              onChange({ resolve: v as Landing['resolve'] })
+            }
+          >
+            <SelectItem value="any_reviewer">Any reviewer</SelectItem>
+            <SelectItem value="author">Its author</SelectItem>
+          </Select>
+        ) : (
+          <Chip>
+            {landing.resolve === 'author' ? 'Its author' : 'Any reviewer'}
+          </Chip>
+        )}
+      </div>
+      <div className="px-4 py-3">
+        <p className="font-medium">Steps</p>
+        {steps.length ? (
+          <ol className="mt-1 list-decimal pl-5 text-muted-foreground">
+            {steps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            None: a change lands as soon as policy allows. Add steps in the
+            file.
+          </p>
+        )}
+      </div>
+      {!editable && (
+        <p className="px-4 py-3 text-xs text-muted-foreground">
+          These are the defaults. Move the rules into the file to change them.
+        </p>
+      )}
+    </Panel>
   )
 }
 

@@ -123,6 +123,16 @@ export const Repo = named(
       .describe(
         'People who can approve core-path changes. A maintainer also has repository write access: adding one grants it, and removing one revokes the write access that maintainer list granted unless the person has another grant.',
       ),
+    transcripts: z
+      .enum(['off', 'on'])
+      .describe(
+        'Whether agent runs may attach their transcripts. Off unless an owner turns it on',
+      ),
+    run_trailer: z
+      .enum(['auto', 'on', 'off'])
+      .describe(
+        'Whether commits keep a `Run-Id:` trailer naming the run that made them. `auto` keeps it in private repositories and removes it in public ones',
+      ),
     open_changes: z.number().int(),
     open_issues: z.number().int(),
     url: z.string(),
@@ -240,6 +250,9 @@ export const Finding = named(
       .string()
       .nullable()
       .describe('The same fix as instructions for an agent'),
+    run: id('run')
+      .nullable()
+      .describe('The agent run that made it; null when no run did'),
     created_at: ts,
   }),
 )
@@ -273,6 +286,9 @@ export const Review = named(
     patch_set: z.number().int(),
     carries_to_head: z.boolean(),
     body: z.string(),
+    run: id('run')
+      .nullable()
+      .describe('The agent run that made it; null when no run did'),
     created_at: ts,
   }),
 )
@@ -370,6 +386,9 @@ export const PatchSet = named(
     author: Actor,
     files: z.number().int(),
     url: z.string(),
+    run: id('run')
+      .nullable()
+      .describe('The agent run that made it; null when no run did'),
     created_at: ts,
   }),
 )
@@ -521,6 +540,41 @@ export const ChangeComment = named(
     resolved: z
       .boolean()
       .describe('For the comment that starts a thread: whether it is settled'),
+    anchor: obj({
+      quote: z.string().describe('The text the comment is about'),
+      before: z.array(z.string()).describe('Up to three lines above it'),
+      after: z.array(z.string()).describe('Up to three lines below it'),
+      side: z.enum(['head', 'base']),
+    })
+      .nullable()
+      .describe(
+        "What a comment on a line is about, so it follows the code into newer patch sets. A reply has its thread's",
+      ),
+    current_line: z
+      .number()
+      .int()
+      .nullable()
+      .describe(
+        'Where its thread is in the newest patch set; null when it is not on a line or its code is gone',
+      ),
+    outdated: z
+      .boolean()
+      .describe(
+        'Its code is gone from the newest patch set. `line` and `patch_set` still say where it was written',
+      ),
+    addressed: obj({
+      patch_set: z.number().int().describe('The patch set that answers it'),
+      by: Actor,
+      note: z.string(),
+      at: ts,
+    })
+      .nullable()
+      .describe(
+        'On the comment that starts a thread: the fix that answers it. Addressed is not resolved; someone still settles the thread',
+      ),
+    run: id('run')
+      .nullable()
+      .describe('The agent run that made it; null when no run did'),
     created_at: ts,
     updated_at: ts,
     version: z.number().int(),
@@ -710,6 +764,26 @@ export const PolicyException = named(
   }),
 )
 
+export const Landing = named(
+  'Landing',
+  obj({
+    strategy: z.enum(['squash', 'rebase', 'merge']),
+    fresh_approvals: z
+      .boolean()
+      .describe(
+        'Approvals count only on the newest patch set, not carried over a rebase',
+      ),
+    resolve: z
+      .enum(['author', 'any_reviewer'])
+      .describe('Who may settle a review thread'),
+    steps: z
+      .array(z.record(z.string(), z.unknown()))
+      .describe(
+        '`{wait_checks: [...]}`, `{run_pipeline: name}` or `{webhook: url}`, in order',
+      ),
+  }),
+)
+
 export const PolicySet = named(
   'PolicySet',
   obj({
@@ -750,6 +824,76 @@ export const PolicySet = named(
     exceptions: z.array(PolicyException).describe('Live ones only'),
     large_change_lines: z.number().int(),
     version: z.number().int(),
+    source: obj({
+      state: z
+        .enum(['settings', 'file', 'errors'])
+        .describe(
+          '`settings` until the rules move into the file; `file` once they live there; `errors` when the file that landed last does not read, and the last valid rules stay in force',
+        ),
+      sha: z
+        .string()
+        .nullable()
+        .describe('The commit the rules were read from'),
+      errors: z.array(
+        obj({
+          path: z.string().describe('Where in the file, like `rules[2].mode`'),
+          line: z.number().int().nullable(),
+          message: z.string(),
+        }),
+      ),
+      pending: z
+        .array(
+          obj({
+            change: z.number().int(),
+            title: z.string(),
+            author: z.string(),
+            url: z.string(),
+          }),
+        )
+        .describe('Open changes that edit the policy file'),
+    }).describe('Where the rules come from'),
+    landing: Landing,
+  }),
+)
+
+export const PolicyProposal = named(
+  'PolicyProposal',
+  obj({
+    object: z.literal('policy_proposal'),
+    change: z
+      .number()
+      .int()
+      .nullable()
+      .describe('The change that carries the edit; null for a dry run'),
+    url: z.string().nullable(),
+    patch_set: z.number().int().nullable(),
+    created: z
+      .boolean()
+      .describe(
+        'True when a new change was opened; false when the edit went on your open policy change as a patch set',
+      ),
+    edits: z.array(z.record(z.string(), z.unknown())),
+    diff: z
+      .string()
+      .describe('What this edit does to the file, as a unified diff'),
+  }),
+)
+
+export const Landability = named(
+  'Landability',
+  obj({
+    object: z.literal('landability'),
+    change: z.number().int(),
+    patch_set: z.number().int(),
+    tree: z.string().describe('Send it as `expected_tree` to land'),
+    landable: z.boolean(),
+    blockers: z
+      .array(Requirement)
+      .describe(
+        'What stops it now: failed or pending requirements, and landing steps it waits on',
+      ),
+    requirements: z.array(Requirement),
+    landing: Landing,
   }),
 )
 
@@ -1216,6 +1360,28 @@ export const Operation = named(
     url: z.string(),
     created_at: ts,
     finished_at: ts.nullable(),
+    steps: z
+      .array(
+        obj({
+          name: z.string(),
+          kind: z.enum(['land', 'run_pipeline', 'webhook']),
+          target: z
+            .string()
+            .describe("The change number, the pipeline's workflow, or the URL"),
+          state: z.enum([
+            'pending',
+            'running',
+            'succeeded',
+            'failed',
+            'skipped',
+          ]),
+          detail: z.string(),
+          finished_at: ts.nullable(),
+        }),
+      )
+      .describe(
+        "For a landing: each change it lands, then the policy file's landing steps, with how each went. Empty for other operations",
+      ),
   }),
 )
 
@@ -1383,11 +1549,55 @@ export const Run = named(
     token_id: id('tok'),
     notes: z.array(obj({ at: ts, text: z.string() })),
     summary: z.string().nullable(),
+    issue: z
+      .number()
+      .int()
+      .nullable()
+      .describe('The issue this run works on, if any'),
+    harness: z
+      .string()
+      .nullable()
+      .describe('What drove the agent, such as claude-code, delta or sx'),
+    links: z
+      .array(z.string())
+      .describe(
+        'Conversations about this run elsewhere, such as a Delta thread',
+      ),
+    transcript: obj({
+      size: z.number().int().describe('Bytes, after masking'),
+      sha256: z.string(),
+      redactions: z
+        .number()
+        .int()
+        .describe('How many secrets were masked when it was attached'),
+      url: z.string().describe('Read it here, with the runs:transcripts scope'),
+    })
+      .nullable()
+      .describe('What the agent saw and said, when the repository keeps it'),
+    patch_sets: z
+      .array(obj({ change: z.number().int(), patch_set: z.number().int() }))
+      .describe('The patch sets this run pushed, oldest first'),
     url: z.string(),
     started_at: ts,
     expires_at: ts,
     finished_at: ts.nullable(),
     version: z.number().int(),
+  }),
+)
+
+export const RunTranscript = named(
+  'RunTranscript',
+  obj({
+    object: z.literal('run_transcript'),
+    run: id('run'),
+    content_type: z.enum(['text/plain', 'application/json']),
+    size: z.number().int().describe('Bytes'),
+    sha256: z.string(),
+    redactions: z
+      .number()
+      .int()
+      .describe('How many secrets were masked when it was attached'),
+    content: z.string().describe('The transcript, secrets masked'),
   }),
 )
 
@@ -1419,6 +1629,43 @@ export const GitCommit = named(
       .enum(['pass', 'fail'])
       .nullable()
       .describe('Whether the checks on it passed, when any ran'),
+  }),
+)
+
+export const Provenance = named(
+  'Provenance',
+  obj({
+    object: z.literal('provenance'),
+    path: z.string(),
+    line: z.number().int(),
+    ref: z
+      .string()
+      .describe('The commit the line was read at, or the change it is in'),
+    commit: obj({
+      sha: z.string(),
+      message: z.string(),
+      author: Person,
+      date: ts,
+    })
+      .nullable()
+      .describe('The commit that last wrote the line; null inside a change'),
+    change: obj({
+      number: z.number().int(),
+      title: z.string(),
+      state: z.enum(['draft', 'open', 'landed', 'abandoned']),
+      url: z.string(),
+      html_url: z.string(),
+    })
+      .nullable()
+      .describe('The change it came through; null when none of ours did'),
+    patch_set: z
+      .number()
+      .int()
+      .nullable()
+      .describe('The patch set of that change that wrote the line'),
+    run: Run.nullable().describe(
+      'The agent run that pushed that patch set, with its task, summary, links and transcript',
+    ),
   }),
 )
 
@@ -1695,7 +1942,7 @@ export const Upload = named(
     filename: z.string(),
     content_type: z.string(),
     size: z.number().int(),
-    purpose: z.enum(['evidence', 'release']),
+    purpose: z.enum(['evidence', 'release', 'transcript']),
     state: z.enum(['pending', 'uploaded']),
     sha256: z.string().nullable(),
     upload_url: z
@@ -1914,5 +2161,165 @@ export const AuditEntry = named(
     action: z.string(),
     target: z.string().nullable(),
     kind: z.enum(['rotate', 'grant', 'revoke', 'read', 'reject']).nullable(),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// Timelines
+
+export const timelineKinds = [
+  'patch_set',
+  'comment',
+  'review',
+  'finding',
+  'check',
+  'guide',
+  'evidence',
+  'run_note',
+  'state_change',
+  'reference',
+] as const
+
+export const RunNote = named(
+  'RunNote',
+  obj({
+    object: z.literal('run_note'),
+    run: id('run'),
+    task: z.string(),
+    text: z.string(),
+    final: z
+      .boolean()
+      .describe("The run's summary, said when it ended, rather than a note"),
+  }),
+)
+
+export const StateChange = named(
+  'StateChange',
+  obj({
+    object: z.literal('state_change'),
+    from: z.string().nullable().describe('Null when it was opened'),
+    to: z.string(),
+  }),
+)
+
+export const Reference = named(
+  'Reference',
+  obj({
+    object: z.literal('reference'),
+    change: z.number().int(),
+    title: z.string(),
+    state: z.enum(['draft', 'open', 'landed', 'abandoned']),
+    closes: z
+      .boolean()
+      .describe('It says it fixes the issue (Fixes, Closes or Resolves #n)'),
+    url: z.string(),
+  }),
+)
+
+export const ChangeGuide = named(
+  'ChangeGuide',
+  obj({
+    object: z.literal('change_guide'),
+    change: z.number().int(),
+    patch_set: z.number().int().describe('The patch set it was written for'),
+    current: z.boolean().describe('It was written for the newest patch set'),
+    summary: z.string().describe('What the change does, for a reviewer'),
+    order: z
+      .array(
+        obj({
+          path: z.string(),
+          why: z.string().describe('Why to read it, and what to look for'),
+          risk: z.enum(['low', 'medium', 'high']),
+        }),
+      )
+      .describe('The files in the order to read them'),
+    by: Actor,
+    run: id('run').nullable().describe('The agent run that wrote it, if any'),
+    created_at: ts,
+  }),
+)
+
+export const TimelineEntry = named(
+  'TimelineEntry',
+  obj({
+    object: z.literal('timeline_entry'),
+    id: z.string().describe('Stable: the kind and the id of what it shows'),
+    kind: z.enum(timelineKinds),
+    created_at: ts,
+    actor: Actor.nullable(),
+    run: id('run')
+      .nullable()
+      .describe('The agent run that made it; null when no run did'),
+    summary: z.string().describe('One line, for reading the story at a glance'),
+    item: z
+      .union([
+        PatchSet,
+        ChangeComment,
+        Review,
+        Finding,
+        CheckRun,
+        IssueComment,
+        Evidence,
+        IssueEvidence,
+        ChangeGuide,
+        RunNote,
+        StateChange,
+        Reference,
+      ])
+      .describe('What happened, as its own object'),
+  }),
+)
+
+export const ChangeSeen = named(
+  'ChangeSeen',
+  obj({
+    object: z.literal('change_seen'),
+    change: z.number().int(),
+    patch_set: z.number().int().describe('The newest patch set'),
+    seen: z.number().int().describe('Files you have seen as they are now'),
+    total: z.number().int().describe('Files the change touches'),
+    files: z.array(
+      obj({
+        path: z.string(),
+        seen: z
+          .boolean()
+          .describe('You marked it seen and it has not changed since'),
+        patch_set: z
+          .number()
+          .int()
+          .nullable()
+          .describe('The patch set you marked it seen on; null if never'),
+        changed_since: z
+          .boolean()
+          .describe('You saw it, then a newer patch set changed it'),
+      }),
+    ),
+  }),
+)
+
+export const Presence = named(
+  'Presence',
+  obj({
+    object: z.literal('presence'),
+    kind: z.enum(['change', 'issue']),
+    number: z.number().int(),
+    interval: z
+      .number()
+      .int()
+      .describe(
+        'Seconds between heartbeats. A viewer who sends none for two and a half intervals is gone',
+      ),
+    viewers: z
+      .array(
+        obj({
+          actor: Actor,
+          path: z
+            .string()
+            .nullable()
+            .describe('The file they have open; null on the overview'),
+          seen_at: z.string().describe('Their last heartbeat'),
+        }),
+      )
+      .describe('People and agents looking at it now, agents marked by class'),
   }),
 )

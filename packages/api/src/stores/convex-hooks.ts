@@ -151,6 +151,10 @@ export class ConvexHooks implements HookPort {
     return d
   }
 
+  deliver(hook: Hook, event: EventRecord) {
+    return this.enqueue(hook, event, null)
+  }
+
   ping(hook: Hook) {
     const t = this.now()
     return this.enqueue(

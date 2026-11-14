@@ -393,3 +393,137 @@ export const sweepNow = mutation({
     return out(null)
   },
 })
+
+export const update = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    id: v.string(),
+    issue: v.optional(v.union(v.null(), v.number())),
+    harness: v.optional(v.union(v.null(), v.string())),
+    links: v.optional(v.array(v.string())),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await signedIn(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p, 'read')
+    const r = await runRec(ctx, repo, a.id)
+    await assertRunOwner(ctx, repo, r, p)
+    const issue = a.issue
+    if (issue !== undefined && issue !== null) {
+      const found = await ctx.db
+        .query('issues')
+        .withIndex('by_repoId_and_number', (q) =>
+          q.eq('repoId', repo._id).eq('number', issue),
+        )
+        .unique()
+      if (!found)
+        fail(
+          'invalid_request',
+          `No issue #${issue} in ${repo.owner}/${repo.name}.`,
+          {
+            errors: [
+              {
+                pointer: '/body/issue',
+                code: 'unknown',
+                message: 'Name an issue in this repository.',
+              },
+            ],
+          },
+        )
+    }
+    const next = {
+      issue: issue === undefined ? (r.issue ?? null) : issue,
+      harness: a.harness === undefined ? (r.harness ?? null) : a.harness,
+      links: a.links === undefined ? (r.links ?? []) : [...new Set(a.links)],
+    }
+    const at = Date.now()
+    const same =
+      next.issue === (r.issue ?? null) &&
+      next.harness === (r.harness ?? null) &&
+      JSON.stringify(next.links) === JSON.stringify(r.links ?? [])
+    if (same) return out(await presentRun(ctx, r, at))
+    await ctx.db.patch('runs', r._id, { ...next, version: r.version + 1 })
+    return finish(
+      a.dry,
+      await presentRun(ctx, (await ctx.db.get('runs', r._id))!, at),
+    )
+  },
+})
+
+async function transcriptAllowed(
+  ctx: QueryCtx,
+  a: { owner: string; name: string; id: string },
+) {
+  const p = await signedIn(ctx)
+  const repo = await resolve(ctx, a.owner, a.name, p, 'read')
+  const r = await runRec(ctx, repo, a.id)
+  await assertRunOwner(ctx, repo, r, p)
+  if ((repo.transcripts ?? 'off') !== 'on')
+    fail(
+      'transcripts_disabled',
+      `${repo.owner}/${repo.name} does not keep agent transcripts.`,
+    )
+  return { repo, r }
+}
+
+/** Where a run's transcript may go, and the one it replaces. */
+export const transcriptTarget = query({
+  args: { owner: v.string(), name: v.string(), id: v.string() },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const { repo, r } = await transcriptAllowed(ctx, a)
+    return out({
+      full: `${repo.owner}/${repo.name}`,
+      repoId: repo.publicId,
+      previous: r.transcript?.uploadId ?? null,
+    })
+  },
+})
+
+/** Attaches a transcript the API already scanned and stored. */
+export const attachTranscript = mutation({
+  args: {
+    owner: v.string(),
+    name: v.string(),
+    id: v.string(),
+    transcript: v.object({
+      uploadId: v.string(),
+      size: v.number(),
+      sha256: v.string(),
+      redactions: v.number(),
+    }),
+    dry: v.optional(v.boolean()),
+  },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const { r } = await transcriptAllowed(ctx, a)
+    await ctx.db.patch('runs', r._id, {
+      transcript: a.transcript,
+      version: r.version + 1,
+    })
+    return finish(
+      a.dry,
+      await presentRun(ctx, (await ctx.db.get('runs', r._id))!, Date.now()),
+    )
+  },
+})
+
+/** A run's transcript record, for someone who may read the repository. */
+export const transcript = query({
+  args: { owner: v.string(), name: v.string(), id: v.string() },
+  returns: v.string(),
+  handler: async (ctx, a) => {
+    const p = await actorOf(ctx)
+    const repo = await resolve(ctx, a.owner, a.name, p)
+    const r = await runRec(ctx, repo, a.id)
+    if ((repo.transcripts ?? 'off') !== 'on')
+      fail(
+        'transcripts_disabled',
+        `${repo.owner}/${repo.name} does not keep agent transcripts.`,
+      )
+    if (!r.transcript) fail('not_found', `Run ${a.id} has no transcript.`)
+    return out(r.transcript)
+  },
+})

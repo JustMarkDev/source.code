@@ -17,15 +17,41 @@ import type {
   EvidenceRec,
   FileStat,
   FindingRec,
+  GuideRec,
   OperationRec,
   PatchSetRec,
   RepoRec,
   ReviewCommentRec,
   ReviewRec,
+  RunRec,
   TestCaseRec,
+  ViaRec,
   Viewer,
 } from './records'
 import { DomainIssues } from './issues'
+import { changeBlame } from '../provenance'
+import { issueRefs } from '../references'
+import { fileKey, presentSeen } from '../seen'
+import { checkGuide, presentGuide } from '../guides'
+import type { GuideBody } from '../guides'
+import type { SeenMark } from '../seen'
+import { parseEvent } from '../events'
+import { PRESENCE_INTERVAL } from '../presence'
+import { DEFAULT_LANDING } from '../policy-file'
+import type { Landing } from '../policy-file'
+import { hasAfterSteps, landingPlan, skipRest } from '../landing'
+import type { LandingStepRec } from '../landing'
+import {
+  addressThreads,
+  anchorAt,
+  currentPosition,
+  placeThreads,
+  presentAnchor,
+} from '../anchors'
+import type { Anchor } from '../anchors'
+import type { ProvenanceFacts } from './port'
+
+type Entry = z.infer<typeof S.TimelineEntry>
 
 /** Changes: patch sets, reviews, checks, policy, landing and stacks. */
 export abstract class DomainChanges extends DomainIssues {
@@ -163,6 +189,49 @@ export abstract class DomainChanges extends DomainIssues {
     return `${c.id}.${c.version}.${c.stackId ? this.stackRev(repo, c) : 0}.${repo.openChangeByBranch.get(c.branch)?.id ?? ''}.${repo.version}.${this.accessRevision}${expand.includes('repo') ? `.${repo.rev}` : ''}`
   }
 
+  async provenance(
+    owner: string,
+    name: string,
+    p: Viewer,
+    q: { path: string; line: number; change?: number; sha?: string },
+  ): Promise<ProvenanceFacts> {
+    const repo = this.resolve(owner, name, p)
+    let c: ChangeRec | undefined
+    let ps: PatchSetRec | undefined
+    if (q.change !== undefined) {
+      c = this.getChangeRec(repo, String(q.change))
+      const at = changeBlame(c, q.path, q.line, (code, detail, more) => {
+        throw apiError(code as never, detail, more)
+      })
+      if (at === 'base')
+        return { change: null, patch_set: null, run: null, on_base: c.base }
+      ps = c.patchSets[at - 1]
+    } else if (q.sha) {
+      for (const x of repo.changes.values()) {
+        const hit = x.patchSets.find((y) => y.sha === q.sha)
+        if (hit && (!c || x.state === 'landed')) {
+          c = x
+          ps = hit
+        }
+      }
+    }
+    const run = ps?.via?.run ? this.runs.get(ps.via.run) : undefined
+    return {
+      change: c
+        ? {
+            number: c.number,
+            title: c.title,
+            state: c.state,
+            url: `${this.repoUrl(repo)}/changes/${c.number}`,
+            html_url: `${this.urls.html}/${repo.owner}/${repo.name}/changes/${c.number}`,
+          }
+        : null,
+      patch_set: ps?.n ?? null,
+      run: run ? this.presentRun(run) : null,
+      on_base: null,
+    }
+  }
+
   async createChange(
     owner: string,
     name: string,
@@ -174,13 +243,30 @@ export abstract class DomainChanges extends DomainIssues {
       description?: string
       draft?: boolean
       sha?: string
+      message?: string
+      addresses?: Array<{ comment: string; note?: string }>
       dry_run?: boolean
     },
   ) {
     const repo = this.resolve(owner, name, p, 'write')
     const by = this.asActor(p!)
+    const via = this.viaOfCommit(repo, p!, body.message)
     const sha = body.sha ?? this.fakeSha(repo, body.branch)
     const existing = repo.openChangeByBranch.get(body.branch)
+    const fail = (code: string, detail: string, more?: object) => {
+      throw apiError(code as never, detail, more)
+    }
+    if (body.addresses?.length)
+      addressThreads(
+        existing?.comments ?? [],
+        body.addresses,
+        existing ? this.head(existing).n + 1 : 1,
+        by,
+        this.now(),
+        fail,
+        '/body/addresses',
+        false,
+      )
     if (existing) {
       if (this.head(existing).sha === sha)
         return {
@@ -225,6 +311,8 @@ export abstract class DomainChanges extends DomainIssues {
         sha,
         kind: 'update',
         note: 'Updated from branch',
+        via,
+        addresses: body.addresses,
       })
       return {
         change: this.presentChange(repo, existing, p),
@@ -269,6 +357,7 @@ export abstract class DomainChanges extends DomainIssues {
         },
       },
       kind: 'initial',
+      via,
     })
     if (body.dry_run)
       return {
@@ -277,6 +366,7 @@ export abstract class DomainChanges extends DomainIssues {
       }
     repo.nextNumber++
     this.seedChange(repo, c)
+    this.recordRunPatchSet(c, c.patchSets[0])
     this.changeEvent(repo, c, 'change.opened', by, ['state'])
     return {
       change: this.presentChange(repo, c, p),
@@ -304,9 +394,12 @@ export abstract class DomainChanges extends DomainIssues {
       tree?: string
       files?: Record<string, FileStat>
       contents?: Record<string, string | null>
+      via?: ViaRec
+      addresses?: Array<{ comment: string; note?: string }>
     },
   ) {
     const prev = this.head(c)
+    let addressed: ReturnType<typeof addressThreads> = []
     const tree =
       ps.tree ?? (ps.kind === 'rebase' ? prev.tree : ps.sha.slice(0, 7))
     this.touchChange(repo, c, () => {
@@ -328,6 +421,7 @@ export abstract class DomainChanges extends DomainIssues {
                 ]),
               ),
         kind: ps.kind,
+        ...(ps.via ? { via: ps.via } : {}),
         // A rebase keeps the files; an update without them has none to show.
         ...(ps.contents
           ? { contents: ps.contents }
@@ -337,12 +431,47 @@ export abstract class DomainChanges extends DomainIssues {
       })
       // An approval follows a rewrite only when the code did not change.
       if (ps.kind === 'update') for (const r of c.reviews) r.carries = false
+      // Comments follow the code they are about into the new patch set.
+      if (placeThreads(c.comments ?? [], c.patchSets, this.head(c)))
+        c.commentRev = (c.commentRev ?? 0) + 1
+      // And the threads it answers say so, in the same write.
+      if (ps.addresses?.length) {
+        addressed = addressThreads(
+          c.comments ?? [],
+          ps.addresses,
+          this.head(c).n,
+          by,
+          this.now(),
+          (code, detail) => {
+            throw apiError(code as never, detail)
+          },
+          '/body/addresses',
+          true,
+        )
+        c.commentRev = (c.commentRev ?? 0) + 1
+      }
     })
-    this.changeEvent(repo, c, 'change.updated', by, [
-      'head.patch_set',
-      'policy.state',
-      'checks.state',
-    ])
+    this.recordRunPatchSet(c, this.head(c))
+    this.changeEvent(
+      repo,
+      c,
+      'change.updated',
+      by,
+      [
+        'head.patch_set',
+        'policy.state',
+        'checks.state',
+        ...(addressed.length ? ['comments.addressed'] : []),
+      ],
+      addressed.length ? { addressed } : undefined,
+    )
+  }
+  /** A run lists the patch sets it pushed; its version covers them. */
+  protected recordRunPatchSet(c: ChangeRec, ps: PatchSetRec) {
+    const run = ps.via?.run ? this.runs.get(ps.via.run) : undefined
+    if (!run) return
+    ;(run.patchSets ??= []).push({ change: c.number, patchSet: ps.n })
+    run.version++
   }
 
   async updateChange(
@@ -407,6 +536,7 @@ export abstract class DomainChanges extends DomainIssues {
       author: this.actor(ps.author),
       files: Object.keys(ps.files).length,
       url: `${this.repoUrl(repo)}/changes/${c.number}/patch-sets/${ps.n}`,
+      run: ps.via?.run ?? null,
       created_at: iso(ps.created),
     }
   }
@@ -436,6 +566,7 @@ export abstract class DomainChanges extends DomainIssues {
       kind: 'update' | 'rebase'
       note?: string
       files?: Record<string, string | null>
+      addresses?: Array<{ comment: string; note?: string }>
     },
     dry: boolean,
   ) {
@@ -443,6 +574,21 @@ export abstract class DomainChanges extends DomainIssues {
     const c = this.getChangeRec(repo, ref)
     if (c.state === 'landed' || c.state === 'abandoned')
       throw apiError('invalid_state', `Change #${c.number} is ${c.state}.`)
+    // The threads this patch set answers, checked before anything is written.
+    const addresses = body.addresses ?? []
+    if (addresses.length)
+      addressThreads(
+        c.comments ?? [],
+        addresses,
+        this.head(c).n + 1,
+        this.asActor(p!),
+        this.now(),
+        (code, detail, more) => {
+          throw apiError(code as never, detail, more)
+        },
+        '/body/addresses',
+        false,
+      )
     if (body.files) return this.patchSetFromFiles(repo, c, p!, body, dry)
     if (!body.sha)
       throw apiError('invalid_request', 'Send `sha`, or `files`.', {
@@ -474,6 +620,8 @@ export abstract class DomainChanges extends DomainIssues {
       sha,
       kind: body.kind,
       note: body.note ?? (body.kind === 'rebase' ? 'Rebased' : 'Updated'),
+      via: this.viaOf(p!),
+      addresses: body.addresses,
     })
     return this.presentPatchSet(repo, c, this.head(c))
   }
@@ -487,7 +635,11 @@ export abstract class DomainChanges extends DomainIssues {
     repo: RepoRec,
     c: ChangeRec,
     p: Principal,
-    body: { note?: string; files?: Record<string, string | null> },
+    body: {
+      note?: string
+      files?: Record<string, string | null>
+      addresses?: Array<{ comment: string; note?: string }>
+    },
     dry: boolean,
   ) {
     const prev = this.head(c)
@@ -534,6 +686,8 @@ export abstract class DomainChanges extends DomainIssues {
       note: body.note ?? 'Edited in the browser',
       files,
       contents,
+      via: this.viaOf(p),
+      addresses: body.addresses,
     }
     if (dry)
       return this.presentPatchSet(repo, c, {
@@ -666,6 +820,7 @@ export abstract class DomainChanges extends DomainIssues {
       carries: patchSet === this.head(c).n,
       body: body.body ?? '',
       created: this.now(),
+      via: this.viaOf(p!),
     }
     if (!dry) {
       this.touchChange(repo, c, () => c.reviews.push(review))
@@ -674,15 +829,20 @@ export abstract class DomainChanges extends DomainIssues {
         'policy.state',
       ])
     }
+    return this.presentReview(review)
+  }
+
+  protected presentReview(r: ReviewRec): z.infer<typeof S.Review> {
     return {
-      object: 'review' as const,
-      id: review.id,
-      actor: this.actor(by),
-      state: review.state,
-      patch_set: review.patchSet,
-      carries_to_head: review.carries,
-      body: review.body,
-      created_at: iso(review.created),
+      object: 'review',
+      id: r.id,
+      actor: this.actor(r.actor),
+      state: r.state,
+      patch_set: r.patchSet,
+      carries_to_head: r.carries,
+      body: r.body,
+      run: r.via?.run ?? null,
+      created_at: iso(r.created),
     }
   }
 
@@ -764,6 +924,7 @@ export abstract class DomainChanges extends DomainIssues {
       created: at,
       ...(body.suggestion ? { suggestion: body.suggestion } : {}),
       ...(body.prompt ? { prompt: body.prompt } : {}),
+      via: this.viaOf(p!),
     }
     if (!dry) {
       this.touchChange(repo, c, () => c.findings.push(f))
@@ -997,6 +1158,19 @@ export abstract class DomainChanges extends DomainIssues {
     const repo = this.resolve(owner, name, p, 'write')
     const c = this.getChangeRec(repo, ref)
     this.checkLandable(repo, c, p!, body.expected_tree)
+    // With steps after landing, it is an operation: a stack of one.
+    const landing = repo.landing ?? DEFAULT_LANDING
+    if (hasAfterSteps(landing)) {
+      const op = this.landingOp(repo, 'change.land', [c.number], landing, {
+        object: 'change',
+        id: c.id,
+        url: `${this.repoUrl(repo)}/changes/${c.number}`,
+      })
+      if (dry) return { operation: this.presentOp(op) }
+      this.operations.set(op.id, op)
+      this.runPlan(repo, op, { [String(c.number)]: body.expected_tree }, p!)
+      return { operation: this.presentOp(op) }
+    }
     if (!dry) this.doLand(repo, c, this.asActor(p!))
     else
       return this.presentChange(
@@ -1005,6 +1179,127 @@ export abstract class DomainChanges extends DomainIssues {
         p,
       )
     return this.presentChange(repo, c, p)
+  }
+
+  protected landingOp(
+    repo: RepoRec,
+    kind: string,
+    numbers: ReadonlyArray<number>,
+    landing: Landing,
+    result: OperationRec['result'],
+  ): OperationRec & { pending: OperationRec['result'] } {
+    const steps = landingPlan(numbers, landing)
+    return {
+      id: newId('operation', this.now()),
+      kind,
+      repoId: repo.id,
+      state: 'queued',
+      done: 0,
+      total: steps.length,
+      result: null,
+      pending: result,
+      error: null,
+      created: this.now(),
+      finished: null,
+      steps,
+    }
+  }
+
+  /**
+   * Runs a landing's plan one step at a time, each its own turn: changes land
+   * in order, then the landing steps run. A step that fails stops the rest,
+   * and what already landed stays landed.
+   */
+  protected runPlan(
+    repo: RepoRec,
+    op: OperationRec & { pending: OperationRec['result'] },
+    trees: Record<string, string>,
+    p: Principal,
+  ) {
+    const by = this.asActor(p)
+    const steps = op.steps!
+    const end = () => {
+      op.finished = this.now()
+      this.emit(
+        repo,
+        'operation.finished',
+        by,
+        { object: 'operation', id: op.id, number: null },
+        ['state'],
+        null,
+      )
+    }
+    const step = async (i: number) => {
+      op.state = 'running'
+      if (i >= steps.length) {
+        op.state = 'succeeded'
+        op.result = op.pending
+        return end()
+      }
+      const s = steps[i]
+      s.state = 'running'
+      try {
+        if (s.kind === 'land') {
+          const c = repo.changes.get(Number(s.target))!
+          this.checkLandable(repo, c, p, trees[s.target])
+          this.doLand(repo, c, by)
+          s.detail = `Landed as ${this.head(c).sha.slice(0, 7)}.`
+        } else s.detail = await this.runLandingStep(repo, s, p)
+        s.state = 'succeeded'
+        s.finished = this.now()
+        op.done = i + 1
+        setTimeout(() => void step(i + 1), this.stepDelayMs)
+      } catch (e) {
+        s.state = 'failed'
+        s.finished = this.now()
+        s.detail = (e as { detail?: string }).detail ?? String(e)
+        skipRest(steps, i + 1)
+        op.state = 'failed'
+        op.error = this.problemOf(e)
+        end()
+      }
+    }
+    setTimeout(() => void step(0), this.stepDelayMs)
+  }
+
+  /** A landing step after the changes landed: starts a pipeline or calls a webhook. */
+  protected runLandingStep(
+    _repo: RepoRec,
+    s: LandingStepRec,
+    _p: Principal,
+  ): Promise<string> {
+    return Promise.reject(
+      apiError('internal', `No runner for the ${s.kind} step.`),
+    )
+  }
+
+  /** An error as an operation keeps it. */
+  protected problemOf(e: unknown): Record<string, unknown> {
+    const failure = e as {
+      code?: keyof typeof errorCatalog
+      detail?: string
+      hint?: string
+      retryable?: boolean
+      errors?: unknown
+      extra?: Record<string, unknown>
+    }
+    const code: keyof typeof errorCatalog =
+      failure.code !== undefined && failure.code in errorCatalog
+        ? failure.code
+        : 'internal'
+    const entry = errorCatalog[code]
+    return {
+      type: `https://source.code/docs/api/errors#${code}`,
+      title: entry.title,
+      status: entry.status,
+      code,
+      detail: failure.detail ?? 'Unexpected failure.',
+      hint: failure.hint ?? entry.hint,
+      retryable: failure.retryable ?? entry.retryable,
+      exit_code: entry.exit,
+      ...(failure.errors ? { errors: failure.errors } : {}),
+      ...failure.extra,
+    }
   }
 
   protected checkLandable(
@@ -1095,7 +1390,6 @@ export abstract class DomainChanges extends DomainIssues {
     const repo = this.resolve(owner, name, p, 'write')
     const members = repo.stacks.get(stackId)
     if (!members) throw apiError('not_found', `No stack ${stackId}.`)
-    const by = this.asActor(p!)
     const open = members
       .map((n) => repo.changes.get(n)!)
       .filter((c) => c.state === 'open')
@@ -1147,85 +1441,20 @@ export abstract class DomainChanges extends DomainIssues {
         )
     }
     this.checkLandable(repo, first, p!, trees[String(first.number)])
-    const op: OperationRec = {
-      id: newId('operation', this.now()),
-      kind: 'stack.land',
-      repoId: repo.id,
-      state: 'queued',
-      done: 0,
-      total: open.length,
-      result: null,
-      error: null,
-      created: this.now(),
-      finished: null,
-    }
+    const op = this.landingOp(
+      repo,
+      'stack.land',
+      open.map((c) => c.number),
+      repo.landing ?? DEFAULT_LANDING,
+      {
+        object: 'stack',
+        id: stackId,
+        url: `${this.repoUrl(repo)}/stacks/${stackId}`,
+      },
+    )
     if (dry) return this.presentOp(op)
     this.operations.set(op.id, op)
-    const step = (i: number) => {
-      op.state = 'running'
-      if (i >= open.length) {
-        op.state = 'succeeded'
-        op.finished = this.now()
-        op.result = {
-          object: 'stack',
-          id: stackId,
-          url: `${this.repoUrl(repo)}/stacks/${stackId}`,
-        }
-        this.emit(
-          repo,
-          'operation.finished',
-          by,
-          { object: 'operation', id: op.id, number: null },
-          ['state'],
-          null,
-        )
-        return
-      }
-      const c = open[i]
-      try {
-        this.checkLandable(repo, c, p!, trees[String(c.number)])
-        this.doLand(repo, c, by)
-        op.done = i + 1
-        setTimeout(() => step(i + 1), this.stepDelayMs)
-      } catch (e) {
-        op.state = 'failed'
-        op.finished = this.now()
-        const failure = e as {
-          code?: keyof typeof errorCatalog
-          detail?: string
-          hint?: string
-          retryable?: boolean
-          errors?: unknown
-          extra?: Record<string, unknown>
-        }
-        const code: keyof typeof errorCatalog =
-          failure.code !== undefined && failure.code in errorCatalog
-            ? failure.code
-            : 'internal'
-        const entry = errorCatalog[code]
-        op.error = {
-          type: `https://source.code/docs/api/errors#${code}`,
-          title: entry.title,
-          status: entry.status,
-          code,
-          detail: failure.detail ?? 'Unexpected failure.',
-          hint: failure.hint ?? entry.hint,
-          retryable: failure.retryable ?? entry.retryable,
-          exit_code: entry.exit,
-          ...(failure.errors ? { errors: failure.errors } : {}),
-          ...failure.extra,
-        }
-        this.emit(
-          repo,
-          'operation.finished',
-          by,
-          { object: 'operation', id: op.id, number: null },
-          ['state'],
-          null,
-        )
-      }
-    }
-    setTimeout(() => step(0), this.stepDelayMs)
+    this.runPlan(repo, op, trees, p!)
     return this.presentOp(op)
   }
 
@@ -1249,6 +1478,10 @@ export abstract class DomainChanges extends DomainIssues {
   // ---- review comments --------------------------------------------------------
 
   protected presentReviewComment(c: ChangeRec, x: ReviewCommentRec) {
+    const root = x.replyTo
+      ? (c.comments ?? []).find((y) => y.id === x.replyTo)
+      : undefined
+    const start = root ?? x
     return {
       object: 'change_comment' as const,
       id: x.id,
@@ -1260,6 +1493,17 @@ export abstract class DomainChanges extends DomainIssues {
       patch_set: x.patchSet,
       reply_to: x.replyTo,
       resolved: x.resolved,
+      anchor: start.anchor ? presentAnchor(start.anchor) : null,
+      ...currentPosition(x, root, this.head(c).n),
+      addressed: x.addressed
+        ? {
+            patch_set: x.addressed.patchSet,
+            by: this.actor(x.addressed.by),
+            note: x.addressed.note,
+            at: iso(x.addressed.at),
+          }
+        : null,
+      run: x.via?.run ?? null,
       created_at: iso(x.created),
       updated_at: iso(x.updated),
       version: x.version,
@@ -1310,6 +1554,7 @@ export abstract class DomainChanges extends DomainIssues {
       line?: number
       patch_set?: number
       reply_to?: string
+      quote?: string
     },
     dry: boolean,
   ) {
@@ -1321,6 +1566,7 @@ export abstract class DomainChanges extends DomainIssues {
     let line = body.line ?? null
     let patchSet = body.patch_set ?? latest
     let replyTo: string | null = null
+    let anchor: Anchor | null = null
     if (body.reply_to) {
       const root = (c.comments ?? []).find((x) => x.id === body.reply_to)
       if (!root)
@@ -1380,6 +1626,7 @@ export abstract class DomainChanges extends DomainIssues {
           },
         )
       const text = file !== null ? ps.contents?.[file] : undefined
+      if (line !== null) anchor = anchorAt(text, line, body.quote)
       if (line !== null && typeof text === 'string') {
         const lines = text.split('\n').length
         if (line > lines)
@@ -1412,6 +1659,8 @@ export abstract class DomainChanges extends DomainIssues {
       created: at,
       updated: at,
       version: 1,
+      via: this.viaOf(p!),
+      ...(anchor ? { anchor } : {}),
     }
     const shown = this.presentReviewComment(c, x)
     if (dry) return shown
@@ -1440,6 +1689,69 @@ export abstract class DomainChanges extends DomainIssues {
         title: c.title,
         author: this.actor(c.author),
         thread: [...new Set(thread.map((y) => y.author.handle))],
+      },
+    )
+    return shown
+  }
+
+  /** Marks a thread as answered by a patch set. It stays open. */
+  async addressReviewComment(
+    owner: string,
+    name: string,
+    ref: string,
+    id: string,
+    p: Viewer,
+    body: { patch_set?: number; note?: string },
+    dry: boolean,
+  ) {
+    const repo = this.resolve(owner, name, p, 'write')
+    const c = this.getChangeRec(repo, ref)
+    const x = this.reviewCommentOf(c, id)
+    const head = this.head(c).n
+    const patchSet = body.patch_set ?? head
+    if (patchSet > head)
+      throw apiError(
+        'invalid_request',
+        `#${c.number} has no patch set ${patchSet}.`,
+        {
+          errors: [
+            {
+              pointer: '/body/patch_set',
+              code: 'unknown',
+              message: `Patch sets run from 1 to ${head}.`,
+            },
+          ],
+        },
+      )
+    const by = this.asActor(p!)
+    const copy = dry ? { ...x } : x
+    const addressed = addressThreads(
+      dry ? [copy] : (c.comments ?? []),
+      [{ comment: id, note: body.note }],
+      patchSet,
+      by,
+      this.now(),
+      (code, detail, more) => {
+        throw apiError(code as never, detail, more)
+      },
+      '/body/patch_set',
+      true,
+    )
+    const shown = this.presentReviewComment(c, copy)
+    if (dry) return shown
+    c.commentRev = (c.commentRev ?? 0) + 1
+    repo.changeRev++
+    this.emit(
+      repo,
+      'change.comment_addressed',
+      by,
+      { object: 'change', id: c.id, number: c.number },
+      ['comments.addressed'],
+      {
+        ...shown,
+        title: c.title,
+        author: this.actor(c.author),
+        addressed,
       },
     )
     return shown
@@ -1490,6 +1802,15 @@ export abstract class DomainChanges extends DomainIssues {
           'forbidden',
           "Only the thread's author, the change's author or someone who can change the repository settles a thread.",
         )
+      // The policy file can narrow it to the person who started the thread.
+      if (
+        (repo.landing ?? DEFAULT_LANDING).resolve === 'author' &&
+        x.author.handle !== p!.handle
+      )
+        throw apiError(
+          'forbidden',
+          `Only ${x.author.handle}, who started this thread, can settle it: the policy file says resolve: author.`,
+        )
     }
     const next = {
       ...x,
@@ -1528,6 +1849,450 @@ export abstract class DomainChanges extends DomainIssues {
     )
     c.commentRev = (c.commentRev ?? 0) + 1
     repo.changeRev++
+  }
+  // ---- change guides ------------------------------------------------------------
+
+  protected presentGuide(c: ChangeRec, g: GuideRec) {
+    return presentGuide(c.number, this.head(c).n, g, (a) => this.actor(a), iso)
+  }
+
+  async getGuide(owner: string, name: string, ref: string, p: Viewer) {
+    const repo = this.resolve(owner, name, p)
+    const c = this.getChangeRec(repo, ref)
+    if (!c.guide) throw apiError('not_found', `#${c.number} has no guide yet.`)
+    return this.presentGuide(c, c.guide)
+  }
+
+  async putGuide(
+    owner: string,
+    name: string,
+    ref: string,
+    p: Viewer,
+    body: GuideBody,
+    dry: boolean,
+  ) {
+    const repo = this.resolve(owner, name, p, 'write')
+    const c = this.getChangeRec(repo, ref)
+    const n = checkGuide(c.patchSets, body, (code, detail, more) => {
+      throw apiError(code as never, detail, more)
+    })
+    const by = this.asActor(p!)
+    const g: GuideRec = {
+      patchSet: n,
+      summary: body.summary,
+      order: body.order,
+      by,
+      run: this.viaOf(p!).run,
+      created: this.now(),
+    }
+    if (!dry) {
+      this.touchChange(repo, c, () => (c.guide = g))
+      this.changeEvent(repo, c, 'change.updated', by, ['guide'])
+    }
+    return this.presentGuide(c, g)
+  }
+
+  // ---- what each reviewer has seen ---------------------------------------------
+
+  /** Seen marks, by change id and handle, then by path. */
+  protected readonly seenMarks = new Map<string, Map<string, SeenMark>>()
+
+  async changeSeen(owner: string, name: string, ref: string, p: Principal) {
+    const repo = this.resolve(owner, name, p)
+    const c = this.getChangeRec(repo, ref)
+    return presentSeen(
+      c.number,
+      this.head(c),
+      this.seenMarks.get(`${c.id}|${p.handle}`) ?? new Map(),
+    )
+  }
+
+  async setSeen(
+    owner: string,
+    name: string,
+    ref: string,
+    p: Principal,
+    body: { paths: Array<string>; seen: boolean },
+    dry: boolean,
+  ) {
+    const repo = this.resolve(owner, name, p)
+    const c = this.getChangeRec(repo, ref)
+    const head = this.head(c)
+    for (const [k, path] of body.paths.entries())
+      if (!(path in head.files))
+        throw apiError(
+          'invalid_request',
+          `${path} is not in patch set ${head.n} of #${c.number}.`,
+          {
+            errors: [
+              {
+                pointer: `/body/paths/${k}`,
+                code: 'unknown',
+                message: 'Name a file the change touches.',
+              },
+            ],
+          },
+        )
+    const key = `${c.id}|${p.handle}`
+    const marks = new Map(this.seenMarks.get(key) ?? [])
+    for (const path of body.paths)
+      if (body.seen)
+        marks.set(path, { patchSet: head.n, hash: fileKey(head, path) })
+      else marks.delete(path)
+    if (!dry) this.seenMarks.set(key, marks)
+    return presentSeen(c.number, head, marks)
+  }
+
+  // ---- who is looking -------------------------------------------------------------
+
+  /** Viewers by room, then by `user:session`: who, the file, the last heartbeat. */
+  protected readonly rooms = new Map<
+    string,
+    Map<string, { actor: ActorRec; path: string | null; at: number }>
+  >()
+
+  private roomOf(
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Principal,
+  ) {
+    const repo = this.resolve(owner, name, p)
+    if (subject.kind === 'change') {
+      const c = this.getChangeRec(repo, subject.ref)
+      return { room: `change:${c.id}`, number: c.number }
+    }
+    const n = Number(subject.ref)
+    const i = repo.issues.get(n)
+    if (!i)
+      throw apiError(
+        'not_found',
+        `No issue #${n} in ${repo.owner}/${repo.name}.`,
+      )
+    return { room: `issue:${i.id}`, number: n }
+  }
+
+  private presentRoom(
+    room: string,
+    kind: 'change' | 'issue',
+    number: number,
+  ): z.infer<typeof S.Presence> {
+    const now = this.now()
+    // Each person or agent once, at their latest heartbeat.
+    const latest = new Map<
+      string,
+      { actor: ActorRec; path: string | null; at: number }
+    >()
+    for (const [key, v] of this.rooms.get(room) ?? []) {
+      if (now - v.at > PRESENCE_INTERVAL * 2.5) continue
+      const user = key.slice(0, key.lastIndexOf(':'))
+      const had = latest.get(user)
+      if (!had || had.at < v.at) latest.set(user, v)
+    }
+    return {
+      object: 'presence',
+      kind,
+      number,
+      interval: PRESENCE_INTERVAL / 1000,
+      viewers: [...latest.values()].map((v) => ({
+        actor: this.actor(v.actor),
+        path: v.path,
+        seen_at: iso(v.at),
+      })),
+    }
+  }
+
+  async presence(
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Principal,
+  ) {
+    const { room, number } = this.roomOf(owner, name, subject, p)
+    return this.presentRoom(room, subject.kind, number)
+  }
+
+  async heartbeat(
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Principal,
+    body: { session: string; path: string | null; leave: boolean },
+  ) {
+    const { room, number } = this.roomOf(owner, name, subject, p)
+    // A person and their agent share a handle; they are two viewers.
+    const user = p.class === 'human' ? p.handle : `${p.handle}~${p.class}`
+    const viewers = this.rooms.get(room) ?? new Map()
+    this.rooms.set(room, viewers)
+    const key = `${user}:${body.session}`
+    if (body.leave) viewers.delete(key)
+    else
+      viewers.set(key, {
+        actor: this.asActor(p),
+        path: body.path,
+        at: this.now(),
+      })
+    return this.presentRoom(room, subject.kind, number)
+  }
+
+  // ---- timelines ---------------------------------------------------------------
+
+  /**
+   * Everything that happened to a change or an issue, oldest first: its
+   * parts, the notes of the runs that worked on it, its state changes and,
+   * for an issue, the changes that link it.
+   */
+  async timeline(
+    owner: string,
+    name: string,
+    subject: { kind: 'change' | 'issue'; ref: string },
+    p: Viewer,
+  ): Promise<Array<Entry>> {
+    const repo = this.resolve(owner, name, p)
+    const n =
+      subject.kind === 'change'
+        ? this.getChangeRec(repo, subject.ref).number
+        : Number(subject.ref)
+    const out: Array<Entry> = []
+    const entry = (
+      kind: Entry['kind'],
+      id: string,
+      at: number,
+      actor: ActorRec | null,
+      run: string | null,
+      summary: string,
+      item: Entry['item'],
+    ) =>
+      out.push({
+        object: 'timeline_entry',
+        id: `${kind}:${id}`,
+        kind,
+        created_at: iso(at),
+        actor: actor ? this.actor(actor) : null,
+        run,
+        summary,
+        item,
+      })
+    const runNotes = (runs: Array<RunRec>) => {
+      for (const r of runs) {
+        const agent = this.actorFor(r.handle, 'agent')
+        r.notes.forEach((x, k) =>
+          entry('run_note', `${r.id}:${k}`, x.at, agent, r.id, x.text, {
+            object: 'run_note',
+            run: r.id,
+            task: r.task,
+            text: x.text,
+            final: false,
+          }),
+        )
+        if (r.finished && r.summary)
+          entry('run_note', `${r.id}:end`, r.finished, agent, r.id, r.summary, {
+            object: 'run_note',
+            run: r.id,
+            task: r.task,
+            text: r.summary,
+            final: true,
+          })
+      }
+    }
+    const states = (object: 'change' | 'issue', first: string) => {
+      let from: string | null = null
+      // Only the events that can move a state are read in full.
+      const moves =
+        /^(change\.(opened|updated|landed|abandoned)|issue\.(created|updated|closed))$/
+      for (const stored of this.events.repoEvents(repo.id)) {
+        if (!moves.test(stored.type)) continue
+        const e = parseEvent(stored)
+        if (e.subject.object !== object || e.subject.number !== n) continue
+        const to = (e.data as { state?: string } | null)?.state
+        if (!to || to === from) continue
+        const by = e.actor
+        entry(
+          'state_change',
+          e.id,
+          Date.parse(e.created_at),
+          { id: by.id, handle: by.handle, class: by.class },
+          null,
+          from ? `${from} to ${to}` : `opened as ${to}`,
+          { object: 'state_change', from, to },
+        )
+        from = to
+      }
+      return from ?? first
+    }
+    const runs = this.runsByRepo.get(`${repo.owner}/${repo.name}`) ?? []
+    if (subject.kind === 'change') {
+      const c = this.getChangeRec(repo, subject.ref)
+      for (const ps of c.patchSets)
+        entry(
+          'patch_set',
+          String(ps.n),
+          ps.created,
+          ps.author,
+          ps.via?.run ?? null,
+          `Patch set ${ps.n}: ${ps.note}`,
+          this.presentPatchSet(repo, c, ps),
+        )
+      for (const x of c.comments ?? [])
+        entry(
+          'comment',
+          x.id,
+          x.created,
+          x.author,
+          x.via?.run ?? null,
+          `${x.file ? `${x.file}${x.line ? `:${x.line}` : ''}: ` : ''}${x.body.split('\n')[0]}`,
+          this.presentReviewComment(c, x),
+        )
+      for (const r of c.reviews)
+        entry(
+          'review',
+          r.id,
+          r.created,
+          r.actor,
+          r.via?.run ?? null,
+          `${r.state === 'changes' ? 'asked for changes' : r.state} on patch set ${r.patchSet}${r.carries ? '' : ' (stale)'}`,
+          this.presentReview(r),
+        )
+      for (const f of c.findings)
+        entry(
+          'finding',
+          f.id,
+          f.created,
+          this.actorFor(f.by, 'agent'),
+          f.via?.run ?? null,
+          `${f.label} (${f.severity}): ${f.title}`,
+          this.presentFinding(repo, c, f),
+        )
+      for (const k of c.checks)
+        entry(
+          'check',
+          k.id,
+          k.updated,
+          null,
+          null,
+          `${k.name}: ${k.state}`,
+          this.presentCheck(k),
+        )
+      if (c.guide)
+        entry(
+          'guide',
+          `${c.id}:${c.guide.created}`,
+          c.guide.created,
+          c.guide.by,
+          c.guide.run,
+          `Guide for patch set ${c.guide.patchSet}: ${c.guide.summary.split('\n')[0]}`,
+          this.presentGuide(c, c.guide),
+        )
+      for (const e of c.evidence ?? []) {
+        const u = this.memUploads.get(e.uploadId)
+        if (u)
+          entry(
+            'evidence',
+            e.id,
+            e.created,
+            e.by,
+            null,
+            `${e.kind}: ${e.caption}`,
+            this.presentEvidence(c, e, u),
+          )
+      }
+      runNotes(
+        runs.filter(
+          (r) =>
+            r.change === c.number ||
+            (r.patchSets ?? []).some((x) => x.change === c.number),
+        ),
+      )
+      if (
+        states('change', c.state) === c.state &&
+        !out.some((e) => e.kind === 'state_change')
+      )
+        entry(
+          'state_change',
+          `${c.id}:opened`,
+          c.created,
+          c.author,
+          null,
+          `opened as ${c.state}`,
+          {
+            object: 'state_change',
+            from: null,
+            to: c.state,
+          },
+        )
+    } else {
+      const i = repo.issues.get(n)
+      if (!i)
+        throw apiError(
+          'not_found',
+          `No issue #${n} in ${repo.owner}/${repo.name}.`,
+        )
+      for (const x of i.comments ?? [])
+        entry(
+          'comment',
+          x.id,
+          x.created,
+          x.author,
+          null,
+          x.body.split('\n')[0],
+          this.presentComment(repo, i, x),
+        )
+      for (const e of i.evidence ?? []) {
+        const u = this.memUploads.get(e.uploadId)
+        if (u)
+          entry(
+            'evidence',
+            e.id,
+            e.created,
+            e.by,
+            null,
+            `${e.kind}: ${e.caption}`,
+            this.presentIssueEvidence(i, e, u),
+          )
+      }
+      runNotes(runs.filter((r) => r.issue === i.number))
+      for (const c of repo.changes.values())
+        for (const ref of issueRefs(`${c.title}\n${c.description}`))
+          if (ref.issue === i.number)
+            entry(
+              'reference',
+              `${c.id}`,
+              c.created,
+              c.author,
+              c.patchSets[0]?.via?.run ?? null,
+              `#${c.number} ${ref.closes ? 'fixes' : 'refers to'} this: ${c.title}`,
+              {
+                object: 'reference',
+                change: c.number,
+                title: c.title,
+                state: c.state,
+                closes: ref.closes,
+                url: `${this.repoUrl(repo)}/changes/${c.number}`,
+              },
+            )
+      if (
+        states('issue', i.state) === i.state &&
+        !out.some((e) => e.kind === 'state_change')
+      )
+        entry(
+          'state_change',
+          `${i.id}:opened`,
+          i.created,
+          i.author,
+          null,
+          `opened as ${i.state}`,
+          {
+            object: 'state_change',
+            from: null,
+            to: i.state,
+          },
+        )
+    }
+    return out.sort(
+      (a, b) =>
+        // Stable: entries at the same moment keep the order they were made in.
+        Date.parse(a.created_at) - Date.parse(b.created_at),
+    )
   }
 }
 
